@@ -1,0 +1,48 @@
+export type ConversationMode = 'diagnosis' | 'ai_chat';
+
+export interface ConversationState {
+  mode: ConversationMode;
+  currentQuestion: number | null;
+  answers: DiagnosisAnswers;
+  selectedIndustries: string[];
+  lang: string;
+  q4_step?: 'select_major' | 'select_region' | 'select_prefecture';
+  selectedRegion?: string;
+}
+
+export interface DiagnosisAnswers {
+  living_in_japan?: 'yes' | 'no_planned' | 'no_plan';
+  gender?: 'male' | 'female' | 'other';
+  urgency?: 'immediate' | 'within_2weeks' | 'not_urgent';
+  region?: string;
+  prefecture?: string;
+  japanese_level?: 'n1' | 'n2' | 'n3' | 'n4' | 'n5' | 'no_japanese';
+  industry?: string;
+  work_style?: 'fulltime' | 'parttime' | 'both';
+}
+
+export interface UserStatus {
+  userId: string;
+  lang: string;
+  richMenuId?: string;
+  ai_chat_count: number;
+  diagnosis_count: number;
+  total_usage_count: number;
+  first_used?: Date;
+  last_used?: Date;
+  timestamp: Date;
+}
+
+export interface IntentDetection {
+  intent: 'job_search' | 'greeting' | 'contact' | 'unknown';
+  confidence: number;
+  pattern: 'exact' | 'conditional' | 'implicit' | 'none';
+  trigger: string | null;
+  action: 'start_diagnosis_immediately' | 'confirm_then_start' | 'greet' | 'show_contact' | 'use_openai';
+  extractedInfo?: {
+    location?: string;
+    industry?: string;
+    japaneseLevel?: string;
+    urgency?: string;
+  };
+}

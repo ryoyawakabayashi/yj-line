@@ -1,0 +1,392 @@
+import { replyMessage, replyWithQuickReply } from '../line/client';
+import { getUserLang } from '../database/queries';
+import { buildYoloSiteUrl, buildYoloFeatureUrl, addUtmParams } from '../utils/url';
+import { config } from '../config';
+
+export async function handleGreeting(
+  userId: string,
+  replyToken: string,
+  lang: string
+): Promise<void> {
+  const messages: Record<string, any> = {
+    ja: {
+      greeting: 'こんにちは!YOLO JAPANです✨',
+      prompt: '今日はどのようなお手伝いができますか?\n\n例えば...\n📌 仕事を探している\n📌 サービスについて知りたい\n📌 お問い合わせしたい',
+      quickReply: [
+        { label: '🔍 仕事を探す', text: '仕事を探しています' },
+        { label: 'ℹ️ サービス紹介', text: 'サービスを知りたい' },
+        { label: '📩 お問い合わせ', text: 'お問い合わせ' },
+      ],
+    },
+    en: {
+      greeting: 'Hello! This is YOLO JAPAN✨',
+      prompt: 'How can I help you today?\n\nFor example...\n📌 Looking for a job\n📌 Learn about our services\n📌 Contact us',
+      quickReply: [
+        { label: '🔍 Find Job', text: "I'm looking for a job" },
+        { label: 'ℹ️ Features', text: 'Tell me about services' },
+        { label: '📩 Contact', text: 'Contact' },
+      ],
+    },
+    ko: {
+      greeting: '안녕하세요! YOLO JAPAN입니다✨',
+      prompt: '오늘은 무엇을 도와드릴까요?\n\n예를 들어...\n📌 일자리 찾기\n📌 서비스 소개\n📌 문의하기',
+      quickReply: [
+        { label: '🔍 일자리 찾기', text: '일자리를 찾고 있습니다' },
+        { label: 'ℹ️ 서비스 소개', text: '서비스를 알고 싶어요' },
+        { label: '📩 문의', text: '문의하기' },
+      ],
+    },
+    zh: {
+      greeting: '你好!这里是YOLO JAPAN✨',
+      prompt: '今天需要什么帮助?\n\n例如...\n📌 找工作\n📌 服务介绍\n📌 联系我们',
+      quickReply: [
+        { label: '🔍 找工作', text: '我在找工作' },
+        { label: 'ℹ️ 服务介绍', text: '我想了解服务' },
+        { label: '📩 联系', text: '联系我们' },
+      ],
+    },
+    vi: {
+      greeting: 'Xin chào! Đây là YOLO JAPAN✨',
+      prompt: 'Hôm nay tôi có thể giúp gì cho bạn?\n\nVí dụ...\n📌 Tìm việc làm\n📌 Giới thiệu dịch vụ\n📌 Liên hệ',
+      quickReply: [
+        { label: '🔍 Tìm việc', text: 'Tôi đang tìm việc' },
+        { label: 'ℹ️ Giới thiệu', text: 'Tôi muốn biết về dịch vụ' },
+        { label: '📩 Liên hệ', text: 'Liên hệ' },
+      ],
+    },
+  };
+
+  const msg = messages[lang] || messages.ja;
+
+  await replyMessage(replyToken, [
+    {
+      type: 'text',
+      text: msg.greeting,
+    },
+    {
+      type: 'text',
+      text: msg.prompt,
+      quickReply: {
+        items: msg.quickReply.map((item: any) => ({
+          type: 'action',
+          action: {
+            type: 'message',
+            label: item.label,
+            text: item.text,
+          },
+        })),
+      },
+    },
+  ]);
+}
+
+export async function handleContact(
+  replyToken: string,
+  userId: string
+): Promise<void> {
+  const lang = await getUserLang(userId);
+
+  const baseUrls: Record<string, string> = {
+    ja: 'https://www.yolo-japan.com/ja/inquiry/input',
+    en: 'https://www.yolo-japan.com/en/inquiry/input',
+    ko: 'https://www.yolo-japan.com/ko/inquiry/input',
+    zh: 'https://www.yolo-japan.com/zh-TW/inquiry/input',
+    vi: 'https://www.yolo-japan.com/vi/inquiry/input',
+  };
+
+  const url = addUtmParams(baseUrls[lang] || baseUrls.ja, 'contact');
+
+  const messages: Record<string, string> = {
+    ja: `お問い合わせはこちらから↓\n${url}`,
+    en: `Contact us here↓\n${url}`,
+    ko: `문의는 여기에서↓\n${url}`,
+    zh: `請在此處聯繫我們↓\n${url}`,
+    vi: `Liên hệ với chúng tôi tại đây↓\n${url}`,
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: messages[lang] || messages.ja,
+  });
+}
+
+export async function handleFindJob(
+  userId: string,
+  replyToken: string
+): Promise<void> {
+  const lang = await getUserLang(userId);
+
+  const messages: Record<string, string> = {
+    ja: 'どちらの方法で探しますか？',
+    en: 'How would you like to search?',
+    ko: '어떻게 찾으시겠습니까?',
+    zh: '您想如何搜索？',
+    vi: 'Bạn muốn tìm kiếm như thế nào?',
+  };
+
+  const aiLabel: Record<string, string> = {
+    ja: 'AIに丸投げ',
+    en: 'Ask AI',
+    ko: 'AI에게 물어보기',
+    zh: '询问AI',
+    vi: 'Hỏi AI',
+  };
+
+  const siteLabel: Record<string, string> = {
+    ja: 'サイトで探す',
+    en: 'Search on Site',
+    ko: '사이트에서 검색',
+    zh: '在网站上搜索',
+    vi: 'Tìm trên trang web',
+  };
+
+  await replyWithQuickReply(replyToken, messages[lang] || messages.ja, [
+    {
+      type: 'action',
+      action: {
+        type: 'message',
+        label: aiLabel[lang] || aiLabel.ja,
+        text: 'AI_MODE',
+      },
+    },
+    {
+      type: 'action',
+      action: {
+        type: 'message',
+        label: siteLabel[lang] || siteLabel.ja,
+        text: 'SITE_MODE',
+      },
+    },
+  ]);
+}
+
+export async function handleSiteMode(
+  userId: string,
+  replyToken: string
+): Promise<void> {
+  const lang = await getUserLang(userId);
+  const siteUrl = buildYoloSiteUrl(lang);
+
+  const messages: Record<string, string> = {
+    ja: `こちらからお仕事を探せます：\n${siteUrl}`,
+    en: `You can search for jobs here:\n${siteUrl}`,
+    ko: `여기에서 일자리를 찾을 수 있습니다:\n${siteUrl}`,
+    zh: `您可以在这里搜索工作：\n${siteUrl}`,
+    vi: `Bạn có thể tìm công việc tại đây:\n${siteUrl}`,
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: messages[lang] || messages.ja,
+  });
+}
+
+export async function handleViewFeatures(
+  userId: string,
+  replyToken: string
+): Promise<void> {
+  const lang = await getUserLang(userId);
+  const featureUrl = buildYoloFeatureUrl(lang);
+
+  const messages: Record<string, string> = {
+    ja: `おすすめの求人特集はこちら：\n${featureUrl}`,
+    en: `Featured jobs here:\n${featureUrl}`,
+    ko: `추천 특집:\n${featureUrl}`,
+    zh: `推荐特辑：\n${featureUrl}`,
+    vi: `Đặc sản đề xuất:\n${featureUrl}`,
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: messages[lang] || messages.ja,
+  });
+}
+
+export async function handleNoThanks(
+  userId: string,
+  replyToken: string
+): Promise<void> {
+  const lang = await getUserLang(userId);
+
+  const messages: Record<string, string> = {
+    ja: 'かしこまりました!😊\n\n何かお困りのことがあれば、いつでもお声がけください。',
+    en: 'Understood!😊\n\nIf you need anything, feel free to ask anytime.',
+    ko: '알겠습니다!😊\n\n무엇이든 필요하시면 언제든지 말씀해주세요.',
+    zh: '明白了!😊\n\n如果您有任何需要，请随时告诉我。',
+    vi: 'Hiểu rồi!😊\n\nNếu bạn cần gì, hãy hỏi bất cứ lúc nào.',
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: messages[lang] || messages.ja,
+  });
+}
+
+export async function handleYoloDiscover(
+  event: any,
+  lang: string
+): Promise<void> {
+  const userId = event.source.userId;
+  const replyToken = event.replyToken;
+  let displayName = '';
+  try {
+    const profileResponse = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${config.line.channelAccessToken}`,
+      },
+    });
+    const profile = await profileResponse.json();
+    displayName = profile.displayName || '';
+  } catch (error) {
+    console.error('プロフィール取得エラー:', error);
+  }
+
+  const greeting = displayName ? `${displayName}さんの` : 'あなたの';
+
+  // 日本語だけ「さん」を付ける
+  const greetingJa = displayName ? `${displayName}さんの` : 'あなたの';
+  const greetingEn = displayName ? `${displayName}'s` : 'Your';
+  const greetingKo = displayName ? `${displayName}님의` : '당신의';
+  const greetingZh = displayName ? `${displayName}的` : '您的';
+  const greetingVi = displayName ? `${displayName} Của` : '';
+
+  const messages: Record<string, string> = {
+    ja: `【${greetingJa}日本生活をアップグレード】
+
+YOLO :DISCOVERは、グルメ・観光・ライフスタイルなど、日本の魅力を無料で体験し、あなたのSNSで日本の魅力を発信するサービスです。
+
+感じたことをシェアするだけ。
+SNSのフォロワー数は問いません。
+
+✨ こんなお店でサービスを体験できます
+・1人前3万円のすき焼き店
+・行列ができるお寿司屋さん
+・リゾートホテル宿泊
+などなど
+
+YOLO :DISCOVERなら、これらが無料で体験できます！
+
+💰 登録・参加すべて無料
+※店舗への交通費は実費
+
+👇 今すぐチェック
+https://wom.yolo-japan.com/ja/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+    en: `【Upgrade ${greetingEn} Life in Japan】
+YOLO :DISCOVER
+
+YOLO :DISCOVER is a service where you can experience Japanese culture for free—from gourmet dining to travel and lifestyle—and share Japan's appeal on your SNS.
+
+Just share what you feel.
+No follower count required.
+
+✨ Experience services at places like:
+・Premium sukiyaki restaurant (¥30,000 per person)
+・Popular sushi restaurant with long queues
+・Resort hotel stays
+And more!
+
+With YOLO :DISCOVER, you can experience all of these for FREE!
+
+💰 Registration & participation FREE
+※Transportation costs at your own expense
+
+👇 Check now
+https://wom.yolo-japan.com/en/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+    ko: `【${greetingKo} 일본 생활을 업그레이드】
+YOLO :DISCOVER
+
+YOLO :DISCOVER는 그루메·관광·라이프스타일 등 일본의 매력을 무료로 체험하고, SNS에서 일본의 매력을 전달하는 서비스입니다.
+
+느낀 것을 공유하기만 하면 됩니다.
+SNS 팔로워 수는 상관없습니다.
+
+✨ 이런 곳에서 서비스를 체험할 수 있습니다
+・1인 3만엔 스키야키 전문점
+・줄 서는 초밥집
+・리조트 호텔 숙박
+등등
+
+YOLO :DISCOVER로 이 모든 것을 무료로 체험할 수 있습니다!
+
+💰 등록·참가 모두 무료
+※교통비는 본인 부담
+
+👇 지금 확인
+https://wom.yolo-japan.com/ko/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+    zh: `【升级${greetingZh}日本生活】
+YOLO :DISCOVER
+
+YOLO :DISCOVER是一项可以免费体验日本美食、旅游、生活方式等魅力，并在您的SNS上传播日本魅力的服务。
+
+只需分享您的感受。
+不限SNS粉丝数。
+
+✨ 可以在这些地方体验服务
+・人均3万日元的寿喜烧店
+・排队的寿司店
+・度假酒店住宿
+等等
+
+通过YOLO :DISCOVER，您可以免费体验这些！
+
+💰 注册·参加全部免费
+※交通费自理
+
+👇 立即查看
+https://wom.yolo-japan.com/zh-TW/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+    vi: `【Nâng Cấp Cuộc Sống Nhật Bản${greetingVi ? ' ' + greetingVi : ''}】
+YOLO :DISCOVER
+
+YOLO :DISCOVER là dịch vụ trải nghiệm miễn phí sức hấp dẫn của Nhật Bản từ ẩm thực, du lịch đến phong cách sống, và chia sẻ sức hấp dẫn của Nhật Bản trên SNS của bạn.
+
+Chỉ cần chia sẻ những gì bạn cảm nhận.
+Không yêu cầu số lượng followers.
+
+✨ Trải nghiệm dịch vụ tại những nơi như:
+・Nhà hàng sukiyaki cao cấp (¥30,000/người)
+・Nhà hàng sushi xếp hàng dài
+・Nghỉ dưỡng tại khách sạn resort
+Và nhiều hơn nữa!
+
+Với YOLO :DISCOVER, bạn có thể trải nghiệm tất cả MIỄN PHÍ!
+
+💰 Đăng ký & tham gia MIỄN PHÍ
+※Chi phí di chuyển tự túc
+
+👇 Kiểm tra ngay
+https://wom.yolo-japan.com/vi/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: messages[lang] || messages.ja,
+  });
+}
+// リッチメニューボタンアクションのハンドラー
+export async function handleButtonAction(
+  event: any,
+  state: any,
+  action: string,
+  lang: string
+): Promise<void> {
+  const userId = event.source.userId;
+  
+  switch (action) {
+    case 'SITE_MODE':
+      await handleSiteMode(event, lang);
+      break;
+    case 'VIEW_FEATURES':
+      await handleViewFeatures(event, lang);
+      break;
+    case 'CONTACT':
+      await handleContact(event, lang);
+      break;
+    case 'YOLO_DISCOVER':
+      await handleYoloDiscover(event, lang);
+      break;
+    default:
+      console.log(`Unknown button action: ${action}`);
+  }
+}
+
+// リッチメニューボタンアクションのハンドラー
