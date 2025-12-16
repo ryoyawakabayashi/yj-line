@@ -57,3 +57,15 @@ export interface TopUser {
   totalUsage: number;
   rank: number;
 }
+
+// GA4 Analytics types
+export interface GA4ConversionBySource {
+  source: string;
+  conversions: number;
+}
+
+export interface GA4DailyConversion {
+  date: string;
+  conversions: number;
+  bySource: Record<string, number>;
+}

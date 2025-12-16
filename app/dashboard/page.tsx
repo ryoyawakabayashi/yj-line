@@ -10,6 +10,8 @@ import { UserTrendChart } from '@/components/dashboard/UserTrendChart';
 import { UsageTrendChart } from '@/components/dashboard/UsageTrendChart';
 import { TopUsersRanking } from '@/components/dashboard/TopUsersRanking';
 import { ActivityTable } from '@/components/dashboard/ActivityTable';
+import { GA4ConversionPieChart } from '@/components/dashboard/GA4ConversionPieChart';
+import { GA4ConversionTrendChart } from '@/components/dashboard/GA4ConversionTrendChart';
 import type {
   DashboardStats,
   LanguageDistribution,
@@ -20,6 +22,8 @@ import type {
   Activity,
   DailyUsageTrend,
   TopUser,
+  GA4ConversionBySource,
+  GA4DailyConversion,
 } from '@/types/dashboard';
 
 interface Analytics {
@@ -36,6 +40,10 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [ranking, setRanking] = useState<TopUser[]>([]);
+  const [ga4Data, setGa4Data] = useState<{
+    bySource: GA4ConversionBySource[];
+    dailyTrends: GA4DailyConversion[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,11 +51,12 @@ export default function DashboardPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [statsRes, analyticsRes, activityRes, rankingRes] = await Promise.all([
+        const [statsRes, analyticsRes, activityRes, rankingRes, ga4Res] = await Promise.all([
           fetch('/api/dashboard/stats'),
           fetch('/api/dashboard/analytics'),
           fetch('/api/dashboard/users?limit=20'),
           fetch('/api/dashboard/ranking?limit=10'),
+          fetch('/api/dashboard/ga4-conversions?days=30&type=both'),
         ]);
 
         if (!statsRes.ok || !analyticsRes.ok || !activityRes.ok || !rankingRes.ok) {
@@ -63,6 +72,14 @@ export default function DashboardPage() {
         setAnalytics(analyticsData);
         setActivity(activityData);
         setRanking(rankingData);
+
+        // GA4 data is optional - don't fail if it's not available
+        if (ga4Res.ok) {
+          const ga4Response = await ga4Res.json();
+          setGa4Data(ga4Response);
+        } else {
+          console.warn('GA4 data not available');
+        }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -141,6 +158,34 @@ export default function DashboardPage() {
 
         {/* Usage Trend Chart - Full Width */}
         {analytics && <UsageTrendChart data={analytics.usageTrend} />}
+
+        {/* GA4 Analytics Section */}
+        {ga4Data && (
+          <>
+            <div className="border-t-4 border-purple-500 pt-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">📊 Google Analytics 4 - LINE CV データ</h2>
+            </div>
+
+            {/* GA4 Charts - Row 1 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <GA4ConversionPieChart data={ga4Data.bySource} />
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">流入元別 CV 詳細</h3>
+                <div className="space-y-3">
+                  {ga4Data.bySource.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-gray-700">{item.source}</span>
+                      <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* GA4 Trend Chart - Full Width */}
+            <GA4ConversionTrendChart data={ga4Data.dailyTrends} />
+          </>
+        )}
 
         {/* Top Users Ranking - Full Width */}
         <TopUsersRanking data={ranking} />
