@@ -33,6 +33,15 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
         {
           name: 'conversions',
         },
+        {
+          name: 'sessions',
+        },
+        {
+          name: 'engagementRate',
+        },
+        {
+          name: 'averageSessionDuration',
+        },
       ],
       dimensionFilter: {
         orGroup: {
@@ -72,27 +81,40 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
     }
 
     // Aggregate by source/medium combination
-    const sourceMap: Record<string, number> = {};
+    const sourceMap: Record<string, { conversions: number; sessions: number; engagementRate: number; avgDuration: number; count: number }> = {};
 
     response.rows.forEach((row) => {
       if (row.dimensionValues && row.metricValues) {
         const source = row.dimensionValues[0]?.value || '';
         const medium = row.dimensionValues[1]?.value || '';
         const conversions = Number(row.metricValues[0]?.value || 0);
+        const sessions = Number(row.metricValues[1]?.value || 0);
+        const engagementRate = Number(row.metricValues[2]?.value || 0);
+        const avgDuration = Number(row.metricValues[3]?.value || 0);
 
         const sourceKey = `${source} / ${medium}`;
 
         // Only include LINE sources we're tracking
         if (LINE_SOURCES.includes(sourceKey as any)) {
-          sourceMap[sourceKey] = (sourceMap[sourceKey] || 0) + conversions;
+          if (!sourceMap[sourceKey]) {
+            sourceMap[sourceKey] = { conversions: 0, sessions: 0, engagementRate: 0, avgDuration: 0, count: 0 };
+          }
+          sourceMap[sourceKey].conversions += conversions;
+          sourceMap[sourceKey].sessions += sessions;
+          sourceMap[sourceKey].engagementRate += engagementRate;
+          sourceMap[sourceKey].avgDuration += avgDuration;
+          sourceMap[sourceKey].count += 1;
         }
       }
     });
 
     return Object.entries(sourceMap)
-      .map(([source, conversions]) => ({
+      .map(([source, data]) => ({
         source: SOURCE_LABELS[source] || source,
-        conversions,
+        conversions: data.conversions,
+        sessions: data.sessions,
+        engagementRate: data.count > 0 ? data.engagementRate / data.count : 0,
+        averageSessionDuration: data.count > 0 ? data.avgDuration / data.count : 0,
       }))
       .sort((a, b) => b.conversions - a.conversions);
   } catch (error) {
@@ -129,6 +151,9 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
       metrics: [
         {
           name: 'conversions',
+        },
+        {
+          name: 'sessions',
         },
       ],
       dimensionFilter: {
@@ -176,7 +201,7 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
     }
 
     // Aggregate by date and source
-    const dailyMap: Record<string, { conversions: number; bySource: Record<string, number> }> = {};
+    const dailyMap: Record<string, { conversions: number; sessions: number; bySource: Record<string, number>; bySourceSessions: Record<string, number> }> = {};
 
     response.rows.forEach((row) => {
       if (row.dimensionValues && row.metricValues) {
@@ -184,18 +209,21 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
         const source = row.dimensionValues[1]?.value || '';
         const medium = row.dimensionValues[2]?.value || '';
         const conversions = Number(row.metricValues[0]?.value || 0);
+        const sessions = Number(row.metricValues[1]?.value || 0);
 
         const sourceKey = `${source} / ${medium}`;
 
         // Only include LINE sources we're tracking
         if (LINE_SOURCES.includes(sourceKey as any)) {
           if (!dailyMap[date]) {
-            dailyMap[date] = { conversions: 0, bySource: {} };
+            dailyMap[date] = { conversions: 0, sessions: 0, bySource: {}, bySourceSessions: {} };
           }
 
           const sourceLabel = SOURCE_LABELS[sourceKey] || sourceKey;
           dailyMap[date].conversions += conversions;
+          dailyMap[date].sessions += sessions;
           dailyMap[date].bySource[sourceLabel] = (dailyMap[date].bySource[sourceLabel] || 0) + conversions;
+          dailyMap[date].bySourceSessions[sourceLabel] = (dailyMap[date].bySourceSessions[sourceLabel] || 0) + sessions;
         }
       }
     });
@@ -204,7 +232,9 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
       .map(([date, data]) => ({
         date: formatDate(date),
         conversions: data.conversions,
+        sessions: data.sessions,
         bySource: data.bySource,
+        bySourceSessions: data.bySourceSessions,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
   } catch (error) {

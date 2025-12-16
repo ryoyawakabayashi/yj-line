@@ -1,0 +1,115 @@
+TOKEN="502B27kTVKi8Y6UwxSOk2u1VxLJC+fUWIdaXSKuddc0PDaFz5OgKFPAZbRSF4HrnVX8y1/vVKYB377EKepyEaFZ6544ffpiFK4RjcRSTEuRbjvk7k1ZqK/PBwwfKoXAz9NP1OIelEt4JUZNQDZhJfgdB04t89/1O/w1cDnyilFU="
+
+echo "🇯🇵 === 日本語版リッチメニュー作成 ==="
+RICHMENU_JA=$(curl -s -X POST https://api.line.me/v2/bot/richmenu \
+-H "Authorization: Bearer $TOKEN" \
+-H "Content-Type: application/json" \
+-d '{
+  "size": {"width": 2500, "height": 1686},
+  "selected": true,
+  "name": "YOLO JAPAN Menu (JP)",
+  "chatBarText": "メニュー",
+  "areas": [
+    k{"bounds": {"x": 0, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "AI_MODE", "label": "しごとをさがす（AI）"}},
+    {"bounds": {"x": 833, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "SITE_MODE", "label": "しごとをさがす（Webサイト）"}},
+    {"bounds": {"x": 1666, "y": 0, "width": 834, "height": 843}, "action": {"type": "message", "text": "VIEW_FEATURES", "label": "おすすめのしごと"}},
+    {"bounds": {"x": 0, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "CONTACT", "label": "といあわせ"}},
+    {"bounds": {"x": 833, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "LANG_CHANGE", "label": "ことばをえらぶ"}},
+    {"bounds": {"x": 1666, "y": 843, "width": 834, "height": 843}, "action": {"type": "message", "text": "YOLO_DISCOVER", "label": "YOLO :DISCOVER"}}
+  ]
+}' | jq -r '.richMenuId')
+echo "✅ RICHMENU_JA=$RICHMENU_JA"
+
+echo -e "\n🇬🇧 === 英語版リッチメニュー作成 ==="
+RICHMENU_EN=$(curl -s -X POST https://api.line.me/v2/bot/richmenu \
+-H "Authorization: Bearer $TOKEN" \
+-H "Content-Type: application/json" \
+-d '{
+  "size": {"width": 2500, "height": 1686},
+  "selected": true,
+  "name": "YOLO JAPAN Menu (EN)",
+  "chatBarText": "Menu",
+  "areas": [
+kkっ    {"bounds": {"x": 0, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "AI_MODE", "label": "Find Job (AI)"}},
+    {"bounds": {"x": 833, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "SITE_MODE", "label": "Find Job (Website)"}},
+    {"bounds": {"x": 1666, "y": 0, "width": 834, "height": 843}, "action": {"type": "message", "text": "VIEW_FEATURES", "label": "Featured Jobs"}},
+    {"bounds": {"x": 0, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "CONTACT", "label": "Contact"}},
+    {"bounds": {"x": 833, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "LANG_CHANGE", "label": "Change Language"}},
+    {"bounds": {"x": 1666, "y": 843, "width": 834, "height": 843}, "action": {"type": "message", "text": "YOLO_DISCOVER", "label": "YOLO :DISCOVER"}}
+  ]
+}' | jq -r '.richMenuId')
+echo "✅ RICHMENU_EN=$RICHMENU_EN"
+
+echo -e "\n🇰🇷 === 韓国語版リッチメニュー作成 ==="
+RICHMENU_KO=$(curl -s -X POST https://api.line.me/v2/bot/richmenu \
+-H "Authorization: Bearer $TOKEN" \
+-H "Content-Type: application/json" \
+-d '{
+  "size": {"width": 2500, "height": 1686},
+  "selected": true,
+  "name": "YOLO JAPAN Menu (KO)",
+  "chatBarText": "메뉴",
+  "areas": [
+    {"bounds": {"x": 0, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "AI_MODE", "label": "일자리 찾기 (AI)"}},
+    {"bounds": {"x": 833, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "SITE_MODE", "label": "일자리 찾기 (웹사이트)"}},
+    {"bounds": {"x": 1666, "y": 0, "width": 834, "height": 843}, "action": {"type": "message", "text": "VIEW_FEATURES", "label": "추천 일자리"}},
+    {"bounds": {"x": 0, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "CONTACT", "label": "문의하기"}},
+    {"bounds": {"x": 833, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "LANG_CHANGE", "label": "언어 선택"}},
+    {"bounds": {"x": 1666, "y": 843, "width": 834, "height": 843}, "action": {"type": "message", "text": "YOLO_DISCOVER", "label": "YOLO :DISCOVER"}}
+  ]
+}' | jq -r '.richMenuId')
+echo "✅ RICHMENU_KO=$RICHMENU_KO"
+
+echo -e "\n🇨🇳 === 中国語版リッチメニュー作成 ==="
+RICHMENU_ZH=$(curl -s -X POST https://api.line.me/v2/bot/richmenu \
+-H "Authorization: Bearer $TOKEN" \
+-H "Content-Type: application/json" \
+-d '{
+  "size": {"width": 2500, "height": 1686},
+  "selected": true,
+  "name": "YOLO JAPAN Menu (ZH)",
+  "chatBarText": "菜单",
+  "areas": [
+    {"bounds": {"x": 0, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "AI_MODE", "label": "找工作 (AI)"}},
+    {"bounds": {"x": 833, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "SITE_MODE", "label": "找工作 (网站)"}},
+    {"bounds": {"x": 1666, "y": 0, "width": 834, "height": 843}, "action": {"type": "message", "text": "VIEW_FEATURES", "label": "推荐工作"}},
+    {"bounds": {"x": 0, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "CONTACT", "label": "联系我们"}},
+    {"bounds": {"x": 833, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "LANG_CHANGE", "label": "选择语言"}},
+    {"bounds": {"x": 1666, "y": 843, "width": 834, "height": 843}, "action": {"type": "message", "text": "YOLO_DISCOVER", "label": "YOLO :DISCOVER"}}
+  ]
+}' | jq -r '.richMenuId')
+echo "✅ RICHMENU_ZH=$RICHMENU_ZH"
+
+echo -e "\n🇻🇳 === ベトナム語版リッチメニュー作成 ==="
+RICHMENU_VI=$(curl -s -X POST https://api.line.me/v2/bot/richmenu \
+-H "Authorization: Bearer $TOKEN" \
+-H "Content-Type: application/json" \
+-d '{
+  "size": {"width": 2500, "height": 1686},
+  "selected": true,
+  "name": "YOLO JAPAN Menu (VI)",
+  "chatBarText": "Menu",
+  "areas": [
+    {"bounds": {"x": 0, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "AI_MODE", "label": "Tìm việc (AI)"}},
+    {"bounds": {"x": 833, "y": 0, "width": 833, "height": 843}, "action": {"type": "message", "text": "SITE_MODE", "label": "Tìm việc (Website)"}},
+    {"bounds": {"x": 1666, "y": 0, "width": 834, "height": 843}, "action": {"type": "message", "text": "VIEW_FEATURES", "label": "Việc làm đề xuất"}},
+    {"bounds": {"x": 0, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "CONTACT", "label": "Liên hệ"}},
+    {"bounds": {"x": 833, "y": 843, "width": 833, "height": 843}, "action": {"type": "message", "text": "LANG_CHANGE", "label": "Chọn ngôn ngữ"}},
+    {"bounds": {"x": 1666, "y": 843, "width": 834, "height": 843}, "action": {"type": "message", "text": "YOLO_DISCOVER", "label": "YOLO :DISCOVER"}}
+  ]
+}' | jq -r '.richMenuId')
+echo "✅ RICHMENU_VI=$RICHMENU_VI"
+
+echo -e "\n🎌 === 初期メニュー (INIT - 日本語と同じ) ==="
+RICHMENU_INIT=$RICHMENU_JA
+echo "✅ RICHMENU_INIT=$RICHMENU_INIT"
+
+echo -e "\n\n📋 === まとめ ==="
+echo "RICHMENU_INIT=$RICHMENU_INIT"
+echo "RICHMENU_JA=$RICHMENU_JA"
+echo "RICHMENU_EN=$RICHMENU_EN"
+echo "RICHMENU_KO=$RICHMENU_KO"
+echo "RICHMENU_ZH=$RICHMENU_ZH"
+echo "RICHMENU_VI=$RICHMENU_VI"
+
+echo -e "\n✅ これらの値を V

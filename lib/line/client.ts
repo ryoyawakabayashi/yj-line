@@ -116,7 +116,7 @@ export function replyWithQuickReply(
 }
 
 // リッチメニューをユーザーにリンク
-export async function linkRichMenu(userId: string, richMenuId: string): Promise<void> {
+export async function linkRichMenu(userId: string, richMenuId: string): Promise<boolean> {
   // テンプレートURLを実際の値に置き換え
   const url = `https://api.line.me/v2/bot/user/${userId}/richmenu/${richMenuId}`;
   
@@ -131,12 +131,13 @@ export async function linkRichMenu(userId: string, richMenuId: string): Promise<
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ リッチメニューリンクエラー: ${response.status} ${errorText}`);
-      return;
+      return false;
     }
     
     console.log(`✅ リッチメニューをリンク: ${richMenuId} -> ${userId}`);
+    return true;
   } catch (error) {
     console.error('❌ linkRichMenu エラー:', error);
-    throw error;
+    return false;
   }
 }

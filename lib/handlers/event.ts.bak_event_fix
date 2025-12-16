@@ -71,22 +71,19 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
         // AI_MODE: 診断開始
         if (messageText === 'AI_MODE') {
-          const detectedLang = await getUserLang(userId);
-          const fallbackLang = detectedLang || 'en';
-          await startDiagnosisMode(userId, event.replyToken, fallbackLang);
+          await startDiagnosisMode(userId, event.replyToken, await getUserLang(userId));
           return;
         }
 
         // LANG_CHANGE: 言語選択画面表示
         if (messageText === 'LANG_CHANGE') {
-          await handleChangeLanguage(userId, event.replyToken);
+          await handleChangeLanguage(event.replyToken);
           return;
         }
 
         // その他のボタン処理
         const { handleButtonAction } = await import('./buttons');
-        const dbLang = await getUserLang(userId);
-await handleButtonAction(event, currentState, messageText, dbLang);
+        await handleButtonAction(event, currentState, messageText, currentState?.lang || 'ja');
         return;
       }
 
@@ -114,7 +111,7 @@ async function handleFollow(userId: string): Promise<void> {
         { type: 'action' as const, action: { type: 'message' as const, label: '🇯🇵 日本語', text: '🇯🇵 日本語' } },
         { type: 'action' as const, action: { type: 'message' as const, label: '🇬🇧 English', text: '🇬🇧 English' } },
         { type: 'action' as const, action: { type: 'message' as const, label: '🇰🇷 한국어', text: '🇰🇷 한국어' } },
-        { type: 'action' as const, action: { type: 'message' as const, label: '🇨🇳 中文', text: '🇨🇳 中文' } },
+        { type: 'action' as const, action: { type: 'message' as const, label: '🇨�� 中文', text: '🇨🇳 中文' } },
         { type: 'action' as const, action: { type: 'message' as const, label: '🇻🇳 Tiếng Việt', text: '🇻🇳 Tiếng Việt' } }
       ]
     }
@@ -147,12 +144,8 @@ async function handleLanguageSelection(
 
     if (richMenuId) {
       console.log('🔄 リッチメニュー切り替え中:', richMenuId);
-      const linked = await linkRichMenu(userId, richMenuId);
-      if (linked) {
-        console.log('✅ リッチメニュー切り替え成功');
-      } else {
-        console.error('❌ リッチメニュー切り替え失敗');
-      }
+      await linkRichMenu(userId, richMenuId);
+      console.log('✅ リッチメニュー切り替え成功');
     }
 
     const confirmMessages: Record<string, string> = {
@@ -177,7 +170,7 @@ async function handleLanguageSelection(
   }
 }
 
-async function handleChangeLanguage(userId: string, replyToken: string): Promise<void> {
+async function handleChangeLanguage(replyToken: string): Promise<void> {
   const message = {
     type: 'text' as const,
     text: 'Please select your language / 言語を選択してください:',

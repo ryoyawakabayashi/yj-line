@@ -165,7 +165,8 @@ export async function handleSiteMode(
   lang: string
 ): Promise<void> {
   const userId = event.source.userId;
-  const replyToken = event.replyToken;  const siteUrl = buildYoloSiteUrl(lang);
+  const replyToken = event.replyToken;
+  const siteUrl = buildYoloSiteUrl(lang);
 
   const messages: Record<string, string> = {
     ja: `こちらからお仕事を探せます：\n${siteUrl}`,
@@ -185,7 +186,8 @@ export async function handleViewFeatures(
   event: any,
   lang: string
 ): Promise<void> {
-  const replyToken = event.replyToken;  const featureUrl = buildYoloFeatureUrl(lang);
+  const replyToken = event.replyToken;
+  const featureUrl = buildYoloFeatureUrl(lang);
 
   const messages: Record<string, string> = {
     ja: `おすすめの求人特集はこちら：\n${featureUrl}`,
@@ -221,9 +223,9 @@ export async function handleNoThanks(
   });
 }
 
-export async function handleYoloDiscover(event: any, lang: string) {
   const userId = event.source.userId;
   const replyToken = event.replyToken;
+  const replyToken = event.replyToken || event;
   
   // ユーザーのプロフィールを取得
   let displayName = '';

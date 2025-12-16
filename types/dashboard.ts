@@ -62,10 +62,15 @@ export interface TopUser {
 export interface GA4ConversionBySource {
   source: string;
   conversions: number;
+  sessions: number;
+  engagementRate: number;
+  averageSessionDuration: number;
 }
 
 export interface GA4DailyConversion {
   date: string;
   conversions: number;
+  sessions: number;
   bySource: Record<string, number>;
+  bySourceSessions: Record<string, number>;
 }

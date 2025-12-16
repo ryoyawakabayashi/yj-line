@@ -173,9 +173,29 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">流入元別 CV 詳細</h3>
                 <div className="space-y-3">
                   {ga4Data.bySource.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium text-gray-700">{item.source}</span>
-                      <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
+                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-700">{item.source}</span>
+                        <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-sm mt-2">
+                        <div>
+                          <div className="text-gray-500">セッション</div>
+                          <div className="font-semibold text-gray-700">{item.sessions.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500">CVR</div>
+                          <div className="font-semibold text-gray-700">{((item.conversions / item.sessions) * 100).toFixed(2)}%</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500">滞在時間</div>
+                          <div className="font-semibold text-gray-700">{Math.floor(item.averageSessionDuration)}秒</div>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <div className="text-gray-500 text-sm">エンゲージメント率</div>
+                        <div className="font-semibold text-gray-700">{(item.engagementRate * 100).toFixed(1)}%</div>
+                      </div>
                     </div>
                   ))}
                 </div>

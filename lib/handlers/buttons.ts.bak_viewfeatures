@@ -165,7 +165,8 @@ export async function handleSiteMode(
   lang: string
 ): Promise<void> {
   const userId = event.source.userId;
-  const replyToken = event.replyToken;  const siteUrl = buildYoloSiteUrl(lang);
+  const replyToken = event.replyToken;
+  const siteUrl = buildYoloSiteUrl(lang);
 
   const messages: Record<string, string> = {
     ja: `こちらからお仕事を探せます：\n${siteUrl}`,
@@ -181,11 +182,12 @@ export async function handleSiteMode(
   });
 }
 
-export async function handleViewFeatures(
   event: any,
   lang: string
+  replyToken: string
 ): Promise<void> {
-  const replyToken = event.replyToken;  const featureUrl = buildYoloFeatureUrl(lang);
+  const lang = await getUserLang(userId);
+  const featureUrl = buildYoloFeatureUrl(lang);
 
   const messages: Record<string, string> = {
     ja: `おすすめの求人特集はこちら：\n${featureUrl}`,

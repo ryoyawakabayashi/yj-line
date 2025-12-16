@@ -62,9 +62,9 @@ export function buildYoloSearchUrl(answers: DiagnosisAnswers, lang: string): str
     const industryMap: Record<string, string> = {
       food: '2',
       building_maintenance: '14',
-      hotel_ryokan: '3',
-      retail_service: '4',
-      logistics_driver: '5',
+      hotel_ryokan: '16',
+      retail_service: '1',
+      logistics_driver: '4',
     };
     
     industries.forEach(ind => {
@@ -75,7 +75,7 @@ export function buildYoloSearchUrl(answers: DiagnosisAnswers, lang: string): str
     });
   }
 
-  params.append('order', 'new');
+  params.append('order', 'salary');
 
   const queryString = params.toString();
   const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
@@ -84,110 +84,94 @@ export function buildYoloSearchUrl(answers: DiagnosisAnswers, lang: string): str
   return addUtmParams(finalUrl, utmCampaign);
 }
 
-export function buildYoloUrlsByLevel(
-  answers: DiagnosisAnswers,
+function buildYoloUrlWithParams(
+  answers: Partial<DiagnosisAnswers>,
   lang: string
-): Array<{ label: string; description: string; url: string }> {
-  const result: Array<{ label: string; description: string; url: string }> = [];
+): string {
+  return buildYoloSearchUrl(answers as DiagnosisAnswers, lang);
+}
 
-  const japaneseLevel = answers.japanese_level;
+function getJobDescription(
+  level: string,
+  position: 'main' | 'upper' | 'lower',
+  lang: string
+): { title: string; subtitle: string } {
+  const levelLabel = getMainLabel(lang, level);
+  
+  if (position === 'main') {
+    return {
+      title: levelLabel,
+      subtitle: getMainDescription(lang),
+    };
+  } else if (position === 'upper') {
+    return {
+      title: levelLabel,
+      subtitle: getUpperDescription(lang),
+    };
+  } else {
+    return {
+      title: levelLabel,
+      subtitle: getLowerDescription(lang, level),
+    };
+  }
+}
 
-  if (!japaneseLevel) {
-    result.push({
-      label: getMainLabel(lang, 'all'),
-      description: '',
-      url: buildYoloSearchUrl(answers, lang),
-    });
-    return result;
+
+export function buildYoloUrlsByLevel(
+  answers: Partial<DiagnosisAnswers>,
+  lang: string
+): Array<{ label: string; url: string; description?: string }> {
+  const { japanese_level } = answers;
+
+  if (!japanese_level) {
+    return [];
   }
 
-  const levelMap = {
-    'no_japanese': 0,
-    'n5': 1,
-    'n4': 2,
-    'n3': 3,
-    'n2': 4,
-    'n1': 5,
-  };
+  const levelOrder = ['no_japanese', 'n5', 'n4', 'n3', 'n2', 'n1'] as const;
+  const currentIndex = levelOrder.indexOf(japanese_level as any);
 
-  const currentLevel = levelMap[japaneseLevel as keyof typeof levelMap];
-
-  if (currentLevel === undefined) {
-    result.push({
-      label: getMainLabel(lang, 'all'),
-      description: '',
-      url: buildYoloSearchUrl(answers, lang),
-    });
-    return result;
+  if (currentIndex === -1) {
+    return [];
   }
 
-  // no_japanese (レベル0): メイン + 1つ上
-  if (currentLevel === 0) {
-    // メイン
-    result.push({
-      label: getMainLabel(lang, japaneseLevel),
-      description: getMainDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: japaneseLevel as any }, lang),
-    });
-    // 1つ上 (N5)
-    result.push({
-      label: getUpperLabel(lang, 'n5'),
-      description: getUpperDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: 'n5' as any }, lang),
-    });
-  }
-  // N5-N2 (レベル1-4): 1つ下 + メイン + 1つ上
-  else if (currentLevel >= 1 && currentLevel <= 4) {
-    const levels = ['no_japanese', 'n5', 'n4', 'n3', 'n2', 'n1'];
-    
-    // 1つ下
-    const lowerLevel = levels[currentLevel - 1];
-    result.push({
-      label: getLowerLabel(lang, lowerLevel),
-      description: getLowerDescription(lang, lowerLevel),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: lowerLevel as any }, lang),
-    });
-    
-    // メイン
-    result.push({
-      label: getMainLabel(lang, japaneseLevel),
-      description: getMainDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: japaneseLevel as any }, lang),
-    });
-    
-    // 1つ上
-    const upperLevel = levels[currentLevel + 1];
-    result.push({
-      label: getUpperLabel(lang, upperLevel),
-      description: getUpperDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: upperLevel as any }, lang),
-    });
-  }
-  // N1 (レベル5): 2つ下 + 1つ下 + メイン
-  else if (currentLevel === 5) {
-    // 2つ下 (N3)
-    result.push({
-      label: getLowerLabel(lang, 'n3'),
-      description: getN1TwoLevelsDownDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: 'n3' as any }, lang),
-    });
-    
-    // 1つ下 (N2)
-    result.push({
-      label: getLowerLabel(lang, 'n2'),
-      description: getN1OneLevelDownDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: 'n2' as any }, lang),
-    });
-    
-    // メイン
-    result.push({
-      label: getMainLabel(lang, japaneseLevel),
-      description: getMainDescription(lang),
-      url: buildYoloSearchUrl({ ...answers, japanese_level: japaneseLevel as any }, lang),
+  const results: Array<{ label: string; url: string; description?: string }> = [];
+
+  // 1. 自分の言語レベル（メイン）
+  const mainUrl = buildYoloUrlWithParams({ ...answers, japanese_level } as DiagnosisAnswers, lang);
+  const mainDescription = getJobDescription(japanese_level, 'main', lang);
+  results.push({
+    label: mainDescription.title,
+    url: mainUrl,
+    description: mainDescription.subtitle,
+  });
+
+  // 2. 上の言語レベル
+  const upperIndex = currentIndex + 1;
+  if (upperIndex < levelOrder.length) {
+    const upperLevel = levelOrder[upperIndex] as string;
+    const upperUrl = buildYoloUrlWithParams({ ...answers, japanese_level: upperLevel as any } as DiagnosisAnswers, lang);
+    const upperDescription = getJobDescription(upperLevel, 'upper', lang);
+    results.push({
+      label: upperDescription.title,
+      url: upperUrl,
+      description: upperDescription.subtitle,
     });
   }
 
-  return result;
+  // 3. 下の言語レベル
+  const lowerIndex = currentIndex - 1;
+  if (lowerIndex >= 0) {
+    const lowerLevel = levelOrder[lowerIndex] as string;
+    const lowerUrl = buildYoloUrlWithParams({ ...answers, japanese_level: lowerLevel as any } as DiagnosisAnswers, lang);
+    const lowerDescription = getJobDescription(lowerLevel, 'lower', lang);
+    results.push({
+      label: lowerDescription.title,
+      url: lowerUrl,
+      description: lowerDescription.subtitle,
+    });
+  }
+
+  return results;
 }
 
 // メインラベル

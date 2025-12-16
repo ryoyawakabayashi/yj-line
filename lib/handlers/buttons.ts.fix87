@@ -84,7 +84,7 @@ export async function handleContact(
   event: any,
   lang: string
 ): Promise<void> {
-  const replyToken = event.replyToken;
+  const replyToken = event.replyToken;  const lang = await getUserLang(userId);
 
   const baseUrls: Record<string, string> = {
     ja: 'https://www.yolo-japan.com/ja/inquiry/input',
