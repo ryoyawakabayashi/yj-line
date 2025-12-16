@@ -122,13 +122,25 @@ export async function getIndustryDistribution(): Promise<IndustryDistribution[]>
 
     if (!data) return [];
 
-    // カンマ区切りを展開してカウント
+    // 有効な業界キーのみを許可
+    const validIndustryKeys = new Set([
+      'food',
+      'building_maintenance',
+      'hotel_ryokan',
+      'retail_service',
+      'logistics_driver',
+    ]);
+
+    // カンマ区切りを展開してカウント（有効なキーのみ）
     const industryCounts: Record<string, number> = {};
     data.forEach((row) => {
       if (row.q6_industry) {
         row.q6_industry.split(',').forEach((industry: string) => {
           const trimmed = industry.trim();
-          industryCounts[trimmed] = (industryCounts[trimmed] || 0) + 1;
+          // 有効なキーのみカウント
+          if (validIndustryKeys.has(trimmed)) {
+            industryCounts[trimmed] = (industryCounts[trimmed] || 0) + 1;
+          }
         });
       }
     });
