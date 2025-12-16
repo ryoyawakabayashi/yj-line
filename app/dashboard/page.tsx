@@ -8,6 +8,7 @@ import { IndustryChart } from '@/components/dashboard/IndustryChart';
 import { RegionChart } from '@/components/dashboard/RegionChart';
 import { UserTrendChart } from '@/components/dashboard/UserTrendChart';
 import { UsageTrendChart } from '@/components/dashboard/UsageTrendChart';
+import { TopUsersRanking } from '@/components/dashboard/TopUsersRanking';
 import { ActivityTable } from '@/components/dashboard/ActivityTable';
 import type {
   DashboardStats,
@@ -18,6 +19,7 @@ import type {
   DailyTrend,
   Activity,
   DailyUsageTrend,
+  TopUser,
 } from '@/types/dashboard';
 
 interface Analytics {
@@ -33,6 +35,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [ranking, setRanking] = useState<TopUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,23 +43,26 @@ export default function DashboardPage() {
     async function fetchData() {
       try {
         setLoading(true);
-        const [statsRes, analyticsRes, activityRes] = await Promise.all([
+        const [statsRes, analyticsRes, activityRes, rankingRes] = await Promise.all([
           fetch('/api/dashboard/stats'),
           fetch('/api/dashboard/analytics'),
           fetch('/api/dashboard/users?limit=20'),
+          fetch('/api/dashboard/ranking?limit=10'),
         ]);
 
-        if (!statsRes.ok || !analyticsRes.ok || !activityRes.ok) {
+        if (!statsRes.ok || !analyticsRes.ok || !activityRes.ok || !rankingRes.ok) {
           throw new Error('Failed to fetch dashboard data');
         }
 
         const statsData = await statsRes.json();
         const analyticsData = await analyticsRes.json();
         const activityData = await activityRes.json();
+        const rankingData = await rankingRes.json();
 
         setStats(statsData);
         setAnalytics(analyticsData);
         setActivity(activityData);
+        setRanking(rankingData);
       } catch (err) {
         console.error('Dashboard fetch error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -135,6 +141,9 @@ export default function DashboardPage() {
 
         {/* Usage Trend Chart - Full Width */}
         {analytics && <UsageTrendChart data={analytics.usageTrend} />}
+
+        {/* Top Users Ranking - Full Width */}
+        <TopUsersRanking data={ranking} />
 
         {/* Activity Table - Full Width */}
         <ActivityTable data={activity} />

@@ -44,3 +44,12 @@ export interface DailyUsageTrend {
   date: string;
   diagnosisCount: number;
 }
+
+export interface TopUser {
+  userId: string;
+  lang: string;
+  diagnosisCount: number;
+  aiChatCount: number;
+  totalUsage: number;
+  rank: number;
+}

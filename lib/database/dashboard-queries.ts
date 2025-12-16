@@ -8,6 +8,7 @@ import type {
   DailyTrend,
   Activity,
   DailyUsageTrend,
+  TopUser,
 } from '@/types/dashboard';
 
 /**
@@ -280,6 +281,42 @@ export async function getRecentActivity(limit: number = 20): Promise<Activity[]>
     }));
   } catch (error) {
     console.error('getRecentActivity error:', error);
+    return [];
+  }
+}
+
+/**
+ * 利用回数トップユーザーランキングを取得
+ */
+export async function getTopUsers(limit: number = 10): Promise<TopUser[]> {
+  try {
+    const { data } = await supabase
+      .from('user_status')
+      .select('user_id, lang, diagnosis_count, ai_chat_count')
+      .order('diagnosis_count', { ascending: false });
+
+    if (!data) return [];
+
+    // 診断数 + AIチャット数の合計でソートしてランキング作成
+    const sortedUsers = data
+      .map((row) => ({
+        userId: row.user_id,
+        lang: row.lang || 'unknown',
+        diagnosisCount: row.diagnosis_count || 0,
+        aiChatCount: row.ai_chat_count || 0,
+        totalUsage: (row.diagnosis_count || 0) + (row.ai_chat_count || 0),
+        rank: 0, // 後で設定
+      }))
+      .sort((a, b) => b.totalUsage - a.totalUsage)
+      .slice(0, limit)
+      .map((user, index) => ({
+        ...user,
+        rank: index + 1,
+      }));
+
+    return sortedUsers;
+  } catch (error) {
+    console.error('getTopUsers error:', error);
     return [];
   }
 }
