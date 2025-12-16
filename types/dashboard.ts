@@ -61,6 +61,8 @@ export interface TopUser {
 // GA4 Analytics types
 export interface GA4ConversionBySource {
   source: string;
+  registrations: number;
+  applications: number;
   conversions: number;
   sessions: number;
   engagementRate: number;
@@ -69,8 +71,12 @@ export interface GA4ConversionBySource {
 
 export interface GA4DailyConversion {
   date: string;
+  registrations: number;
+  applications: number;
   conversions: number;
   sessions: number;
   bySource: Record<string, number>;
   bySourceSessions: Record<string, number>;
+  bySourceRegistrations: Record<string, number>;
+  bySourceApplications: Record<string, number>;
 }

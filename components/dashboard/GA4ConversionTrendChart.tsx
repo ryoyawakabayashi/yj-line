@@ -41,6 +41,8 @@ export function GA4ConversionTrendChart({ data }: GA4ConversionTrendChartProps) 
     return {
       date: formattedDate,
       total: item.conversions,
+      registrations: item.registrations,
+      applications: item.applications,
       ...item.bySource,
     };
   });
@@ -56,7 +58,10 @@ export function GA4ConversionTrendChart({ data }: GA4ConversionTrendChartProps) 
           <Tooltip />
           <Legend />
           {/* Total line */}
-          <Line type="monotone" dataKey="total" stroke="#1F2937" strokeWidth={3} name="合計" />
+          <Line type="monotone" dataKey="total" stroke="#1F2937" strokeWidth={3} name="合計 CV" />
+          {/* Registration and Application lines */}
+          <Line type="monotone" dataKey="registrations" stroke="#3B82F6" strokeWidth={2.5} name="登録 CV" strokeDasharray="5 5" />
+          <Line type="monotone" dataKey="applications" stroke="#10B981" strokeWidth={2.5} name="応募 CV" strokeDasharray="5 5" />
           {/* Lines for each source */}
           {Array.from(allSources).map((source) => (
             <Line
@@ -64,8 +69,9 @@ export function GA4ConversionTrendChart({ data }: GA4ConversionTrendChartProps) 
               type="monotone"
               dataKey={source}
               stroke={SOURCE_COLORS[source] || '#9CA3AF'}
-              strokeWidth={2}
+              strokeWidth={1.5}
               name={source}
+              opacity={0.6}
             />
           ))}
         </LineChart>

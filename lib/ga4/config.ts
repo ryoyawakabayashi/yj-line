@@ -56,6 +56,12 @@ export const LINE_SOURCES = [
   'instagram / line',
 ] as const;
 
+// Key events for tracking
+export const GA4_KEY_EVENTS = {
+  registration: ['new_registration', 'registration_application_wizard_basic_in'],
+  application: ['complete_work'],
+} as const;
+
 // Source labels for display
 export const SOURCE_LABELS: Record<string, string> = {
   'line / message': 'メッセージ',

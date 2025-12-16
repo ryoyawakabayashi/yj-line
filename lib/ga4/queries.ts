@@ -1,5 +1,5 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
-import { GA4_CONFIG, LINE_SOURCES, SOURCE_LABELS } from './config';
+import { GA4_CONFIG, LINE_SOURCES, SOURCE_LABELS, GA4_KEY_EVENTS } from './config';
 import type { GA4ConversionBySource, GA4DailyConversion } from '@/types/dashboard';
 
 // Initialize GA4 client
@@ -13,6 +13,9 @@ const analyticsDataClient = new BetaAnalyticsDataClient({
  */
 export async function getConversionsBySource(days: number = 30): Promise<GA4ConversionBySource[]> {
   try {
+    // Get all key events (registration + application)
+    const allKeyEvents = [...GA4_KEY_EVENTS.registration, ...GA4_KEY_EVENTS.application];
+
     const [response] = await analyticsDataClient.runReport({
       property: `properties/${GA4_CONFIG.propertyId}`,
       dateRanges: [
@@ -28,10 +31,13 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
         {
           name: 'sessionMedium',
         },
+        {
+          name: 'eventName',
+        },
       ],
       metrics: [
         {
-          name: 'conversions',
+          name: 'eventCount',
         },
         {
           name: 'sessions',
@@ -44,34 +50,55 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
         },
       ],
       dimensionFilter: {
-        orGroup: {
-          expressions: LINE_SOURCES.map((source) => {
-            const [sourceValue, mediumValue] = source.split(' / ');
-            return {
-              andGroup: {
-                expressions: [
-                  {
-                    filter: {
-                      fieldName: 'sessionSource',
-                      stringFilter: {
-                        matchType: 'EXACT',
-                        value: sourceValue,
-                      },
+        andGroup: {
+          expressions: [
+            // Filter by LINE sources
+            {
+              orGroup: {
+                expressions: LINE_SOURCES.map((source) => {
+                  const [sourceValue, mediumValue] = source.split(' / ');
+                  return {
+                    andGroup: {
+                      expressions: [
+                        {
+                          filter: {
+                            fieldName: 'sessionSource',
+                            stringFilter: {
+                              matchType: 'EXACT',
+                              value: sourceValue,
+                            },
+                          },
+                        },
+                        {
+                          filter: {
+                            fieldName: 'sessionMedium',
+                            stringFilter: {
+                              matchType: 'EXACT',
+                              value: mediumValue,
+                            },
+                          },
+                        },
+                      ],
                     },
-                  },
-                  {
-                    filter: {
-                      fieldName: 'sessionMedium',
-                      stringFilter: {
-                        matchType: 'EXACT',
-                        value: mediumValue,
-                      },
-                    },
-                  },
-                ],
+                  };
+                }),
               },
-            };
-          }),
+            },
+            // Filter by key events
+            {
+              orGroup: {
+                expressions: allKeyEvents.map((eventName) => ({
+                  filter: {
+                    fieldName: 'eventName',
+                    stringFilter: {
+                      matchType: 'EXACT',
+                      value: eventName,
+                    },
+                  },
+                })),
+              },
+            },
+          ],
         },
       },
     });
@@ -81,13 +108,24 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
     }
 
     // Aggregate by source/medium combination
-    const sourceMap: Record<string, { conversions: number; sessions: number; engagementRate: number; avgDuration: number; count: number }> = {};
+    const sourceMap: Record<
+      string,
+      {
+        registrations: number;
+        applications: number;
+        sessions: number;
+        engagementRate: number;
+        avgDuration: number;
+        count: number;
+      }
+    > = {};
 
     response.rows.forEach((row) => {
       if (row.dimensionValues && row.metricValues) {
         const source = row.dimensionValues[0]?.value || '';
         const medium = row.dimensionValues[1]?.value || '';
-        const conversions = Number(row.metricValues[0]?.value || 0);
+        const eventName = row.dimensionValues[2]?.value || '';
+        const eventCount = Number(row.metricValues[0]?.value || 0);
         const sessions = Number(row.metricValues[1]?.value || 0);
         const engagementRate = Number(row.metricValues[2]?.value || 0);
         const avgDuration = Number(row.metricValues[3]?.value || 0);
@@ -97,9 +135,23 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
         // Only include LINE sources we're tracking
         if (LINE_SOURCES.includes(sourceKey as any)) {
           if (!sourceMap[sourceKey]) {
-            sourceMap[sourceKey] = { conversions: 0, sessions: 0, engagementRate: 0, avgDuration: 0, count: 0 };
+            sourceMap[sourceKey] = {
+              registrations: 0,
+              applications: 0,
+              sessions: 0,
+              engagementRate: 0,
+              avgDuration: 0,
+              count: 0,
+            };
           }
-          sourceMap[sourceKey].conversions += conversions;
+
+          // Categorize events
+          if (GA4_KEY_EVENTS.registration.includes(eventName as any)) {
+            sourceMap[sourceKey].registrations += eventCount;
+          } else if (GA4_KEY_EVENTS.application.includes(eventName as any)) {
+            sourceMap[sourceKey].applications += eventCount;
+          }
+
           sourceMap[sourceKey].sessions += sessions;
           sourceMap[sourceKey].engagementRate += engagementRate;
           sourceMap[sourceKey].avgDuration += avgDuration;
@@ -111,7 +163,9 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
     return Object.entries(sourceMap)
       .map(([source, data]) => ({
         source: SOURCE_LABELS[source] || source,
-        conversions: data.conversions,
+        registrations: data.registrations,
+        applications: data.applications,
+        conversions: data.registrations + data.applications,
         sessions: data.sessions,
         engagementRate: data.count > 0 ? data.engagementRate / data.count : 0,
         averageSessionDuration: data.count > 0 ? data.avgDuration / data.count : 0,
@@ -129,6 +183,9 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
  */
 export async function getDailyConversionTrends(days: number = 30): Promise<GA4DailyConversion[]> {
   try {
+    // Get all key events (registration + application)
+    const allKeyEvents = [...GA4_KEY_EVENTS.registration, ...GA4_KEY_EVENTS.application];
+
     const [response] = await analyticsDataClient.runReport({
       property: `properties/${GA4_CONFIG.propertyId}`,
       dateRanges: [
@@ -147,44 +204,68 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
         {
           name: 'sessionMedium',
         },
+        {
+          name: 'eventName',
+        },
       ],
       metrics: [
         {
-          name: 'conversions',
+          name: 'eventCount',
         },
         {
           name: 'sessions',
         },
       ],
       dimensionFilter: {
-        orGroup: {
-          expressions: LINE_SOURCES.map((source) => {
-            const [sourceValue, mediumValue] = source.split(' / ');
-            return {
-              andGroup: {
-                expressions: [
-                  {
-                    filter: {
-                      fieldName: 'sessionSource',
-                      stringFilter: {
-                        matchType: 'EXACT',
-                        value: sourceValue,
-                      },
+        andGroup: {
+          expressions: [
+            // Filter by LINE sources
+            {
+              orGroup: {
+                expressions: LINE_SOURCES.map((source) => {
+                  const [sourceValue, mediumValue] = source.split(' / ');
+                  return {
+                    andGroup: {
+                      expressions: [
+                        {
+                          filter: {
+                            fieldName: 'sessionSource',
+                            stringFilter: {
+                              matchType: 'EXACT',
+                              value: sourceValue,
+                            },
+                          },
+                        },
+                        {
+                          filter: {
+                            fieldName: 'sessionMedium',
+                            stringFilter: {
+                              matchType: 'EXACT',
+                              value: mediumValue,
+                            },
+                          },
+                        },
+                      ],
                     },
-                  },
-                  {
-                    filter: {
-                      fieldName: 'sessionMedium',
-                      stringFilter: {
-                        matchType: 'EXACT',
-                        value: mediumValue,
-                      },
-                    },
-                  },
-                ],
+                  };
+                }),
               },
-            };
-          }),
+            },
+            // Filter by key events
+            {
+              orGroup: {
+                expressions: allKeyEvents.map((eventName) => ({
+                  filter: {
+                    fieldName: 'eventName',
+                    stringFilter: {
+                      matchType: 'EXACT',
+                      value: eventName,
+                    },
+                  },
+                })),
+              },
+            },
+          ],
         },
       },
       orderBys: [
@@ -201,14 +282,26 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
     }
 
     // Aggregate by date and source
-    const dailyMap: Record<string, { conversions: number; sessions: number; bySource: Record<string, number>; bySourceSessions: Record<string, number> }> = {};
+    const dailyMap: Record<
+      string,
+      {
+        registrations: number;
+        applications: number;
+        sessions: number;
+        bySource: Record<string, number>;
+        bySourceSessions: Record<string, number>;
+        bySourceRegistrations: Record<string, number>;
+        bySourceApplications: Record<string, number>;
+      }
+    > = {};
 
     response.rows.forEach((row) => {
       if (row.dimensionValues && row.metricValues) {
         const date = row.dimensionValues[0]?.value || '';
         const source = row.dimensionValues[1]?.value || '';
         const medium = row.dimensionValues[2]?.value || '';
-        const conversions = Number(row.metricValues[0]?.value || 0);
+        const eventName = row.dimensionValues[3]?.value || '';
+        const eventCount = Number(row.metricValues[0]?.value || 0);
         const sessions = Number(row.metricValues[1]?.value || 0);
 
         const sourceKey = `${source} / ${medium}`;
@@ -216,14 +309,35 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
         // Only include LINE sources we're tracking
         if (LINE_SOURCES.includes(sourceKey as any)) {
           if (!dailyMap[date]) {
-            dailyMap[date] = { conversions: 0, sessions: 0, bySource: {}, bySourceSessions: {} };
+            dailyMap[date] = {
+              registrations: 0,
+              applications: 0,
+              sessions: 0,
+              bySource: {},
+              bySourceSessions: {},
+              bySourceRegistrations: {},
+              bySourceApplications: {},
+            };
           }
 
           const sourceLabel = SOURCE_LABELS[sourceKey] || sourceKey;
-          dailyMap[date].conversions += conversions;
+
+          // Categorize events
+          if (GA4_KEY_EVENTS.registration.includes(eventName as any)) {
+            dailyMap[date].registrations += eventCount;
+            dailyMap[date].bySourceRegistrations[sourceLabel] =
+              (dailyMap[date].bySourceRegistrations[sourceLabel] || 0) + eventCount;
+          } else if (GA4_KEY_EVENTS.application.includes(eventName as any)) {
+            dailyMap[date].applications += eventCount;
+            dailyMap[date].bySourceApplications[sourceLabel] =
+              (dailyMap[date].bySourceApplications[sourceLabel] || 0) + eventCount;
+          }
+
+          // Total conversions per source
+          dailyMap[date].bySource[sourceLabel] = (dailyMap[date].bySource[sourceLabel] || 0) + eventCount;
           dailyMap[date].sessions += sessions;
-          dailyMap[date].bySource[sourceLabel] = (dailyMap[date].bySource[sourceLabel] || 0) + conversions;
-          dailyMap[date].bySourceSessions[sourceLabel] = (dailyMap[date].bySourceSessions[sourceLabel] || 0) + sessions;
+          dailyMap[date].bySourceSessions[sourceLabel] =
+            (dailyMap[date].bySourceSessions[sourceLabel] || 0) + sessions;
         }
       }
     });
@@ -231,10 +345,14 @@ export async function getDailyConversionTrends(days: number = 30): Promise<GA4Da
     return Object.entries(dailyMap)
       .map(([date, data]) => ({
         date: formatDate(date),
-        conversions: data.conversions,
+        registrations: data.registrations,
+        applications: data.applications,
+        conversions: data.registrations + data.applications,
         sessions: data.sessions,
         bySource: data.bySource,
         bySourceSessions: data.bySourceSessions,
+        bySourceRegistrations: data.bySourceRegistrations,
+        bySourceApplications: data.bySourceApplications,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
   } catch (error) {

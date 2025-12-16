@@ -178,6 +178,19 @@ export default function DashboardPage() {
                         <span className="font-medium text-gray-700">{item.source}</span>
                         <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
                       </div>
+
+                      {/* Registration and Application CVs */}
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="bg-blue-50 p-2 rounded">
+                          <div className="text-blue-600 text-xs font-medium">登録 CV</div>
+                          <div className="text-blue-900 text-lg font-bold">{item.registrations.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded">
+                          <div className="text-green-600 text-xs font-medium">応募 CV</div>
+                          <div className="text-green-900 text-lg font-bold">{item.applications.toLocaleString()}</div>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-3 gap-3 text-sm mt-2">
                         <div>
                           <div className="text-gray-500">セッション</div>
