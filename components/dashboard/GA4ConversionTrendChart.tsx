@@ -20,9 +20,17 @@ const SOURCE_COLORS: Record<string, string> = {
 export function GA4ConversionTrendChart({ data }: GA4ConversionTrendChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">LINE CV 推移（過去30日）</h3>
-        <div className="h-[300px] flex items-center justify-center text-gray-500">
+      <div className="dashboard-panel p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+            📈
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">LINE CV 推移（過去30日）</h3>
+            <p className="text-xs text-slate-500">登録・応募のコンバージョン動向</p>
+          </div>
+        </div>
+        <div className="h-[300px] flex items-center justify-center text-slate-500">
           データがありません
         </div>
       </div>
@@ -48,8 +56,21 @@ export function GA4ConversionTrendChart({ data }: GA4ConversionTrendChartProps) 
   });
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">LINE CV 推移（過去30日）</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+            📈
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">LINE CV 推移（過去30日）</h3>
+            <p className="text-xs text-slate-500">流入チャネル別の CV を重ねて表示</p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-full">
+          CV 推移
+        </span>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />

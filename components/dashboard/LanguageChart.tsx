@@ -33,8 +33,21 @@ export function LanguageChart({ data }: LanguageChartProps) {
   }));
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">言語別ユーザー分布</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
+            🌐
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">言語別ユーザー分布</h3>
+            <p className="text-xs text-slate-500">言語ごとのセグメントボリュームを俯瞰</p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-full">
+          リアルタイム
+        </span>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie

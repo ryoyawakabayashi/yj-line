@@ -28,27 +28,40 @@ export function ActivityTable({ data }: ActivityTableProps) {
   };
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">最新アクティビティ</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+            📅
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">最新アクティビティ</h3>
+            <p className="text-xs text-slate-500">直近でアクティブなユーザーの一覧</p>
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-full">
+          直近ログ
+        </span>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 border-b-2 border-gray-200">
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="px-4 py-3 font-semibold text-gray-700">ユーザーID</th>
-              <th className="px-4 py-3 font-semibold text-gray-700">言語</th>
-              <th className="px-4 py-3 font-semibold text-gray-700">最終利用日時</th>
-              <th className="px-4 py-3 font-semibold text-gray-700 text-center">診断回数</th>
-              <th className="px-4 py-3 font-semibold text-gray-700 text-center">AIチャット回数</th>
+              <th className="px-4 py-3 font-semibold text-slate-700">ユーザーID</th>
+              <th className="px-4 py-3 font-semibold text-slate-700">言語</th>
+              <th className="px-4 py-3 font-semibold text-slate-700">最終利用日時</th>
+              <th className="px-4 py-3 font-semibold text-slate-700 text-center">診断回数</th>
+              <th className="px-4 py-3 font-semibold text-slate-700 text-center">AIチャット回数</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-slate-200">
             {data.map((activity, index) => (
-              <tr key={index} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 font-mono text-xs text-gray-600">
+              <tr key={index} className="hover:bg-slate-50/80 transition-colors">
+                <td className="px-4 py-3 font-mono text-xs text-slate-600">
                   {activity.userId.substring(0, 12)}...
                 </td>
                 <td className="px-4 py-3">{LANG_LABELS[activity.lang] || activity.lang}</td>
-                <td className="px-4 py-3 text-gray-600">{formatDate(activity.lastUsed)}</td>
+                <td className="px-4 py-3 text-slate-600">{formatDate(activity.lastUsed)}</td>
                 <td className="px-4 py-3 text-center">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {activity.diagnosisCount}

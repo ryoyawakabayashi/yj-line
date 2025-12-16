@@ -96,7 +96,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">読み込み中...</p>
+          <p className="text-slate-600 text-lg">読み込み中...</p>
         </div>
       </div>
     );
@@ -114,117 +114,179 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900">YOLO JAPAN LINE Bot Dashboard</h1>
-            <p className="text-gray-600 mt-2">リアルタイム統計とユーザー分析</p>
+    <div className="min-h-screen pb-12">
+      <section id="overview" className="relative overflow-hidden bg-gradient-to-r from-[#1f2d3d] via-[#2c3a4a] to-[#409eff] text-white shadow-[0_25px_70px_rgba(0,0,0,0.18)]">
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.15),transparent_25%)]" />
+        <div className="max-w-7xl mx-auto px-8 py-9 relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="space-y-3">
+            <p className="text-xs tracking-[0.18em] uppercase text-white/70">Vue Element Admin Inspired</p>
+            <h1 className="text-3xl md:text-4xl font-black drop-shadow-sm">YOLO JAPAN LINE Bot Control Center</h1>
+            <p className="text-white/80 max-w-3xl">
+              vue-element-admin のダッシュボードを意識したレイアウトで、リアルタイムの KPI とユーザー行動をすばやく把握できます。
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <span className="dashboard-chip bg-white/10 border-white/20 text-white">運用中</span>
+              {stats && (
+                <span className="dashboard-chip bg-white/10 border-white/20 text-white">
+                  👥 {stats.totalUsers.toLocaleString()} ユーザー
+                </span>
+              )}
+              <span className="dashboard-chip bg-white/10 border-white/20 text-white">更新頻度: リアルタイム</span>
+            </div>
           </div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            🔄 更新
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-semibold backdrop-blur hover:bg-white/20 transition"
+            >
+              🔄 最新に更新
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-[#1f2d3d] px-4 py-3 text-sm font-semibold shadow-lg shadow-black/10 hover:-translate-y-0.5 transition"
+            >
+              📄 レポート出力
+            </button>
+          </div>
         </div>
+      </section>
 
-        {/* Summary Cards */}
+      <div className="max-w-7xl mx-auto px-8 -mt-10 space-y-8 relative z-10">
+        <section className="dashboard-panel p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#409eff] to-[#66b1ff] text-white flex items-center justify-center shadow-lg shadow-[#409eff]/30">
+              ⚡
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">リアルタイムモニター</p>
+              <p className="text-xs text-slate-500">バックエンド API から最新データを取得しています</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="dashboard-chip">期間: 過去30日</span>
+            <span className="dashboard-chip">環境: Production</span>
+            <span className="dashboard-chip">データソース: LINE / GA4</span>
+          </div>
+        </section>
+
         <SummaryCards stats={stats} />
 
-        {/* Charts - Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {analytics && (
-            <>
+        {analytics && (
+          <section id="analytics" className="grid grid-cols-12 gap-6">
+            <div className="col-span-12 lg:col-span-6">
               <LanguageChart data={analytics.languages} />
+            </div>
+            <div className="col-span-12 lg:col-span-6">
               <JapaneseLevelChart data={analytics.levels} />
-            </>
-          )}
-        </div>
-
-        {/* Charts - Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {analytics && (
-            <>
+            </div>
+            <div className="col-span-12 lg:col-span-6">
               <IndustryChart data={analytics.industries} />
+            </div>
+            <div className="col-span-12 lg:col-span-6">
               <RegionChart data={analytics.regions} />
-            </>
-          )}
-        </div>
+            </div>
+          </section>
+        )}
 
-        {/* User Trend Chart - Full Width */}
-        {analytics && <UserTrendChart data={analytics.trend} />}
+        {analytics && (
+          <section id="trends" className="grid grid-cols-12 gap-6">
+            <div className="col-span-12 xl:col-span-8">
+              <UserTrendChart data={analytics.trend} />
+            </div>
+            <div className="col-span-12 xl:col-span-4">
+              <UsageTrendChart data={analytics.usageTrend} />
+            </div>
+          </section>
+        )}
 
-        {/* Usage Trend Chart - Full Width */}
-        {analytics && <UsageTrendChart data={analytics.usageTrend} />}
-
-        {/* GA4 Analytics Section */}
         {ga4Data && (
-          <>
-            <div className="border-t-4 border-purple-500 pt-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">📊 Google Analytics 4 - LINE CV データ</h2>
+          <section id="ga4" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Google Analytics 4</p>
+                <h2 className="text-2xl font-bold text-slate-900 mt-1">LINE CV オペレーションビュー</h2>
+              </div>
+              <span className="dashboard-chip">流入別 / CVR</span>
             </div>
 
-            {/* GA4 Charts - Row 1 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <GA4ConversionPieChart data={ga4Data.bySource} />
-              <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">流入元別 CV 詳細</h3>
-                <div className="space-y-3">
-                  {ga4Data.bySource.map((item, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-gray-700">{item.source}</span>
-                        <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
-                      </div>
-
-                      {/* Registration and Application CVs */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="bg-blue-50 p-2 rounded">
-                          <div className="text-blue-600 text-xs font-medium">登録 CV</div>
-                          <div className="text-blue-900 text-lg font-bold">{item.registrations.toLocaleString()}</div>
-                        </div>
-                        <div className="bg-green-50 p-2 rounded">
-                          <div className="text-green-600 text-xs font-medium">応募 CV</div>
-                          <div className="text-green-900 text-lg font-bold">{item.applications.toLocaleString()}</div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 text-sm mt-2">
-                        <div>
-                          <div className="text-gray-500">セッション</div>
-                          <div className="font-semibold text-gray-700">{item.sessions.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500">CVR</div>
-                          <div className="font-semibold text-gray-700">{((item.conversions / item.sessions) * 100).toFixed(2)}%</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500">滞在時間</div>
-                          <div className="font-semibold text-gray-700">{Math.floor(item.averageSessionDuration)}秒</div>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <div className="text-gray-500 text-sm">エンゲージメント率</div>
-                        <div className="font-semibold text-gray-700">{(item.engagementRate * 100).toFixed(1)}%</div>
-                      </div>
+            <div className="grid grid-cols-12 gap-6">
+              <div className="col-span-12 lg:col-span-5">
+                <GA4ConversionPieChart data={ga4Data.bySource} />
+              </div>
+              <div className="col-span-12 lg:col-span-7">
+                <div className="dashboard-panel p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Traffic sources</p>
+                      <h3 className="text-lg font-semibold text-slate-900">流入元別 CV 詳細</h3>
                     </div>
-                  ))}
+                    <span className="text-xs font-semibold text-purple-600 bg-purple-50 border border-purple-100 px-2 py-1 rounded-full">
+                      CV ボリュームを可視化
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {ga4Data.bySource.map((item, index) => (
+                      <div key={index} className="p-4 rounded-xl border border-slate-100 bg-gradient-to-r from-slate-50 to-white shadow-inner shadow-slate-100/60">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-slate-800">{item.source}</span>
+                          <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                          <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3">
+                            <div className="text-blue-600 text-xs font-semibold">登録 CV</div>
+                            <div className="text-blue-900 text-lg font-bold">{item.registrations.toLocaleString()}</div>
+                          </div>
+                          <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-3">
+                            <div className="text-emerald-600 text-xs font-semibold">応募 CV</div>
+                            <div className="text-emerald-900 text-lg font-bold">{item.applications.toLocaleString()}</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <div className="text-slate-500">セッション</div>
+                            <div className="font-semibold text-slate-800">{item.sessions.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-500">CVR</div>
+                            <div className="font-semibold text-slate-800">{((item.conversions / item.sessions) * 100).toFixed(2)}%</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-500">滞在時間</div>
+                            <div className="font-semibold text-slate-800">{Math.floor(item.averageSessionDuration)}秒</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-sm">
+                          <div className="text-slate-500">エンゲージメント率</div>
+                          <div className="font-semibold text-slate-800">{(item.engagementRate * 100).toFixed(1)}%</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* GA4 Trend Chart - Full Width */}
             <GA4ConversionTrendChart data={ga4Data.dailyTrends} />
-          </>
+          </section>
         )}
 
-        {/* Top Users Ranking - Full Width */}
-        <TopUsersRanking data={ranking} />
+        <section id="ranking">
+          <div className="grid grid-cols-12 gap-6">
+            <div className="col-span-12 xl:col-span-5">
+              <TopUsersRanking data={ranking} />
+            </div>
+          </div>
+        </section>
 
-        {/* Activity Table - Full Width */}
-        <ActivityTable data={activity} />
+        <section id="activity">
+          <div className="grid grid-cols-12 gap-6">
+            <div className="col-span-12">
+              <ActivityTable data={activity} />
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

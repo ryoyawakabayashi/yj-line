@@ -15,8 +15,16 @@ export function IndustryChart({ data }: IndustryChartProps) {
   }));
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">希望業界分布</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-9 w-9 rounded-lg bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center">
+          🏢
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">希望業界分布</h3>
+          <p className="text-xs text-slate-500">応募意向の高いセクターを確認</p>
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} layout="horizontal">
           <CartesianGrid strokeDasharray="3 3" />

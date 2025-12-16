@@ -14,8 +14,16 @@ export function UsageTrendChart({ data }: UsageTrendChartProps) {
   }));
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">AI診断利用状況推移（過去30日）</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-9 w-9 rounded-lg bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center">
+          🧠
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">AI診断利用状況推移（過去30日）</h3>
+          <p className="text-xs text-slate-500">診断セッションの推移を確認</p>
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />

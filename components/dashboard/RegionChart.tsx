@@ -15,8 +15,16 @@ export function RegionChart({ data }: RegionChartProps) {
   }));
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">地域別分布</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-9 w-9 rounded-lg bg-orange-50 border border-orange-100 text-orange-600 flex items-center justify-center">
+          🗾
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">地域別分布</h3>
+          <p className="text-xs text-slate-500">地域ごとのユーザー熱量を比較</p>
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />

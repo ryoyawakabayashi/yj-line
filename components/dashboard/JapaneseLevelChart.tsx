@@ -15,8 +15,16 @@ export function JapaneseLevelChart({ data }: JapaneseLevelChartProps) {
   }));
 
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">日本語レベル分布</h3>
+    <div className="dashboard-panel p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
+          🈺
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">日本語レベル分布</h3>
+          <p className="text-xs text-slate-500">応募者の日本語到達度を把握</p>
+        </div>
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />

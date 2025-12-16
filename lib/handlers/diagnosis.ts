@@ -10,7 +10,7 @@ import {
 import { replyMessage, replyWithQuickReply, showLoadingAnimation } from '../line/client';
 import { MAJOR_PREFECTURES, REGION_MASTER, PREFECTURE_BY_REGION } from '../masters';
 import { buildYoloUrlsByLevel } from '../utils/url';
-import { supabase } from '../database/supabase';
+import { supabase } from '../database/client';
 
 export async function startDiagnosisMode(
   userId: string,
@@ -21,28 +21,24 @@ export async function startDiagnosisMode(
 
   // 既存の回答を取得
   const existingAnswers = await getExistingAnswers(userId);
-  console.log('📋 取得した既存回答:', existingAnswers);
   
   // 初期状態
   let currentQuestion = 1;
   let answers: Partial<DiagnosisAnswers> = {};
 
   // 日本在住=Yesの場合はスキップ
-  if (existingAnswers.q1_living_in_japan === 'yes') {
+  if (existingAnswers.living_in_japan === 'yes') {
     console.log('✅ 日本在住(Yes)なのでQ1をスキップ');
     answers.living_in_japan = 'yes';
     currentQuestion = 2;
   }
 
   // 性別が既に回答済みならスキップ
-  if (existingAnswers.q2_gender && currentQuestion === 2) {
-    console.log('✅ 性別回答済みなのでQ2をスキップ:', existingAnswers.q2_gender);
-    answers.gender = existingAnswers.q2_gender;
+  if (existingAnswers.gender && currentQuestion === 2) {
+    console.log('✅ 性別回答済みなのでQ2をスキップ');
+    answers.gender = existingAnswers.gender;
     currentQuestion = 3;
   }
-
-  console.log('📍 開始質問番号:', currentQuestion);
-  console.log('📝 初期回答:', answers);
 
   const state: ConversationState = {
     mode: 'diagnosis',
@@ -282,7 +278,7 @@ async function askIndustryQuestion(
   state: ConversationState,
   replyToken: string
 ): Promise<void> {
-  const lang = state.lang || (await getUserLang(userId));
+  const lang = await getUserLang(userId);
   const selectedCount = (state.selectedIndustries || []).length;
 
   const questionText: Record<string, string> =
@@ -344,7 +340,7 @@ async function finishDiagnosis(
 
   await saveAllAnswersToSheet(userId, state);
 
-  const lang = state.lang || (await getUserLang(userId));
+  const lang = await getUserLang(userId);
 
   const linkItems = buildYoloUrlsByLevel(state.answers, lang);
 
@@ -378,7 +374,6 @@ async function finishDiagnosis(
 async function saveAllAnswersToSheet(userId: string, state: ConversationState): Promise<void> {
   const answers = state.answers;
 
-  // user_answersテーブルに保存（縦持ち）
   if (answers.living_in_japan) {
     await saveAnswerToSheet(userId, 'q1', answers.living_in_japan);
   }
@@ -403,35 +398,7 @@ async function saveAllAnswersToSheet(userId: string, state: ConversationState): 
     await saveAnswerToSheet(userId, 'q7', answers.work_style);
   }
 
-  // diagnosis_resultsテーブルに保存（横持ち）
-  await saveDiagnosisResult(userId, state.answers);
-
   await incrementDiagnosisCount(userId);
-}
-
-async function saveDiagnosisResult(
-  userId: string,
-  answers: Partial<DiagnosisAnswers>
-): Promise<void> {
-  const { error } = await supabase
-    .from('diagnosis_results')
-    .insert({
-      user_id: userId,
-      q1_living_in_japan: answers.living_in_japan || null,
-      q2_gender: answers.gender || null,
-      q3_urgency: answers.urgency || null,
-      q4_prefecture: answers.prefecture || null,
-      q4_region: answers.region || null,
-      q5_japanese_level: answers.japanese_level || null,
-      q6_industry: answers.industry || null,
-      q7_work_style: answers.work_style || null,
-    });
-
-  if (error) {
-    console.error('❌ saveDiagnosisResult エラー:', error);
-  } else {
-    console.log('✅ 診断結果を保存完了（横持ち）');
-  }
 }
 
 function getRegionByPrefecture(prefecture: string): string {
@@ -448,31 +415,15 @@ function getRegionByPrefecture(prefecture: string): string {
 }
 
 async function getExistingAnswers(userId: string): Promise<any> {
-  try {
-    const { data, error } = await supabase
-      .from('diagnosis_results')
-      .select('*')
-      .eq('user_id', userId)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .single();
+  const { data } = await supabase
+    .from('diagnosis_results')
+    .select('*')
+    .eq('user_id', userId)
+    .order('timestamp', { ascending: false })
+    .limit(1)
+    .single();
 
-    if (error) {
-      console.log('ℹ️ 既存回答なし（初回診断）:', error.message);
-      return {};
-    }
-
-    if (!data) {
-      console.log('ℹ️ 既存回答なし（データなし）');
-      return {};
-    }
-
-    console.log('✅ 既存回答を取得:', data);
-    return data;
-  } catch (error) {
-    console.error('⚠️ getExistingAnswers エラー:', error);
-    return {};
-  }
+  return data || {};
 }
 
 function getQuestion(
