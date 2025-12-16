@@ -36,11 +36,24 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select('*', { count: 'exact', head: true })
       .gte('last_used', today);
 
+    // リピートユーザー数（診断を2回以上実施したユーザー）
+    const { count: repeatUserCount } = await supabase
+      .from('user_status')
+      .select('*', { count: 'exact', head: true })
+      .gte('diagnosis_count', 2);
+
+    // リピート率の計算
+    const repeatRate = totalUsers && totalUsers > 0
+      ? Math.round((repeatUserCount || 0) / totalUsers * 100 * 10) / 10
+      : 0;
+
     return {
       totalUsers: totalUsers || 0,
       totalDiagnosis,
       totalAIChats,
       todayActiveUsers: todayActiveUsers || 0,
+      repeatUserCount: repeatUserCount || 0,
+      repeatRate,
     };
   } catch (error) {
     console.error('getDashboardStats error:', error);
@@ -49,6 +62,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       totalDiagnosis: 0,
       totalAIChats: 0,
       todayActiveUsers: 0,
+      repeatUserCount: 0,
+      repeatRate: 0,
     };
   }
 }

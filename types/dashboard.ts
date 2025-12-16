@@ -5,6 +5,8 @@ export interface DashboardStats {
   totalDiagnosis: number;
   totalAIChats: number;
   todayActiveUsers: number;
+  repeatUserCount: number;
+  repeatRate: number;
 }
 
 export interface LanguageDistribution {
@@ -30,6 +32,8 @@ export interface RegionDistribution {
 export interface DailyTrend {
   date: string;
   count: number;
+  newUsers?: number;
+  repeatUsers?: number;
 }
 
 export interface Activity {

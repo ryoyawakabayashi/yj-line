@@ -15,6 +15,13 @@ export function SummaryCards({ stats }: SummaryCardsProps) {
       color: 'bg-blue-50 border-blue-200',
     },
     {
+      title: 'リピートユーザー数',
+      value: stats.repeatUserCount.toLocaleString(),
+      subtitle: `リピート率: ${stats.repeatRate}%`,
+      icon: '🔁',
+      color: 'bg-indigo-50 border-indigo-200',
+    },
+    {
       title: 'AI診断実施数',
       value: stats.totalDiagnosis.toLocaleString(),
       icon: '📋',
@@ -35,7 +42,7 @@ export function SummaryCards({ stats }: SummaryCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
       {cards.map((card, index) => (
         <div
           key={index}
@@ -45,6 +52,9 @@ export function SummaryCards({ stats }: SummaryCardsProps) {
             <div>
               <p className="text-sm font-medium text-gray-600">{card.title}</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">{card.value}</p>
+              {card.subtitle && (
+                <p className="text-xs font-semibold text-indigo-600 mt-1">{card.subtitle}</p>
+              )}
             </div>
             <div className="text-4xl">{card.icon}</div>
           </div>
