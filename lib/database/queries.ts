@@ -236,4 +236,23 @@ export async function saveDiagnosisResult(
   }
 }
 
+// LINE友だち追加イベントを記録
+export async function recordFollowEvent(
+  userId: string,
+  eventType: 'follow' | 'unfollow' = 'follow'
+): Promise<void> {
+  const { error } = await supabase
+    .from('follow_events')
+    .insert({
+      user_id: userId,
+      event_type: eventType,
+    });
+
+  if (error) {
+    console.error('❌ recordFollowEvent エラー:', error);
+  } else {
+    console.log(`✅ ${eventType}イベントを記録: ${userId}`);
+  }
+}
+
 // 会話状態をクリア(診断リセット用)

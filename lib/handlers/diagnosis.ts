@@ -19,6 +19,9 @@ export async function startDiagnosisMode(
 ): Promise<void> {
   console.log('=== AI診断モード開始 ===');
 
+  // ローディングアニメーション表示（非同期で即座に実行、待たない）
+  showLoadingAnimation(userId, 3).catch(() => {});
+
   // 既存の回答を取得
   const existingAnswers = await getExistingAnswers(userId);
   
@@ -68,6 +71,10 @@ export async function startDiagnosisMode(
     vi: 'Bắt đầu chẩn đoán! 📋',
   };
 
+  // 最初の質問にも進捗表示を追加
+  const progressPrefix = getProgressPrefix(currentQuestion, lang);
+  const questionTextWithProgress = `${progressPrefix}\n${questionObj.text}`;
+
   await replyMessage(replyToken, [
     {
       type: 'text',
@@ -75,7 +82,7 @@ export async function startDiagnosisMode(
     },
     {
       type: 'text',
-      text: questionObj.text,
+      text: questionTextWithProgress,
       quickReply: {
         items: questionObj.options,
       },
@@ -215,16 +222,21 @@ async function askQuestion(
   const lang = state.lang || (await getUserLang(userId));
   const currentQ = state.currentQuestion;
 
+  // 進捗プレフィックスを取得
+  const progressPrefix = getProgressPrefix(currentQ!, lang);
+
   if (currentQ === 4) {
     if (state.q4_step === 'select_major') {
       const question = getQuestion(4, lang);
       if (question) {
-        await replyWithQuickReply(replyToken, question.text, question.options);
+        const textWithProgress = `${progressPrefix}\n${question.text}`;
+        await replyWithQuickReply(replyToken, textWithProgress, question.options);
       }
       return;
     } else if (state.q4_step === 'select_region') {
       const question = getQuestion('q4_region', lang);
       if (question) {
+        // サブステップは進捗表示なし（同じ質問の続きなので）
         await replyWithQuickReply(replyToken, question.text, question.options);
       }
       return;
@@ -249,6 +261,7 @@ async function askQuestion(
       }));
 
       if (options.length > 0) {
+        // サブステップは進捗表示なし
         await replyWithQuickReply(replyToken, questionText[lang] || questionText.ja, options);
       }
       return;
@@ -256,7 +269,7 @@ async function askQuestion(
   }
 
   if (currentQ === 6) {
-    await askIndustryQuestion(userId, state, replyToken);
+    await askIndustryQuestion(userId, state, replyToken, progressPrefix);
     return;
   }
 
@@ -270,13 +283,15 @@ async function askQuestion(
     return;
   }
 
-  await replyWithQuickReply(replyToken, question.text, question.options);
+  const textWithProgress = `${progressPrefix}\n${question.text}`;
+  await replyWithQuickReply(replyToken, textWithProgress, question.options);
 }
 
 async function askIndustryQuestion(
   userId: string,
   state: ConversationState,
-  replyToken: string
+  replyToken: string,
+  progressPrefix?: string
 ): Promise<void> {
   const lang = await getUserLang(userId);
   const selectedCount = (state.selectedIndustries || []).length;
@@ -322,7 +337,13 @@ async function askIndustryQuestion(
     },
   });
 
-  await replyWithQuickReply(replyToken, questionText[lang] || questionText.ja, options);
+  // 最初の業界選択時のみ進捗表示、追加選択時は表示しない
+  const baseText = questionText[lang] || questionText.ja;
+  const textWithProgress = (progressPrefix && selectedCount === 0)
+    ? `${progressPrefix}\n${baseText}`
+    : baseText;
+
+  await replyWithQuickReply(replyToken, textWithProgress, options);
 }
 
 async function finishDiagnosis(
@@ -332,7 +353,8 @@ async function finishDiagnosis(
 ): Promise<void> {
   console.log('=== 診断完了処理 ===');
 
-  await showLoadingAnimation(userId, 1);
+  // ローディングアニメーション表示（5秒間、非同期で即座に実行）
+  showLoadingAnimation(userId, 5).catch(() => {});
 
   if (state.selectedIndustries && state.selectedIndustries.length > 0) {
     state.answers.industry = state.selectedIndustries.join(',');
@@ -424,6 +446,31 @@ async function getExistingAnswers(userId: string): Promise<any> {
     .single();
 
   return data || {};
+}
+
+// 最終質問番号の定数
+const FINAL_QUESTION = 7;
+
+// 残り問数を計算（スキップされた質問を考慮）
+function getRemainingQuestions(currentQuestion: number, skippedCount: number = 0): number {
+  // 実際の残り問数 = (最終問 - 現在の問 + 1) - スキップ済み
+  // 例: currentQuestion=3, skipped=2 → 残り = (7 - 3 + 1) = 5問
+  // ただしスキップは開始時に行われるので、currentQuestion自体がすでに調整済み
+  return FINAL_QUESTION - currentQuestion + 1;
+}
+
+// 進捗プレフィックスを生成
+function getProgressPrefix(currentQuestion: number, lang: string, skippedCount: number = 0): string {
+  const remaining = getRemainingQuestions(currentQuestion, skippedCount);
+  const progressLabels: Record<string, (n: number) => string> = {
+    ja: (n) => `【残り${n}問】`,
+    en: (n) => `【${n} left】`,
+    ko: (n) => `【${n}개 남음】`,
+    zh: (n) => `【还剩${n}题】`,
+    vi: (n) => `【Còn ${n} câu】`,
+  };
+  const formatter = progressLabels[lang] || progressLabels.ja;
+  return formatter(remaining);
 }
 
 function getQuestion(

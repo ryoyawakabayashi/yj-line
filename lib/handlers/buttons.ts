@@ -181,6 +181,32 @@ export async function handleSiteMode(
   });
 }
 
+/**
+ * AIトーク経由でサイトへ誘導する際のハンドラー
+ * utm_medium=autochat を使用してGA4で識別可能にする
+ */
+export async function handleSiteModeAutochat(
+  event: any,
+  lang: string
+): Promise<void> {
+  const replyToken = event.replyToken;
+  const { buildYoloAutochatUrl } = await import('../utils/url');
+  const siteUrl = buildYoloAutochatUrl(lang);
+
+  const messages: Record<string, string> = {
+    ja: `こちらからお仕事を探せます：\n${siteUrl}`,
+    en: `You can search for jobs here:\n${siteUrl}`,
+    ko: `여기에서 일자리를 찾을 수 있습니다:\n${siteUrl}`,
+    zh: `您可以在这里搜索工作：\n${siteUrl}`,
+    vi: `Bạn có thể tìm công việc tại đây:\n${siteUrl}`,
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: messages[lang] || messages.ja,
+  });
+}
+
 export async function handleViewFeatures(
   event: any,
   lang: string
@@ -372,6 +398,9 @@ export async function handleButtonAction(
   switch (action) {
     case 'SITE_MODE':
       await handleSiteMode(event, lang);
+      break;
+    case 'SITE_MODE_AUTOCHAT':
+      await handleSiteModeAutochat(event, lang);
       break;
     case 'VIEW_FEATURES':
       await handleViewFeatures(event, lang);

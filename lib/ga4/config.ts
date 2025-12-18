@@ -46,27 +46,75 @@ export const GA4_CONFIG = {
   },
 };
 
-// LINE source parameters to track
+// LINE source parameters to track (all)
 export const LINE_SOURCES = [
   'line / message',
   'line / autochat',
   'line / menu',
+  'line / feature',  // 特集タップ用
   'step.lme.jp / referral',
   'line / chatbot',
   'instagram / line',
 ] as const;
 
-// Key events for tracking
-export const GA4_KEY_EVENTS = {
-  registration: ['new_registration', 'registration_application_wizard_basic_in'],
-  application: ['complete_work'],
+// 5種類のコンバージョンファネルソース定義
+export const FUNNEL_SOURCES = {
+  diagnosis: 'line / chatbot',       // AI診断
+  menu: 'line / menu',               // メニュータップ
+  feature: 'line / feature',         // 特集タップ
+  message: 'line / message',         // メッセージ配信
+  autochat: 'line / autochat',       // AIトーク
 } as const;
+
+export type FunnelType = keyof typeof FUNNEL_SOURCES;
+
+// ファネルのラベル（日本語表示用）
+export const FUNNEL_LABELS: Record<FunnelType, string> = {
+  diagnosis: 'AI診断',
+  menu: 'メニュータップ',
+  feature: '特集タップ',
+  message: 'メッセージ配信',
+  autochat: 'AIトーク',
+};
+
+// LINE Bot funnel sources (for accurate funnel calculation)
+// These are the main sources from LINE Bot: menu, chatbot (diagnosis result), message
+export const LINE_BOT_FUNNEL_SOURCES = [
+  'line / message',
+  'line / menu',
+  'line / chatbot',
+] as const;
+
+// Diagnosis funnel source (chatbot only - for diagnosis → session → CV funnel)
+// 診断結果のURLクリック = line / chatbot のみ
+export const DIAGNOSIS_FUNNEL_SOURCE = 'line / chatbot' as const;
+
+// Key events for tracking - separated by YJ (YOLO JAPAN) and YD (YOLO DIRECT)
+export const GA4_KEY_EVENTS = {
+  yj: {
+    registration: ['new_registration', 'registration_application_wizard_basic_in'],
+    application: ['complete_work'],
+  },
+  yd: {
+    registration: ['new_registration_complete'],
+    application: ['pj_application_complete'],
+  },
+} as const;
+
+// Helper to get all events
+export const getAllKeyEvents = () => [
+  ...GA4_KEY_EVENTS.yj.registration,
+  ...GA4_KEY_EVENTS.yj.application,
+  ...GA4_KEY_EVENTS.yd.registration,
+  ...GA4_KEY_EVENTS.yd.application,
+];
 
 // Source labels for display
 export const SOURCE_LABELS: Record<string, string> = {
   'line / message': 'メッセージ',
   'line / autochat': 'AI チャット',
   'line / menu': 'リッチメニュー',
+  'line / feature': '特集',
   'step.lme.jp / referral': 'STEP 経由',
   'line / chatbot': 'チャットボット',
   'instagram / line': 'Instagram 経由',

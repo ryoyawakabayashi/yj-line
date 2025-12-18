@@ -159,7 +159,7 @@ const siteLabel: Record<string, string> = {
       action: {
         type: 'message',
         label: siteLabel[lang] || siteLabel.ja,
-        text: 'SITE_MODE',
+        text: 'SITE_MODE_AUTOCHAT', // AIトーク経由を識別
       },
     },
   ]);

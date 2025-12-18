@@ -3,10 +3,24 @@
 export interface DashboardStats {
   totalUsers: number;
   totalDiagnosis: number;
+  diagnosisUserCount: number;
   totalAIChats: number;
   todayActiveUsers: number;
   repeatUserCount: number;
   repeatRate: number;
+  // LINE統計
+  lineFollowers?: number;
+  lineFollowersAdded?: number; // 期間内の友だち追加数（follow_eventsテーブルから）
+  // GA4セッション
+  sessions?: number;
+  // YJ/YD CV統計
+  yjRegistrations?: number;
+  yjApplications?: number;
+  ydRegistrations?: number;
+  ydApplications?: number;
+  // 診断ファネル（line/chatbot経由）
+  siteTransitionSessions?: number;  // セッション数（クリック数）
+  siteTransitionUsers?: number;     // ユニークユーザー数
 }
 
 export interface LanguageDistribution {
@@ -67,6 +81,11 @@ export interface GA4ConversionBySource {
   sessions: number;
   engagementRate: number;
   averageSessionDuration: number;
+  // YJ/YD separated
+  yjRegistrations: number;
+  yjApplications: number;
+  ydRegistrations: number;
+  ydApplications: number;
 }
 
 export interface GA4DailyConversion {
@@ -79,4 +98,22 @@ export interface GA4DailyConversion {
   bySourceSessions: Record<string, number>;
   bySourceRegistrations: Record<string, number>;
   bySourceApplications: Record<string, number>;
+  // YJ/YD separated
+  yjRegistrations: number;
+  yjApplications: number;
+  ydRegistrations: number;
+  ydApplications: number;
+}
+
+// Active user history
+export interface ActiveUserHistory {
+  date: string;
+  count: number;
+}
+
+// LINE follower statistics
+export interface LineFollowerStats {
+  followers: number;
+  targetedReaches: number;
+  blocks: number;
 }

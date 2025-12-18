@@ -1,5 +1,6 @@
 'use client';
 
+import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { LevelDistribution } from '@/types/dashboard';
 import { JAPANESE_LEVEL } from '@/lib/masters';
@@ -18,11 +19,11 @@ export function JapaneseLevelChart({ data }: JapaneseLevelChartProps) {
     <div className="dashboard-panel p-6">
       <div className="flex items-center gap-3 mb-4">
         <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
-          🈺
+          <AcademicCapIcon className="h-5 w-5" />
         </div>
         <div>
           <h3 className="text-lg font-semibold text-slate-900">日本語レベル分布</h3>
-          <p className="text-xs text-slate-500">応募者の日本語到達度を把握</p>
+          <p className="text-xs text-slate-500">応募者の日本語到達度</p>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={300}>

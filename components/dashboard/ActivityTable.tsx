@@ -1,5 +1,6 @@
 'use client';
 
+import { ClockIcon } from '@heroicons/react/24/outline';
 import type { Activity } from '@/types/dashboard';
 
 interface ActivityTableProps {
@@ -7,12 +8,12 @@ interface ActivityTableProps {
 }
 
 const LANG_LABELS: Record<string, string> = {
-  ja: '🇯🇵 日本語',
-  en: '🇬🇧 English',
-  ko: '🇰🇷 한국어',
-  zh: '🇨🇳 中文',
-  vi: '🇻🇳 Tiếng Việt',
-  unknown: '❓ 不明',
+  ja: '日本語',
+  en: 'English',
+  ko: '한국어',
+  zh: '中文',
+  vi: 'Tiếng Việt',
+  unknown: '不明',
 };
 
 export function ActivityTable({ data }: ActivityTableProps) {
@@ -32,16 +33,13 @@ export function ActivityTable({ data }: ActivityTableProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
-            📅
+            <ClockIcon className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-slate-900">最新アクティビティ</h3>
-            <p className="text-xs text-slate-500">直近でアクティブなユーザーの一覧</p>
+            <p className="text-xs text-slate-500">直近でアクティブなユーザー</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-full">
-          直近ログ
-        </span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
@@ -50,8 +48,8 @@ export function ActivityTable({ data }: ActivityTableProps) {
               <th className="px-4 py-3 font-semibold text-slate-700">ユーザーID</th>
               <th className="px-4 py-3 font-semibold text-slate-700">言語</th>
               <th className="px-4 py-3 font-semibold text-slate-700">最終利用日時</th>
-              <th className="px-4 py-3 font-semibold text-slate-700 text-center">診断回数</th>
-              <th className="px-4 py-3 font-semibold text-slate-700 text-center">AIチャット回数</th>
+              <th className="px-4 py-3 font-semibold text-slate-700 text-center">診断</th>
+              <th className="px-4 py-3 font-semibold text-slate-700 text-center">チャット</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -60,15 +58,15 @@ export function ActivityTable({ data }: ActivityTableProps) {
                 <td className="px-4 py-3 font-mono text-xs text-slate-600">
                   {activity.userId.substring(0, 12)}...
                 </td>
-                <td className="px-4 py-3">{LANG_LABELS[activity.lang] || activity.lang}</td>
+                <td className="px-4 py-3 text-slate-600">{LANG_LABELS[activity.lang] || activity.lang}</td>
                 <td className="px-4 py-3 text-slate-600">{formatDate(activity.lastUsed)}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                     {activity.diagnosisCount}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
                     {activity.aiChatCount}
                   </span>
                 </td>

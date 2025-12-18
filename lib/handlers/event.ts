@@ -1,5 +1,5 @@
 import { LineEvent } from '@/types/line';
-import { saveUserLang, getUserLang, getConversationState, clearConversationState } from '../database/queries';
+import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent } from '../database/queries';
 import { replyMessage, linkRichMenu } from '../line/client';
 import { config } from '../config';
 import { CONSTANTS } from '../constants';
@@ -54,6 +54,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
       const richMenuButtons = [
         'AI_MODE',
         'SITE_MODE',
+        'SITE_MODE_AUTOCHAT', // AIトーク経由のサイト誘導
         'VIEW_FEATURES',
         'CONTACT',
         'LANG_CHANGE',
@@ -99,6 +100,9 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
 async function handleFollow(userId: string): Promise<void> {
   console.log('👋 新規フォロー:', userId);
+
+  // 友だち追加イベントをDBに記録
+  await recordFollowEvent(userId, 'follow');
 
   await linkRichMenu(userId, config.richMenu.init);
 

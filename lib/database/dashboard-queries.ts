@@ -9,6 +9,7 @@ import type {
   Activity,
   DailyUsageTrend,
   TopUser,
+  ActiveUserHistory,
 } from '@/types/dashboard';
 
 /**
@@ -26,8 +27,18 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from('user_status')
       .select('ai_chat_count, diagnosis_count, last_used');
 
-    const totalDiagnosis = statsData?.reduce((sum, row) => sum + (row.diagnosis_count || 0), 0) || 0;
     const totalAIChats = statsData?.reduce((sum, row) => sum + (row.ai_chat_count || 0), 0) || 0;
+
+    // 診断実施数（diagnosis_resultsテーブルの総レコード数）
+    const { count: totalDiagnosis } = await supabase
+      .from('diagnosis_results')
+      .select('*', { count: 'exact', head: true });
+
+    // 診断人数（診断を1回以上実施したユニークユーザー数）
+    const { count: diagnosisUserCount } = await supabase
+      .from('user_status')
+      .select('*', { count: 'exact', head: true })
+      .gte('diagnosis_count', 1);
 
     // 本日のアクティブユーザー数
     const today = new Date().toISOString().split('T')[0];
@@ -49,7 +60,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     return {
       totalUsers: totalUsers || 0,
-      totalDiagnosis,
+      totalDiagnosis: totalDiagnosis || 0,
+      diagnosisUserCount: diagnosisUserCount || 0,
       totalAIChats,
       todayActiveUsers: todayActiveUsers || 0,
       repeatUserCount: repeatUserCount || 0,
@@ -60,6 +72,95 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     return {
       totalUsers: 0,
       totalDiagnosis: 0,
+      diagnosisUserCount: 0,
+      totalAIChats: 0,
+      todayActiveUsers: 0,
+      repeatUserCount: 0,
+      repeatRate: 0,
+    };
+  }
+}
+
+/**
+ * 月指定でダッシュボード統計を取得
+ */
+export async function getDashboardStatsByMonth(
+  startDate: string,
+  endDate: string
+): Promise<DashboardStats> {
+  try {
+    // 期間内の新規ユーザー数
+    const { count: newUsers } = await supabase
+      .from('user_status')
+      .select('*', { count: 'exact', head: true })
+      .gte('first_used', startDate)
+      .lte('first_used', endDate + 'T23:59:59');
+
+    // 総ユーザー数（累計）
+    const { count: totalUsers } = await supabase
+      .from('user_status')
+      .select('*', { count: 'exact', head: true });
+
+    // 期間内の診断実施数
+    const { count: totalDiagnosis } = await supabase
+      .from('diagnosis_results')
+      .select('*', { count: 'exact', head: true })
+      .gte('timestamp', startDate)
+      .lte('timestamp', endDate + 'T23:59:59');
+
+    // 期間内に診断を実施したユニークユーザー数
+    const { data: diagnosisData } = await supabase
+      .from('diagnosis_results')
+      .select('user_id')
+      .gte('timestamp', startDate)
+      .lte('timestamp', endDate + 'T23:59:59');
+
+    const uniqueDiagnosisUsers = new Set(diagnosisData?.map(d => d.user_id) || []);
+    const diagnosisUserCount = uniqueDiagnosisUsers.size;
+
+    // 期間内のアクティブユーザー数
+    const { count: activeUsers } = await supabase
+      .from('user_status')
+      .select('*', { count: 'exact', head: true })
+      .gte('last_used', startDate)
+      .lte('last_used', endDate + 'T23:59:59');
+
+    // 期間内にリピート診断したユーザー数（期間内に2回以上診断を実施）
+    // diagnosis_resultsから期間内のデータを取得し、2回以上診断したユーザーをカウント
+    const { data: periodDiagnosisData } = await supabase
+      .from('diagnosis_results')
+      .select('user_id')
+      .gte('timestamp', startDate)
+      .lte('timestamp', endDate + 'T23:59:59');
+
+    // ユーザーごとの診断回数をカウント
+    const userDiagnosisCounts: Record<string, number> = {};
+    periodDiagnosisData?.forEach(d => {
+      userDiagnosisCounts[d.user_id] = (userDiagnosisCounts[d.user_id] || 0) + 1;
+    });
+    // 2回以上診断したユーザー数
+    const repeatUserCount = Object.values(userDiagnosisCounts).filter(count => count >= 2).length;
+
+    // リピート率の計算（期間内の診断人数に対する割合）
+    const repeatRate = diagnosisUserCount > 0
+      ? Math.round((repeatUserCount / diagnosisUserCount) * 100 * 10) / 10
+      : 0;
+
+    return {
+      totalUsers: newUsers || 0, // 期間内の新規ユーザー
+      totalDiagnosis: totalDiagnosis || 0,
+      diagnosisUserCount,
+      totalAIChats: 0,
+      todayActiveUsers: activeUsers || 0,
+      repeatUserCount: repeatUserCount || 0,
+      repeatRate,
+    };
+  } catch (error) {
+    console.error('getDashboardStatsByMonth error:', error);
+    return {
+      totalUsers: 0,
+      totalDiagnosis: 0,
+      diagnosisUserCount: 0,
       totalAIChats: 0,
       todayActiveUsers: 0,
       repeatUserCount: 0,
@@ -344,6 +445,209 @@ export async function getTopUsers(limit: number = 10): Promise<TopUser[]> {
     return sortedUsers;
   } catch (error) {
     console.error('getTopUsers error:', error);
+    return [];
+  }
+}
+
+/**
+ * アクティブユーザー履歴を取得（日別）
+ */
+export async function getActiveUserHistory(
+  startDate: string,
+  endDate: string
+): Promise<ActiveUserHistory[]> {
+  try {
+    const { data } = await supabase
+      .from('user_status')
+      .select('last_used')
+      .gte('last_used', startDate)
+      .lte('last_used', endDate + 'T23:59:59');
+
+    if (!data) return [];
+
+    // 日付ごとにグループ化してカウント
+    const dateCounts: Record<string, number> = {};
+    data.forEach((row) => {
+      if (row.last_used) {
+        const date = row.last_used.split('T')[0];
+        dateCounts[date] = (dateCounts[date] || 0) + 1;
+      }
+    });
+
+    // startDateからendDateまでの全日付を生成（欠損日を0で埋める）
+    const result: ActiveUserHistory[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        count: dateCounts[dateStr] || 0,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('getActiveUserHistory error:', error);
+    return [];
+  }
+}
+
+/**
+ * 診断実施数の履歴を取得（日別）
+ */
+export async function getDiagnosisHistory(
+  startDate: string,
+  endDate: string
+): Promise<ActiveUserHistory[]> {
+  try {
+    const { data } = await supabase
+      .from('diagnosis_results')
+      .select('timestamp')
+      .gte('timestamp', startDate)
+      .lte('timestamp', endDate + 'T23:59:59');
+
+    if (!data) return [];
+
+    // 日付ごとにグループ化してカウント
+    const dateCounts: Record<string, number> = {};
+    data.forEach((row) => {
+      if (row.timestamp) {
+        const date = row.timestamp.split('T')[0];
+        dateCounts[date] = (dateCounts[date] || 0) + 1;
+      }
+    });
+
+    // startDateからendDateまでの全日付を生成
+    const result: ActiveUserHistory[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        count: dateCounts[dateStr] || 0,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('getDiagnosisHistory error:', error);
+    return [];
+  }
+}
+
+/**
+ * ユーザー登録数の履歴を取得（日別）
+ */
+export async function getUserRegistrationHistory(
+  startDate: string,
+  endDate: string
+): Promise<ActiveUserHistory[]> {
+  try {
+    const { data } = await supabase
+      .from('user_status')
+      .select('first_used')
+      .gte('first_used', startDate)
+      .lte('first_used', endDate + 'T23:59:59');
+
+    if (!data) return [];
+
+    // 日付ごとにグループ化してカウント
+    const dateCounts: Record<string, number> = {};
+    data.forEach((row) => {
+      if (row.first_used) {
+        const date = row.first_used.split('T')[0];
+        dateCounts[date] = (dateCounts[date] || 0) + 1;
+      }
+    });
+
+    // startDateからendDateまでの全日付を生成
+    const result: ActiveUserHistory[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        count: dateCounts[dateStr] || 0,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('getUserRegistrationHistory error:', error);
+    return [];
+  }
+}
+
+/**
+ * LINE友だち追加数を期間で取得
+ */
+export async function getFollowEventCount(
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  try {
+    const { count } = await supabase
+      .from('follow_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_type', 'follow')
+      .gte('timestamp', startDate)
+      .lte('timestamp', endDate + 'T23:59:59');
+
+    return count || 0;
+  } catch (error) {
+    console.error('getFollowEventCount error:', error);
+    return 0;
+  }
+}
+
+/**
+ * LINE友だち追加の履歴を取得（日別）
+ */
+export async function getFollowEventHistory(
+  startDate: string,
+  endDate: string
+): Promise<ActiveUserHistory[]> {
+  try {
+    const { data } = await supabase
+      .from('follow_events')
+      .select('timestamp')
+      .eq('event_type', 'follow')
+      .gte('timestamp', startDate)
+      .lte('timestamp', endDate + 'T23:59:59');
+
+    if (!data) return [];
+
+    // 日付ごとにグループ化してカウント
+    const dateCounts: Record<string, number> = {};
+    data.forEach((row) => {
+      if (row.timestamp) {
+        const date = row.timestamp.split('T')[0];
+        dateCounts[date] = (dateCounts[date] || 0) + 1;
+      }
+    });
+
+    // startDateからendDateまでの全日付を生成
+    const result: ActiveUserHistory[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        count: dateCounts[dateStr] || 0,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('getFollowEventHistory error:', error);
     return [];
   }
 }

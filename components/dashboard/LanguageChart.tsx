@@ -1,5 +1,6 @@
 'use client';
 
+import { GlobeAltIcon } from '@heroicons/react/24/outline';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import type { LanguageDistribution } from '@/types/dashboard';
 
@@ -8,12 +9,12 @@ interface LanguageChartProps {
 }
 
 const COLORS: Record<string, string> = {
-  ja: '#3B82F6', // Blue
-  en: '#10B981', // Green
-  ko: '#F59E0B', // Yellow/Amber
-  zh: '#EF4444', // Red
-  vi: '#8B5CF6', // Purple
-  unknown: '#6B7280', // Gray
+  ja: '#3B82F6',
+  en: '#10B981',
+  ko: '#F59E0B',
+  zh: '#EF4444',
+  vi: '#8B5CF6',
+  unknown: '#6B7280',
 };
 
 const LANG_LABELS: Record<string, string> = {
@@ -37,16 +38,13 @@ export function LanguageChart({ data }: LanguageChartProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
-            🌐
+            <GlobeAltIcon className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-slate-900">言語別ユーザー分布</h3>
-            <p className="text-xs text-slate-500">言語ごとのセグメントボリュームを俯瞰</p>
+            <p className="text-xs text-slate-500">言語ごとのセグメントボリューム</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-full">
-          リアルタイム
-        </span>
       </div>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { config, FAQ_CONTENT } from '../config';
+import { buildYoloAutochatUrl } from '../utils/url';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -9,6 +10,9 @@ export async function callOpenAIWithHistory(
   lang: string,
   conversationHistory: Array<{ role: string; content: string }>
 ): Promise<string> {
+  // AIトーク経由の求人サイトURL（GA4でautochatとして計測される）
+  const jobSearchUrl = buildYoloAutochatUrl(lang);
+
   const systemPrompt = `あなたはYOLO JAPANの求人サポートAIアシスタントです。
 外国人求職者に対して、親切で丁寧なやさしい日本語で応答してください。
 
@@ -25,6 +29,8 @@ export async function callOpenAIWithHistory(
 3. 不明な点はお問い合わせ先を案内してください: https://www.yolo-japan.com/ja/inquiry/input
 4. 簡潔で分かりやすい表現を使ってください
 5. **登録を促す案内は不要です。ユーザーは既にLINE Botを通じて診断を利用できます。**
+6. **仕事を探すサイトのURLを案内する場合は、必ず以下のURLを使用してください:**
+   ${jobSearchUrl}
 
 【FAQ情報】
 ${FAQ_CONTENT}

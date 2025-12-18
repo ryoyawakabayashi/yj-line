@@ -13,10 +13,12 @@
     "@google-analytics/data": "^5.2.1",
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.86.0",
+    "@tailwindcss/typography": "^0.5.19",
     "next": "^16.0.7",
     "openai": "^6.9.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.6.0"
   },
   "devDependencies": {

@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ComponentType, type SVGProps } from 'react';
+import type { ComponentType, SVGProps } from 'react';
 import {
   ChartBarIcon,
   ChartPieIcon,
@@ -9,85 +10,105 @@ import {
   CursorArrowRaysIcon,
   TrophyIcon,
   ClockIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
   label: string;
-  hash: string;
+  href: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: '概要', hash: 'overview', icon: ChartBarIcon },
-  { label: '分析', hash: 'analytics', icon: ChartPieIcon },
-  { label: 'トレンド', hash: 'trends', icon: ArrowTrendingUpIcon },
-  { label: 'GA4 CV', hash: 'ga4', icon: CursorArrowRaysIcon },
-  { label: 'ランキング', hash: 'ranking', icon: TrophyIcon },
-  { label: 'アクティビティ', hash: 'activity', icon: ClockIcon },
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: 'ダッシュボード',
+    items: [
+      { label: '概要', href: '/dashboard/overview', icon: ChartBarIcon },
+      { label: '分析', href: '/dashboard/analytics', icon: ChartPieIcon },
+      { label: 'トレンド', href: '/dashboard/trends', icon: ArrowTrendingUpIcon },
+      { label: 'GA4 CV', href: '/dashboard/ga4', icon: CursorArrowRaysIcon },
+      { label: 'ランキング', href: '/dashboard/ranking', icon: TrophyIcon },
+      { label: 'アクティビティ', href: '/dashboard/activity', icon: ClockIcon },
+    ],
+  },
+  {
+    title: '会議ツール',
+    items: [
+      { label: 'AIチャット', href: '/dashboard/chat', icon: ChatBubbleLeftRightIcon },
+      { label: '議事録', href: '/dashboard/minutes', icon: DocumentTextIcon },
+    ],
+  },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onOpenChat?: () => void;
+}
+
+export function Sidebar({ onOpenChat }: SidebarProps) {
   const pathname = usePathname();
-  const [activeHash, setActiveHash] = useState<string>('overview');
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const updateHash = () => {
-      const hash = window.location.hash.replace('#', '');
-      setActiveHash(hash || 'overview');
-    };
-
-    updateHash();
-    window.addEventListener('hashchange', updateHash);
-    return () => window.removeEventListener('hashchange', updateHash);
-  }, []);
-
-  const handleNavClick = (hash: string) => {
-    const el = document.getElementById(hash);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-      window.history.pushState(null, '', `#${hash}`);
-      setActiveHash(hash);
-    }
-  };
 
   return (
     <aside className="hidden lg:flex w-[240px] bg-slate-900 flex-col h-screen sticky top-0">
-      {/* Logo */}
+      {/* Logo + AI Chat Button */}
       <div className="px-5 py-6 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">Y</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">Y</span>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">YOLO JAPAN</p>
+              <p className="text-xs text-slate-500">LINE Bot Admin</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white">YOLO JAPAN</p>
-            <p className="text-xs text-slate-500">LINE Bot Admin</p>
-          </div>
+          {/* AI Chat Button */}
+          <button
+            onClick={onOpenChat}
+            className="h-9 w-9 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/25"
+            title="AIチャット"
+          >
+            <SparklesIcon className="h-5 w-5 text-white" />
+          </button>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeHash === item.hash;
+      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.title}>
+            <p className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              {section.title}
+            </p>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
 
-          return (
-            <button
-              key={item.hash}
-              onClick={() => handleNavClick(item.hash)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}

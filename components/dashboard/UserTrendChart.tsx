@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { DailyTrend } from '@/types/dashboard';
 
@@ -18,16 +19,13 @@ export function UserTrendChart({ data }: UserTrendChartProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center">
-            📈
+            <ArrowTrendingUpIcon className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-slate-900">ユーザー登録推移（過去30日）</h3>
-            <p className="text-xs text-slate-500">新規登録の勢いを確認</p>
+            <p className="text-xs text-slate-500">新規登録の推移</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-100 px-2 py-1 rounded-full">
-          トレンド
-        </span>
       </div>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>

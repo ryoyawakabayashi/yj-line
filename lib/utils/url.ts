@@ -282,5 +282,23 @@ export function buildYoloSiteUrl(lang: string): string {
 
 export function buildYoloFeatureUrl(lang: string): string {
   const langPath = lang === 'ja' ? 'ja' : lang === 'en' ? 'en' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh-TW' : 'vi';
-  return addUtmParams(`${YOLO_SITE_BASE}/${langPath}/recruit/feature/theme`, 'features');
+  // 特集タップは medium=feature で識別（GA4でのファネル分析用）
+  const url = new URL(`${YOLO_SITE_BASE}/${langPath}/recruit/feature/theme`);
+  url.searchParams.append('utm_source', 'line');
+  url.searchParams.append('utm_medium', 'feature');
+  url.searchParams.append('utm_campaign', 'features');
+  return url.toString();
+}
+
+/**
+ * AIトーク（自由会話）経由でYOLOサイトへ誘導する際のURL
+ * utm_medium=autochat で識別
+ */
+export function buildYoloAutochatUrl(lang: string): string {
+  const langPath = lang === 'ja' ? 'ja' : lang === 'en' ? 'en' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh-TW' : 'vi';
+  const url = new URL(`${YOLO_SITE_BASE}/${langPath}/recruit/job`);
+  url.searchParams.append('utm_source', 'line');
+  url.searchParams.append('utm_medium', 'autochat');
+  url.searchParams.append('utm_campaign', 'ai_chat');
+  return url.toString();
 }
