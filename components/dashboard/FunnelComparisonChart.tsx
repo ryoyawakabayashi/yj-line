@@ -145,10 +145,16 @@ export function FunnelComparisonChart({ month, periodType = 'month' }: FunnelCom
         <div className="text-center border-x border-slate-200">
           <p className="text-xs text-slate-500 mb-1">総登録</p>
           <p className="text-2xl font-bold text-sky-600">{totals.registrations.toLocaleString()}</p>
+          <p className="text-xs text-sky-500 mt-0.5">
+            CVR: {totals.sessions > 0 ? ((totals.registrations / totals.sessions) * 100).toFixed(1) : '0.0'}%
+          </p>
         </div>
         <div className="text-center">
           <p className="text-xs text-slate-500 mb-1">総応募</p>
           <p className="text-2xl font-bold text-blue-700">{totals.applications.toLocaleString()}</p>
+          <p className="text-xs text-blue-500 mt-0.5">
+            CVR: {totals.sessions > 0 ? ((totals.applications / totals.sessions) * 100).toFixed(1) : '0.0'}%
+          </p>
         </div>
       </div>
 

@@ -201,6 +201,14 @@ export function SummaryCards({
     ? funnelMetrics.yjApplications
     : (stats.yjApplications || 0);
 
+  // CVR計算（セッション → 登録、セッション → 応募）
+  const registrationCvr = sessionsValue > 0
+    ? ((registrationsValue / sessionsValue) * 100).toFixed(1)
+    : '0.0';
+  const applicationCvr = sessionsValue > 0
+    ? ((applicationsValue / sessionsValue) * 100).toFixed(1)
+    : '0.0';
+
   const funnelCards: CardConfig[] = [
     {
       id: 'activeUsers',
@@ -242,6 +250,7 @@ export function SummaryCards({
       value: funnelLoading ? '...' : registrationsValue.toLocaleString(),
       icon: DocumentCheckIcon,
       tag: isSpecificFunnel ? funnelLabel : 'ファネル',
+      subtitle: funnelLoading ? undefined : `CVR: ${registrationCvr}%`,
       helper: isSpecificFunnel ? `${funnelLabel}経由の登録` : 'クリックで履歴表示',
       border: 'border-sky-200',
       iconBg: 'bg-gradient-to-br from-sky-500 to-sky-600',
@@ -255,6 +264,7 @@ export function SummaryCards({
       value: funnelLoading ? '...' : applicationsValue.toLocaleString(),
       icon: BriefcaseIcon,
       tag: isSpecificFunnel ? funnelLabel : 'ファネル',
+      subtitle: funnelLoading ? undefined : `CVR: ${applicationCvr}%`,
       helper: isSpecificFunnel ? `${funnelLabel}経由の応募` : 'クリックで履歴表示',
       border: 'border-sky-200',
       iconBg: 'bg-gradient-to-br from-sky-600 to-sky-700',

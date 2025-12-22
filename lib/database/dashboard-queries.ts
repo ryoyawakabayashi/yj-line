@@ -651,3 +651,132 @@ export async function getFollowEventHistory(
     return [];
   }
 }
+
+/**
+ * 会話履歴があるユーザー一覧を取得
+ */
+export interface ConversationUser {
+  userId: string;
+  lang: string;
+  lastUsed: string | null;
+  diagnosisCount: number;
+  aiChatCount: number;
+  lastMessage: string | null;
+}
+
+export async function getUsersWithConversations(limit: number = 50): Promise<ConversationUser[]> {
+  try {
+    // AIチャット履歴があるユーザーを取得
+    const { data: historyData } = await supabase
+      .from('ai_conversation_history')
+      .select('user_id, updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (!historyData || historyData.length === 0) return [];
+
+    // ユニークなユーザーIDを取得（最新順）
+    const uniqueUserIds = [...new Set(historyData.map(h => h.user_id))].slice(0, limit);
+
+    // ユーザー情報を取得
+    const { data: usersData } = await supabase
+      .from('user_status')
+      .select('user_id, lang, last_used, diagnosis_count, ai_chat_count')
+      .in('user_id', uniqueUserIds);
+
+    // ユーザーごとの最新の会話を取得
+    const { data: conversationsData } = await supabase
+      .from('ai_conversation_history')
+      .select('user_id, history')
+      .in('user_id', uniqueUserIds);
+
+    // ユーザー情報をマップに変換
+    const usersMap = new Map(usersData?.map(u => [u.user_id, u]) || []);
+    const conversationsMap = new Map(conversationsData?.map(c => [c.user_id, c.history]) || []);
+
+    // 結果を組み立て
+    return uniqueUserIds.map(userId => {
+      const user = usersMap.get(userId);
+      const history = conversationsMap.get(userId) as Array<{ role: string; content: string }> | null;
+      const lastMessage = history && history.length > 0
+        ? history[history.length - 1].content.substring(0, 50)
+        : null;
+
+      return {
+        userId,
+        lang: user?.lang || 'unknown',
+        lastUsed: user?.last_used || null,
+        diagnosisCount: user?.diagnosis_count || 0,
+        aiChatCount: user?.ai_chat_count || 0,
+        lastMessage,
+      };
+    });
+  } catch (error) {
+    console.error('getUsersWithConversations error:', error);
+    return [];
+  }
+}
+
+/**
+ * 特定ユーザーの会話履歴を取得
+ */
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+}
+
+export interface UserConversationDetail {
+  userId: string;
+  lang: string;
+  history: ConversationMessage[];
+  diagnosisResults: DiagnosisResult[];
+}
+
+export interface DiagnosisResult {
+  timestamp: string;
+  q1_living_in_japan: string | null;
+  q2_gender: string | null;
+  q3_urgency: string | null;
+  q4_region: string | null;
+  q5_japanese_level: string | null;
+  q6_industry: string | null;
+  q7_work_style: string | null;
+}
+
+export async function getUserConversationDetail(userId: string): Promise<UserConversationDetail | null> {
+  try {
+    // 会話履歴を取得
+    const { data: historyData } = await supabase
+      .from('ai_conversation_history')
+      .select('history, updated_at')
+      .eq('user_id', userId)
+      .single();
+
+    // ユーザー情報を取得
+    const { data: userData } = await supabase
+      .from('user_status')
+      .select('lang')
+      .eq('user_id', userId)
+      .single();
+
+    // 診断結果を取得
+    const { data: diagnosisData } = await supabase
+      .from('diagnosis_results')
+      .select('timestamp, q1_living_in_japan, q2_gender, q3_urgency, q4_region, q5_japanese_level, q6_industry, q7_work_style')
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: false })
+      .limit(10);
+
+    const history = (historyData?.history as ConversationMessage[]) || [];
+
+    return {
+      userId,
+      lang: userData?.lang || 'unknown',
+      history,
+      diagnosisResults: diagnosisData || [],
+    };
+  } catch (error) {
+    console.error('getUserConversationDetail error:', error);
+    return null;
+  }
+}

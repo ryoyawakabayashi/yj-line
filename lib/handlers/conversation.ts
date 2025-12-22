@@ -10,6 +10,7 @@ import { replyMessage, showLoadingAnimation, replyWithQuickReply } from '../line
 import { callOpenAIWithHistory } from '../openai/client';
 import { detectUserIntentAdvanced } from './intent';
 import { handleGreeting, handleContact } from './buttons';
+import { handleFollowupAnswer } from './followup';
 
 export async function handleConversation(
   userId: string,
@@ -29,6 +30,12 @@ export async function handleConversation(
     console.log('📋 診断モードで処理');
     const { handleDiagnosisAnswer } = await import('./diagnosis');
     await handleDiagnosisAnswer({ source: { userId }, replyToken, message: { text, type: 'text' } } as LineEvent);
+    return;
+  }
+
+  if (state.mode === 'followup') {
+    console.log('🤝 フォローアップモードで処理');
+    await handleFollowupAnswer({ source: { userId }, replyToken, message: { text, type: 'text' } } as LineEvent);
     return;
   }
 

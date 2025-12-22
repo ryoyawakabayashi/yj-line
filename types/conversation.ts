@@ -1,4 +1,12 @@
-export type ConversationMode = 'diagnosis' | 'ai_chat';
+export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup';
+
+export type FollowupStep = 'ask_applied' | 'ask_count' | 'ask_trouble' | 'complete';
+
+export interface FollowupAnswers {
+  hasApplied?: 'yes' | 'no' | 'not_yet';
+  applicationCount?: '1' | '2-3' | '4+';
+  trouble?: 'no_match' | 'language' | 'how_to' | 'not_yet';
+}
 
 export interface ConversationState {
   mode: ConversationMode;
@@ -8,6 +16,8 @@ export interface ConversationState {
   lang: string;
   q4_step?: 'select_major' | 'select_region' | 'select_prefecture';
   selectedRegion?: string;
+  followupStep?: FollowupStep;
+  followupAnswers?: FollowupAnswers;
 }
 
 export interface DiagnosisAnswers {

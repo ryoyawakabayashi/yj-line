@@ -12,6 +12,21 @@ import { MAJOR_PREFECTURES, REGION_MASTER, PREFECTURE_BY_REGION } from '../maste
 import { buildYoloUrlsByLevel } from '../utils/url';
 import { supabase } from '../database/client';
 
+// フォローアップ用のQuickReplyラベル
+const FOLLOWUP_LABELS = {
+  yes: { ja: 'はい', en: 'Yes', ko: '네', zh: '是的', vi: 'Có' },
+  no: { ja: 'いいえ', en: 'No', ko: '아니오', zh: '没有', vi: 'Không' },
+  not_yet: { ja: 'まだ見ていない', en: 'Not yet', ko: '아직', zh: '还没', vi: 'Chưa' },
+};
+
+const FOLLOWUP_QUESTION = {
+  ja: '応募（おうぼ）できましたか？',
+  en: 'Did you apply for any jobs?',
+  ko: '지원하셨나요?',
+  zh: '您申请了吗？',
+  vi: 'Bạn đã ứng tuyển chưa?',
+};
+
 export async function startDiagnosisMode(
   userId: string,
   replyToken: string,
@@ -29,18 +44,23 @@ export async function startDiagnosisMode(
   let currentQuestion = 1;
   let answers: Partial<DiagnosisAnswers> = {};
 
-  // 日本在住=Yesの場合はスキップ
-  if (existingAnswers.living_in_japan === 'yes') {
-    console.log('✅ 日本在住(Yes)なのでQ1をスキップ');
-    answers.living_in_japan = 'yes';
+  // 日本在住が既に回答済みならスキップ（Yes/No両方）
+  // データベースカラム名は q1_living_in_japan
+  if (existingAnswers.q1_living_in_japan) {
+    console.log(`✅ 日本在住(${existingAnswers.q1_living_in_japan})回答済みなのでQ1をスキップ`);
+    answers.living_in_japan = existingAnswers.q1_living_in_japan;
     currentQuestion = 2;
   }
 
   // 性別が既に回答済みならスキップ
-  if (existingAnswers.gender && currentQuestion === 2) {
-    console.log('✅ 性別回答済みなのでQ2をスキップ');
-    answers.gender = existingAnswers.gender;
-    currentQuestion = 3;
+  // データベースカラム名は q2_gender
+  if (existingAnswers.q2_gender) {
+    console.log(`✅ 性別(${existingAnswers.q2_gender})回答済みなのでQ2をスキップ`);
+    answers.gender = existingAnswers.q2_gender;
+    // Q1がスキップされていなくても、Q2はスキップ対象にマーク
+    if (currentQuestion <= 2) {
+      currentQuestion = 3;
+    }
   }
 
   const state: ConversationState = {
@@ -109,7 +129,16 @@ export async function handleDiagnosisAnswer(event: LineEvent): Promise<void> {
 
   if (currentQ === 1) {
     state.answers.living_in_japan = userAnswer as any;
-    state.currentQuestion = 2;
+    // 性別が既に回答済みならQ3へ、そうでなければQ2へ
+    // データベースカラム名は q2_gender
+    const existingAnswers = await getExistingAnswers(userId);
+    if (existingAnswers.q2_gender) {
+      console.log(`✅ 性別(${existingAnswers.q2_gender})回答済みなのでQ2をスキップ`);
+      state.answers.gender = existingAnswers.q2_gender;
+      state.currentQuestion = 3;
+    } else {
+      state.currentQuestion = 2;
+    }
     await saveConversationState(userId, state);
     await askQuestion(userId, state, replyToken);
     return;
@@ -383,14 +412,45 @@ async function finishDiagnosis(
     text += `${item.label}\n${item.url}\n\n`;
   });
 
-  state.mode = 'ai_chat';
+  // フォローアップモードに移行
+  state.mode = 'followup';
   state.currentQuestion = null;
+  state.followupStep = 'ask_applied';
+  state.followupAnswers = {};
   await saveConversationState(userId, state);
 
-  await replyMessage(replyToken, {
-    type: 'text',
-    text: text.trim(),
-  });
+  // 診断結果 + フォローアップ質問を送信
+  const followupQuestion = FOLLOWUP_QUESTION[lang as keyof typeof FOLLOWUP_QUESTION] || FOLLOWUP_QUESTION.ja;
+  const yesLabel = FOLLOWUP_LABELS.yes[lang as keyof typeof FOLLOWUP_LABELS.yes] || FOLLOWUP_LABELS.yes.ja;
+  const noLabel = FOLLOWUP_LABELS.no[lang as keyof typeof FOLLOWUP_LABELS.no] || FOLLOWUP_LABELS.no.ja;
+  const notYetLabel = FOLLOWUP_LABELS.not_yet[lang as keyof typeof FOLLOWUP_LABELS.not_yet] || FOLLOWUP_LABELS.not_yet.ja;
+
+  await replyMessage(replyToken, [
+    {
+      type: 'text',
+      text: text.trim(),
+    },
+    {
+      type: 'text',
+      text: followupQuestion,
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: { type: 'message', label: yesLabel, text: 'FOLLOWUP_YES' },
+          },
+          {
+            type: 'action',
+            action: { type: 'message', label: noLabel, text: 'FOLLOWUP_NO' },
+          },
+          {
+            type: 'action',
+            action: { type: 'message', label: notYetLabel, text: 'FOLLOWUP_NOT_YET' },
+          },
+        ],
+      },
+    },
+  ]);
 }
 
 async function saveAllAnswersToSheet(userId: string, state: ConversationState): Promise<void> {

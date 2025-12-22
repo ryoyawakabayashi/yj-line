@@ -36,6 +36,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'GA4 CV', href: '/dashboard/ga4', icon: CursorArrowRaysIcon },
       { label: 'ランキング', href: '/dashboard/ranking', icon: TrophyIcon },
       { label: 'アクティビティ', href: '/dashboard/activity', icon: ClockIcon },
+      { label: '会話履歴', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
     ],
   },
   {
