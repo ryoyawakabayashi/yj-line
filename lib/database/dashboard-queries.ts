@@ -666,47 +666,39 @@ export interface ConversationUser {
 
 export async function getUsersWithConversations(limit: number = 50): Promise<ConversationUser[]> {
   try {
-    // AIチャット履歴があるユーザーを取得
-    const { data: historyData } = await supabase
-      .from('ai_conversation_history')
-      .select('user_id, updated_at')
-      .order('updated_at', { ascending: false });
-
-    if (!historyData || historyData.length === 0) return [];
-
-    // ユニークなユーザーIDを取得（最新順）
-    const uniqueUserIds = [...new Set(historyData.map(h => h.user_id))].slice(0, limit);
-
-    // ユーザー情報を取得
+    // 診断またはAIチャットを使用したユーザーを取得（最新のlast_used順）
     const { data: usersData } = await supabase
       .from('user_status')
       .select('user_id, lang, last_used, diagnosis_count, ai_chat_count')
-      .in('user_id', uniqueUserIds);
+      .or('diagnosis_count.gt.0,ai_chat_count.gt.0')
+      .order('last_used', { ascending: false })
+      .limit(limit);
 
-    // ユーザーごとの最新の会話を取得
+    if (!usersData || usersData.length === 0) return [];
+
+    const userIds = usersData.map(u => u.user_id);
+
+    // AIチャット履歴を取得
     const { data: conversationsData } = await supabase
       .from('ai_conversation_history')
       .select('user_id, history')
-      .in('user_id', uniqueUserIds);
+      .in('user_id', userIds);
 
-    // ユーザー情報をマップに変換
-    const usersMap = new Map(usersData?.map(u => [u.user_id, u]) || []);
     const conversationsMap = new Map(conversationsData?.map(c => [c.user_id, c.history]) || []);
 
     // 結果を組み立て
-    return uniqueUserIds.map(userId => {
-      const user = usersMap.get(userId);
-      const history = conversationsMap.get(userId) as Array<{ role: string; content: string }> | null;
+    return usersData.map(user => {
+      const history = conversationsMap.get(user.user_id) as Array<{ role: string; content: string }> | null;
       const lastMessage = history && history.length > 0
         ? history[history.length - 1].content.substring(0, 50)
-        : null;
+        : (user.diagnosis_count > 0 ? '(診断履歴あり)' : null);
 
       return {
-        userId,
-        lang: user?.lang || 'unknown',
-        lastUsed: user?.last_used || null,
-        diagnosisCount: user?.diagnosis_count || 0,
-        aiChatCount: user?.ai_chat_count || 0,
+        userId: user.user_id,
+        lang: user.lang || 'unknown',
+        lastUsed: user.last_used || null,
+        diagnosisCount: user.diagnosis_count || 0,
+        aiChatCount: user.ai_chat_count || 0,
         lastMessage,
       };
     });

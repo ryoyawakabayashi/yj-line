@@ -51,8 +51,10 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchUsers();
   }, []);
 
@@ -98,6 +100,7 @@ export default function ConversationsPage() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
+    if (!mounted) return ''; // ハイドレーションエラー防止
     const date = new Date(dateString);
     return date.toLocaleDateString('ja-JP', {
       month: 'short',
@@ -120,10 +123,13 @@ export default function ConversationsPage() {
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
+              id="user-search"
+              name="user-search"
               type="text"
               placeholder="ユーザーIDで検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoComplete="off"
               className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

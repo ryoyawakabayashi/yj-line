@@ -11,46 +11,41 @@ export async function handleGreeting(
   const messages: Record<string, any> = {
     ja: {
       greeting: 'こんにちは!YOLO JAPANです✨',
-      prompt: '今日はどのようなお手伝いができますか?\n\n例えば...\n📌 仕事を探している\n📌 サービスについて知りたい\n📌 お問い合わせしたい',
+      prompt: '今日はどのようなお手伝いができますか?\n\n例えば...\n📌 仕事を探している\n📌 お問い合わせしたい',
       quickReply: [
         { label: '🔍 仕事を探す', text: '仕事を探しています' },
-        { label: 'ℹ️ サービス紹介', text: 'サービスを知りたい' },
         { label: '📩 お問い合わせ', text: 'お問い合わせ' },
       ],
     },
     en: {
       greeting: 'Hello! This is YOLO JAPAN✨',
-      prompt: 'How can I help you today?\n\nFor example...\n📌 Looking for a job\n📌 Learn about our services\n📌 Contact us',
+      prompt: 'How can I help you today?\n\nFor example...\n📌 Looking for a job\n📌 Contact us',
       quickReply: [
         { label: '🔍 Find Job', text: "I'm looking for a job" },
-        { label: 'ℹ️ Features', text: 'Tell me about services' },
         { label: '📩 Contact', text: 'Contact' },
       ],
     },
     ko: {
       greeting: '안녕하세요! YOLO JAPAN입니다✨',
-      prompt: '오늘은 무엇을 도와드릴까요?\n\n예를 들어...\n📌 일자리 찾기\n📌 서비스 소개\n📌 문의하기',
+      prompt: '오늘은 무엇을 도와드릴까요?\n\n예를 들어...\n📌 일자리 찾기\n📌 문의하기',
       quickReply: [
         { label: '🔍 일자리 찾기', text: '일자리를 찾고 있습니다' },
-        { label: 'ℹ️ 서비스 소개', text: '서비스를 알고 싶어요' },
         { label: '📩 문의', text: '문의하기' },
       ],
     },
     zh: {
       greeting: '你好!这里是YOLO JAPAN✨',
-      prompt: '今天需要什么帮助?\n\n例如...\n📌 找工作\n📌 服务介绍\n📌 联系我们',
+      prompt: '今天需要什么帮助?\n\n例如...\n📌 找工作\n📌 联系我们',
       quickReply: [
         { label: '🔍 找工作', text: '我在找工作' },
-        { label: 'ℹ️ 服务介绍', text: '我想了解服务' },
         { label: '📩 联系', text: '联系我们' },
       ],
     },
     vi: {
       greeting: 'Xin chào! Đây là YOLO JAPAN✨',
-      prompt: 'Hôm nay tôi có thể giúp gì cho bạn?\n\nVí dụ...\n📌 Tìm việc làm\n📌 Giới thiệu dịch vụ\n📌 Liên hệ',
+      prompt: 'Hôm nay tôi có thể giúp gì cho bạn?\n\nVí dụ...\n📌 Tìm việc làm\n📌 Liên hệ',
       quickReply: [
         { label: '🔍 Tìm việc', text: 'Tôi đang tìm việc' },
-        { label: 'ℹ️ Giới thiệu', text: 'Tôi muốn biết về dịch vụ' },
         { label: '📩 Liên hệ', text: 'Liên hệ' },
       ],
     },

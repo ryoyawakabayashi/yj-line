@@ -6,6 +6,7 @@ import {
   getUserLang,
   saveAnswerToSheet,
   incrementDiagnosisCount,
+  saveDiagnosisResult,
 } from '../database/queries';
 import { replyMessage, replyWithQuickReply, showLoadingAnimation } from '../line/client';
 import { MAJOR_PREFECTURES, REGION_MASTER, PREFECTURE_BY_REGION } from '../masters';
@@ -380,7 +381,9 @@ async function finishDiagnosis(
   state: ConversationState,
   replyToken: string
 ): Promise<void> {
-  console.log('=== 診断完了処理 ===');
+  console.log('=== 診断完了処理開始 ===');
+  console.log('userId:', userId);
+  console.log('replyToken存在:', !!replyToken);
 
   // ローディングアニメーション表示（5秒間、非同期で即座に実行）
   showLoadingAnimation(userId, 5).catch(() => {});
@@ -425,32 +428,38 @@ async function finishDiagnosis(
   const noLabel = FOLLOWUP_LABELS.no[lang as keyof typeof FOLLOWUP_LABELS.no] || FOLLOWUP_LABELS.no.ja;
   const notYetLabel = FOLLOWUP_LABELS.not_yet[lang as keyof typeof FOLLOWUP_LABELS.not_yet] || FOLLOWUP_LABELS.not_yet.ja;
 
-  await replyMessage(replyToken, [
+  console.log('📤 診断結果 + フォローアップ質問を送信中...');
+  console.log('followupQuestion:', followupQuestion);
+
+  const messages = [
     {
-      type: 'text',
+      type: 'text' as const,
       text: text.trim(),
     },
     {
-      type: 'text',
+      type: 'text' as const,
       text: followupQuestion,
       quickReply: {
         items: [
           {
-            type: 'action',
-            action: { type: 'message', label: yesLabel, text: 'FOLLOWUP_YES' },
+            type: 'action' as const,
+            action: { type: 'message' as const, label: yesLabel, text: 'FOLLOWUP_YES' },
           },
           {
-            type: 'action',
-            action: { type: 'message', label: noLabel, text: 'FOLLOWUP_NO' },
+            type: 'action' as const,
+            action: { type: 'message' as const, label: noLabel, text: 'FOLLOWUP_NO' },
           },
           {
-            type: 'action',
-            action: { type: 'message', label: notYetLabel, text: 'FOLLOWUP_NOT_YET' },
+            type: 'action' as const,
+            action: { type: 'message' as const, label: notYetLabel, text: 'FOLLOWUP_NOT_YET' },
           },
         ],
       },
     },
-  ]);
+  ];
+
+  const success = await replyMessage(replyToken, messages);
+  console.log('📤 replyMessage結果:', success ? '✅成功' : '❌失敗');
 }
 
 async function saveAllAnswersToSheet(userId: string, state: ConversationState): Promise<void> {
@@ -479,6 +488,9 @@ async function saveAllAnswersToSheet(userId: string, state: ConversationState): 
   if (answers.work_style) {
     await saveAnswerToSheet(userId, 'q7', answers.work_style);
   }
+
+  // 診断結果をdiagnosis_resultsテーブルに保存（ダッシュボード表示用）
+  await saveDiagnosisResult(userId, answers);
 
   await incrementDiagnosisCount(userId);
 }
