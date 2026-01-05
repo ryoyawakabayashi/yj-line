@@ -13,58 +13,30 @@ import type {
 } from '@/types/dashboard';
 
 /**
- * ダッシュボードの全体統計を取得
+ * ダッシュボードの全体統計を取得（RPC使用で1クエリに最適化）
  */
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    // 総ユーザー数
-    const { count: totalUsers } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true });
+    const { data, error } = await supabase.rpc('get_dashboard_stats');
 
-    // ユーザー統計の合計値を取得
-    const { data: statsData } = await supabase
-      .from('user_status')
-      .select('ai_chat_count, diagnosis_count, last_used');
+    if (error) {
+      console.error('getDashboardStats RPC error:', error);
+      throw error;
+    }
 
-    const totalAIChats = statsData?.reduce((sum, row) => sum + (row.ai_chat_count || 0), 0) || 0;
-
-    // 診断実施数（diagnosis_resultsテーブルの総レコード数）
-    const { count: totalDiagnosis } = await supabase
-      .from('diagnosis_results')
-      .select('*', { count: 'exact', head: true });
-
-    // 診断人数（診断を1回以上実施したユニークユーザー数）
-    const { count: diagnosisUserCount } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true })
-      .gte('diagnosis_count', 1);
-
-    // 本日のアクティブユーザー数
-    const today = new Date().toISOString().split('T')[0];
-    const { count: todayActiveUsers } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true })
-      .gte('last_used', today);
-
-    // リピートユーザー数（診断を2回以上実施したユーザー）
-    const { count: repeatUserCount } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true })
-      .gte('diagnosis_count', 2);
-
-    // リピート率の計算
-    const repeatRate = totalUsers && totalUsers > 0
-      ? Math.round((repeatUserCount || 0) / totalUsers * 100 * 10) / 10
+    const totalUsers = data?.total_users || 0;
+    const repeatUserCount = data?.repeat_user_count || 0;
+    const repeatRate = totalUsers > 0
+      ? Math.round((repeatUserCount / totalUsers) * 100 * 10) / 10
       : 0;
 
     return {
-      totalUsers: totalUsers || 0,
-      totalDiagnosis: totalDiagnosis || 0,
-      diagnosisUserCount: diagnosisUserCount || 0,
-      totalAIChats,
-      todayActiveUsers: todayActiveUsers || 0,
-      repeatUserCount: repeatUserCount || 0,
+      totalUsers,
+      totalDiagnosis: data?.total_diagnosis || 0,
+      diagnosisUserCount: data?.diagnosis_user_count || 0,
+      totalAIChats: data?.total_ai_chats || 0,
+      todayActiveUsers: data?.today_active_users || 0,
+      repeatUserCount,
       repeatRate,
     };
   } catch (error) {
@@ -82,77 +54,36 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 }
 
 /**
- * 月指定でダッシュボード統計を取得
+ * 月指定でダッシュボード統計を取得（RPC使用で最適化）
  */
 export async function getDashboardStatsByMonth(
   startDate: string,
   endDate: string
 ): Promise<DashboardStats> {
   try {
-    // 期間内の新規ユーザー数
-    const { count: newUsers } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true })
-      .gte('first_used', startDate)
-      .lte('first_used', endDate + 'T23:59:59');
-
-    // 総ユーザー数（累計）
-    const { count: totalUsers } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true });
-
-    // 期間内の診断実施数
-    const { count: totalDiagnosis } = await supabase
-      .from('diagnosis_results')
-      .select('*', { count: 'exact', head: true })
-      .gte('timestamp', startDate)
-      .lte('timestamp', endDate + 'T23:59:59');
-
-    // 期間内に診断を実施したユニークユーザー数
-    const { data: diagnosisData } = await supabase
-      .from('diagnosis_results')
-      .select('user_id')
-      .gte('timestamp', startDate)
-      .lte('timestamp', endDate + 'T23:59:59');
-
-    const uniqueDiagnosisUsers = new Set(diagnosisData?.map(d => d.user_id) || []);
-    const diagnosisUserCount = uniqueDiagnosisUsers.size;
-
-    // 期間内のアクティブユーザー数
-    const { count: activeUsers } = await supabase
-      .from('user_status')
-      .select('*', { count: 'exact', head: true })
-      .gte('last_used', startDate)
-      .lte('last_used', endDate + 'T23:59:59');
-
-    // 期間内にリピート診断したユーザー数（期間内に2回以上診断を実施）
-    // diagnosis_resultsから期間内のデータを取得し、2回以上診断したユーザーをカウント
-    const { data: periodDiagnosisData } = await supabase
-      .from('diagnosis_results')
-      .select('user_id')
-      .gte('timestamp', startDate)
-      .lte('timestamp', endDate + 'T23:59:59');
-
-    // ユーザーごとの診断回数をカウント
-    const userDiagnosisCounts: Record<string, number> = {};
-    periodDiagnosisData?.forEach(d => {
-      userDiagnosisCounts[d.user_id] = (userDiagnosisCounts[d.user_id] || 0) + 1;
+    const { data, error } = await supabase.rpc('get_dashboard_stats_by_month', {
+      start_date: startDate,
+      end_date: endDate
     });
-    // 2回以上診断したユーザー数
-    const repeatUserCount = Object.values(userDiagnosisCounts).filter(count => count >= 2).length;
 
-    // リピート率の計算（期間内の診断人数に対する割合）
+    if (error) {
+      console.error('getDashboardStatsByMonth RPC error:', error);
+      throw error;
+    }
+
+    const diagnosisUserCount = data?.diagnosis_user_count || 0;
+    const repeatUserCount = data?.repeat_user_count || 0;
     const repeatRate = diagnosisUserCount > 0
       ? Math.round((repeatUserCount / diagnosisUserCount) * 100 * 10) / 10
       : 0;
 
     return {
-      totalUsers: newUsers || 0, // 期間内の新規ユーザー
-      totalDiagnosis: totalDiagnosis || 0,
+      totalUsers: data?.new_users || 0,
+      totalDiagnosis: data?.total_diagnosis || 0,
       diagnosisUserCount,
       totalAIChats: 0,
-      todayActiveUsers: activeUsers || 0,
-      repeatUserCount: repeatUserCount || 0,
+      todayActiveUsers: data?.active_users || 0,
+      repeatUserCount,
       repeatRate,
     };
   } catch (error) {
@@ -170,26 +101,20 @@ export async function getDashboardStatsByMonth(
 }
 
 /**
- * 言語別ユーザー分布を取得
+ * 言語別ユーザー分布を取得（RPC使用で最適化）
  */
 export async function getUsersByLanguage(): Promise<LanguageDistribution[]> {
   try {
-    const { data } = await supabase
-      .from('user_status')
-      .select('lang');
+    const { data, error } = await supabase.rpc('get_language_distribution');
 
-    if (!data) return [];
+    if (error) {
+      console.error('getUsersByLanguage RPC error:', error);
+      throw error;
+    }
 
-    // グループ化してカウント
-    const langCounts: Record<string, number> = {};
-    data.forEach((row) => {
-      const lang = row.lang || 'unknown';
-      langCounts[lang] = (langCounts[lang] || 0) + 1;
-    });
-
-    return Object.entries(langCounts).map(([lang, count]) => ({
-      lang,
-      count,
+    return (data || []).map((row: { lang: string; count: number }) => ({
+      lang: row.lang,
+      count: Number(row.count),
     }));
   } catch (error) {
     console.error('getUsersByLanguage error:', error);
@@ -198,27 +123,20 @@ export async function getUsersByLanguage(): Promise<LanguageDistribution[]> {
 }
 
 /**
- * 日本語レベル別分布を取得
+ * 日本語レベル別分布を取得（RPC使用で最適化）
  */
 export async function getJapaneseLevelDistribution(): Promise<LevelDistribution[]> {
   try {
-    const { data } = await supabase
-      .from('diagnosis_results')
-      .select('q5_japanese_level')
-      .not('q5_japanese_level', 'is', null);
+    const { data, error } = await supabase.rpc('get_japanese_level_distribution');
 
-    if (!data) return [];
+    if (error) {
+      console.error('getJapaneseLevelDistribution RPC error:', error);
+      throw error;
+    }
 
-    // グループ化してカウント
-    const levelCounts: Record<string, number> = {};
-    data.forEach((row) => {
-      const level = row.q5_japanese_level || 'unknown';
-      levelCounts[level] = (levelCounts[level] || 0) + 1;
-    });
-
-    return Object.entries(levelCounts).map(([level, count]) => ({
-      level,
-      count,
+    return (data || []).map((row: { level: string; count: number }) => ({
+      level: row.level,
+      count: Number(row.count),
     }));
   } catch (error) {
     console.error('getJapaneseLevelDistribution error:', error);
@@ -274,30 +192,21 @@ export async function getIndustryDistribution(): Promise<IndustryDistribution[]>
 }
 
 /**
- * 地域別分布を取得
+ * 地域別分布を取得（RPC使用で最適化）
  */
 export async function getRegionDistribution(): Promise<RegionDistribution[]> {
   try {
-    const { data } = await supabase
-      .from('diagnosis_results')
-      .select('q4_region')
-      .not('q4_region', 'is', null);
+    const { data, error } = await supabase.rpc('get_region_distribution');
 
-    if (!data) return [];
+    if (error) {
+      console.error('getRegionDistribution RPC error:', error);
+      throw error;
+    }
 
-    // グループ化してカウント
-    const regionCounts: Record<string, number> = {};
-    data.forEach((row) => {
-      const region = row.q4_region || 'unknown';
-      regionCounts[region] = (regionCounts[region] || 0) + 1;
-    });
-
-    return Object.entries(regionCounts)
-      .map(([region, count]) => ({
-        region,
-        count,
-      }))
-      .sort((a, b) => b.count - a.count); // 降順でソート
+    return (data || []).map((row: { region: string; count: number }) => ({
+      region: row.region,
+      count: Number(row.count),
+    }));
   } catch (error) {
     console.error('getRegionDistribution error:', error);
     return [];
@@ -305,39 +214,23 @@ export async function getRegionDistribution(): Promise<RegionDistribution[]> {
 }
 
 /**
- * 日別ユーザー登録推移を取得
+ * 日別ユーザー登録推移を取得（RPC使用で最適化）
  */
 export async function getDailyUserTrend(days: number = 30): Promise<DailyTrend[]> {
   try {
-    const { data } = await supabase
-      .from('user_status')
-      .select('first_used')
-      .not('first_used', 'is', null)
-      .order('first_used', { ascending: true });
-
-    if (!data) return [];
-
-    // 日付ごとにグループ化
-    const dateCounts: Record<string, number> = {};
-    data.forEach((row) => {
-      if (row.first_used) {
-        const date = row.first_used.split('T')[0]; // YYYY-MM-DD形式に
-        dateCounts[date] = (dateCounts[date] || 0) + 1;
-      }
+    const { data, error } = await supabase.rpc('get_daily_user_trend', {
+      days_back: days
     });
 
-    // 過去N日間のデータのみ抽出
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-    const cutoffStr = cutoffDate.toISOString().split('T')[0];
+    if (error) {
+      console.error('getDailyUserTrend RPC error:', error);
+      throw error;
+    }
 
-    return Object.entries(dateCounts)
-      .filter(([date]) => date >= cutoffStr)
-      .map(([date, count]) => ({
-        date,
-        count,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date)); // 日付昇順
+    return (data || []).map((row: { date: string; count: number }) => ({
+      date: row.date,
+      count: Number(row.count),
+    }));
   } catch (error) {
     console.error('getDailyUserTrend error:', error);
     return [];
@@ -345,25 +238,23 @@ export async function getDailyUserTrend(days: number = 30): Promise<DailyTrend[]
 }
 
 /**
- * 日別診断実施数の推移を取得
+ * 日別診断実施数の推移を取得（RPC使用で最適化）
  */
 export async function getDailyDiagnosisTrend(days: number = 30): Promise<DailyUsageTrend[]> {
   try {
-    const { data } = await supabase
-      .from('diagnosis_results')
-      .select('timestamp')
-      .not('timestamp', 'is', null)
-      .order('timestamp', { ascending: true });
+    const { data, error } = await supabase.rpc('get_daily_diagnosis_trend', {
+      days_back: days
+    });
 
-    if (!data) return [];
+    if (error) {
+      console.error('getDailyDiagnosisTrend RPC error:', error);
+      throw error;
+    }
 
-    // 日付ごとにグループ化
+    // RPCから取得したデータをマップに変換
     const dateCounts: Record<string, number> = {};
-    data.forEach((row) => {
-      if (row.timestamp) {
-        const date = row.timestamp.split('T')[0]; // YYYY-MM-DD形式に
-        dateCounts[date] = (dateCounts[date] || 0) + 1;
-      }
+    (data || []).forEach((row: { date: string; count: number }) => {
+      dateCounts[row.date] = Number(row.count);
     });
 
     // 過去N日間の全日付を生成（欠損日を0で埋める）
@@ -751,7 +642,7 @@ export async function getUserConversationDetail(userId: string): Promise<UserCon
       .eq('user_id', userId)
       .single();
 
-    // 診断結果を取得
+    // 診断結果を取得（新テーブル）
     const { data: diagnosisData } = await supabase
       .from('diagnosis_results')
       .select('timestamp, q1_living_in_japan, q2_gender, q3_urgency, q4_region, q5_japanese_level, q6_industry, q7_work_style')
@@ -759,13 +650,48 @@ export async function getUserConversationDetail(userId: string): Promise<UserCon
       .order('timestamp', { ascending: false })
       .limit(10);
 
+    // 診断結果がない場合、user_answersから取得（後方互換性）
+    let diagnosisResults = diagnosisData || [];
+    if (diagnosisResults.length === 0) {
+      const { data: answersData } = await supabase
+        .from('user_answers')
+        .select('question, answer, timestamp')
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: false });
+
+      if (answersData && answersData.length > 0) {
+        // user_answersからの回答を診断結果形式に変換
+        const answersMap: Record<string, string> = {};
+        let latestTimestamp = '';
+        answersData.forEach(a => {
+          answersMap[a.question] = a.answer;
+          if (!latestTimestamp && a.timestamp) {
+            latestTimestamp = a.timestamp;
+          }
+        });
+
+        if (Object.keys(answersMap).length > 0) {
+          diagnosisResults = [{
+            timestamp: latestTimestamp || new Date().toISOString(),
+            q1_living_in_japan: answersMap['q1'] || null,
+            q2_gender: answersMap['q2'] || null,
+            q3_urgency: answersMap['q3'] || null,
+            q4_region: answersMap['q4'] || null,
+            q5_japanese_level: answersMap['q5'] || null,
+            q6_industry: answersMap['q6_1'] || null,
+            q7_work_style: answersMap['q7'] || null,
+          }];
+        }
+      }
+    }
+
     const history = (historyData?.history as ConversationMessage[]) || [];
 
     return {
       userId,
       lang: userData?.lang || 'unknown',
       history,
-      diagnosisResults: diagnosisData || [],
+      diagnosisResults,
     };
   } catch (error) {
     console.error('getUserConversationDetail error:', error);

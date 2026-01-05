@@ -68,50 +68,26 @@ export async function getUserStatus(userId: string): Promise<UserStatus | null> 
 }
 
 export async function incrementAIChatCount(userId: string): Promise<void> {
-  const status = await getUserStatus(userId);
-  
-  if (!status) {
-    console.warn('⚠️ ユーザーステータスが見つかりません:', userId);
-    return;
-  }
-
-  const { error } = await supabase
-    .from('user_status')
-    .update({
-      ai_chat_count: status.ai_chat_count + 1,
-      total_usage_count: status.total_usage_count + 1,
-      last_used: new Date().toISOString(),
-    })
-    .eq('user_id', userId);
+  const { error } = await supabase.rpc('increment_ai_chat_count', {
+    p_user_id: userId
+  });
 
   if (error) {
     console.error('❌ incrementAIChatCount エラー:', error);
   } else {
-    console.log('✅ AI相談回数更新:', status.ai_chat_count + 1);
+    console.log('✅ AI相談回数更新');
   }
 }
 
 export async function incrementDiagnosisCount(userId: string): Promise<void> {
-  const status = await getUserStatus(userId);
-  
-  if (!status) {
-    console.warn('⚠️ ユーザーステータスが見つかりません:', userId);
-    return;
-  }
-
-  const { error } = await supabase
-    .from('user_status')
-    .update({
-      diagnosis_count: status.diagnosis_count + 1,
-      total_usage_count: status.total_usage_count + 1,
-      last_used: new Date().toISOString(),
-    })
-    .eq('user_id', userId);
+  const { error } = await supabase.rpc('increment_diagnosis_count', {
+    p_user_id: userId
+  });
 
   if (error) {
     console.error('❌ incrementDiagnosisCount エラー:', error);
   } else {
-    console.log('✅ 診断回数更新:', status.diagnosis_count + 1);
+    console.log('✅ 診断回数更新');
   }
 }
 
