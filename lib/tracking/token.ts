@@ -55,22 +55,32 @@ export async function generateTrackingUrl(
   const token = generateUserToken(userId);
 
   // 既存のトークンを確認
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from('tracking_tokens')
     .select('id')
     .eq('token', token)
-    .single();
+    .maybeSingle();
+
+  if (selectError) {
+    console.error('❌ tracking_tokens SELECT error:', selectError);
+  }
 
   // 新規ユーザーの場合のみDBに保存
   if (!existing) {
     const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1年
-    await supabase.from('tracking_tokens').insert({
+    const { error: insertError } = await supabase.from('tracking_tokens').insert({
       token,
       user_id: userId,
       url_type: urlType,
       destination_url: baseUrl,
       expires_at: expiresAt.toISOString(),
     });
+
+    if (insertError) {
+      console.error('❌ tracking_tokens INSERT error:', insertError);
+    } else {
+      console.log('✅ tracking_tokens INSERT success:', { token, userId, urlType });
+    }
   }
 
   // URLにパラメータ追加
