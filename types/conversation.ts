@@ -1,4 +1,6 @@
-export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup';
+import { SupportModeState } from './support';
+
+export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support';
 
 export type FollowupStep = 'ask_applied' | 'ask_count' | 'ask_trouble' | 'complete';
 
@@ -18,6 +20,7 @@ export interface ConversationState {
   selectedRegion?: string;
   followupStep?: FollowupStep;
   followupAnswers?: FollowupAnswers;
+  supportState?: SupportModeState;
 }
 
 export interface DiagnosisAnswers {

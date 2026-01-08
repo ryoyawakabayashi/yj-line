@@ -5,6 +5,13 @@ import { config } from '../config';
 import { CONSTANTS } from '../constants';
 import { handleConversation } from './conversation';
 import { startDiagnosisMode } from './diagnosis';
+import {
+  handleSupportButton,
+  handleSupportPostback,
+  handleSupportMessage,
+  isSupportMode,
+  exitSupportMode,
+} from './support';
 
 export async function handleEvent(event: LineEvent): Promise<void> {
   const { type, source } = event;
@@ -18,6 +25,22 @@ export async function handleEvent(event: LineEvent): Promise<void> {
   try {
     if (type === 'follow') {
       await handleFollow(userId);
+      return;
+    }
+
+    // Postbackイベントの処理（サポート関連）
+    if (type === 'postback') {
+      const postbackData = event.postback?.data || '';
+      console.log('📮 Postback受信:', postbackData);
+
+      // サポート関連のPostback処理
+      const handled = await handleSupportPostback(userId, event.replyToken, postbackData);
+      if (handled) {
+        return;
+      }
+
+      // 他のPostback処理があればここに追加
+      console.log('⚠️ 未処理のPostback:', postbackData);
       return;
     }
 
@@ -58,7 +81,8 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         'VIEW_FEATURES',
         'CONTACT',
         'LANG_CHANGE',
-        'YOLO_DISCOVER'
+        'YOLO_DISCOVER',
+        'SUPPORT', // カスタマーサポート
       ];
 
       if (richMenuButtons.includes(messageText)) {
@@ -82,11 +106,25 @@ export async function handleEvent(event: LineEvent): Promise<void> {
           return;
         }
 
+        // SUPPORT: カスタマーサポート
+        if (messageText === 'SUPPORT') {
+          await handleSupportButton(userId, event.replyToken);
+          return;
+        }
+
         // その他のボタン処理
         const { handleButtonAction } = await import('./buttons');
         const dbLang = await getUserLang(userId);
         await handleButtonAction(event, currentState, messageText, dbLang);
         return;
+      }
+
+      // サポートモード中のメッセージ処理
+      if (await isSupportMode(userId)) {
+        const handled = await handleSupportMessage(userId, event.replyToken, messageText);
+        if (handled) {
+          return;
+        }
       }
 
       // 通常の会話処理

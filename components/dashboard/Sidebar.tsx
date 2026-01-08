@@ -13,6 +13,7 @@ import {
   ChatBubbleLeftRightIcon,
   DocumentTextIcon,
   SparklesIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -37,6 +38,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'ランキング', href: '/dashboard/ranking', icon: TrophyIcon },
       { label: 'アクティビティ', href: '/dashboard/activity', icon: ClockIcon },
       { label: '会話履歴', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
+      { label: '応募者追跡', href: '/dashboard/conversions', icon: UserGroupIcon },
     ],
   },
   {
