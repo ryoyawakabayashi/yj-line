@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import {
   UserGroupIcon,
-  ArrowTrendingUpIcon,
   CursorArrowRaysIcon,
   CheckCircleIcon,
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
 interface ConversionStats {
+  uniqueIssuedUsers: number;
   totalTokens: number;
   totalClicks: number;
   totalConversions: number;
@@ -108,32 +108,25 @@ export default function ConversionsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          title="URL発行数"
-          value={stats?.totalTokens || 0}
+          title="発行者数"
+          value={stats?.uniqueIssuedUsers || 0}
           icon={CursorArrowRaysIcon}
           color="blue"
         />
         <StatCard
-          title="クリック数"
-          value={stats?.totalClicks || 0}
-          subValue={`${stats?.clickRate || 0}%`}
-          icon={ArrowTrendingUpIcon}
+          title="応募者数"
+          value={stats?.uniqueConvertedUsers || 0}
+          subValue={`${stats?.conversionRate || 0}%`}
+          icon={UserGroupIcon}
           color="green"
         />
         <StatCard
-          title="応募完了数"
+          title="応募数"
           value={stats?.totalConversions || 0}
-          subValue={`${stats?.conversionRate || 0}%`}
           icon={CheckCircleIcon}
           color="purple"
-        />
-        <StatCard
-          title="応募者（ユニーク）"
-          value={stats?.uniqueConvertedUsers || 0}
-          icon={UserGroupIcon}
-          color="orange"
         />
       </div>
 

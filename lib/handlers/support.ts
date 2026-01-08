@@ -32,6 +32,7 @@ import {
 } from '@/types/support';
 import OpenAI from 'openai';
 import { config } from '../config';
+import { processUrlsInText } from '../tracking/url-processor';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -204,9 +205,12 @@ export async function handleSupportMessage(
       temperature: 0.7,
     });
 
-    const aiResponse =
+    let aiResponse =
       completion.choices[0]?.message?.content ||
       getSupportMessage('escalate', lang);
+
+    // AI応答内のURLをトラッキングURL化
+    aiResponse = await processUrlsInText(aiResponse, userId, 'support');
 
     conversationHistory.push({ role: 'assistant', content: aiResponse });
 

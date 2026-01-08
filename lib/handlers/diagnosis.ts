@@ -12,6 +12,7 @@ import { replyMessage, replyWithQuickReply, showLoadingAnimation } from '../line
 import { MAJOR_PREFECTURES, REGION_MASTER, PREFECTURE_BY_REGION } from '../masters';
 import { buildYoloUrlsByLevel } from '../utils/url';
 import { supabase } from '../database/client';
+import { processUrl } from '../tracking/url-processor';
 
 // フォローアップ用のQuickReplyラベル
 const FOLLOWUP_LABELS = {
@@ -398,6 +399,14 @@ async function finishDiagnosis(
 
   const linkItems = buildYoloUrlsByLevel(state.answers, lang);
 
+  // 各URLにトラッキングトークンを付与
+  const trackedLinkItems = await Promise.all(
+    linkItems.map(async (item) => ({
+      ...item,
+      url: await processUrl(item.url, userId, 'diagnosis'),
+    }))
+  );
+
   const titleText: Record<string, string> = {
     ja: '診断が完了しました！\nあなたにぴったりのお仕事はこちら👇',
     en: 'Diagnosis completed!\nJobs that match you👇',
@@ -408,7 +417,7 @@ async function finishDiagnosis(
 
   let text = (titleText[lang] || titleText.ja) + '\n\n';
 
-  linkItems.forEach((item) => {
+  trackedLinkItems.forEach((item) => {
     if (item.description) {
       text += `${item.description}\n`;
     }

@@ -11,6 +11,7 @@ import { callOpenAIWithHistory } from '../openai/client';
 import { detectUserIntentAdvanced } from './intent';
 import { handleGreeting, handleContact } from './buttons';
 import { handleFollowupAnswer } from './followup';
+import { processUrlsInText } from '../tracking/url-processor';
 
 export async function handleConversation(
   userId: string,
@@ -77,7 +78,10 @@ async function handleAIChatMessage(
   const conversationHistory = await getConversationHistory(userId);
   conversationHistory.push({ role: 'user', content: userMessage });
 
-  const aiText = await callOpenAIWithHistory(lang, conversationHistory);
+  let aiText = await callOpenAIWithHistory(lang, conversationHistory);
+
+  // AI応答内のURLをトラッキングURL化
+  aiText = await processUrlsInText(aiText, userId, 'autochat');
 
   conversationHistory.push({ role: 'assistant', content: aiText });
   await saveConversationHistory(userId, conversationHistory);

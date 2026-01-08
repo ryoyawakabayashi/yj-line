@@ -13,6 +13,7 @@ export async function GET() {
       const { data: statsData } = await supabase.rpc('get_conversion_stats');
       if (statsData) {
         stats = {
+          uniqueIssuedUsers: statsData.unique_issued_users || 0,
           totalTokens: statsData.total_tokens || 0,
           totalClicks: statsData.total_clicks || 0,
           totalConversions: statsData.total_conversions || 0,
@@ -24,6 +25,7 @@ export async function GET() {
     } catch {
       // RPC失敗時はデフォルト値
       stats = {
+        uniqueIssuedUsers: 0,
         totalTokens: 0,
         totalClicks: 0,
         totalConversions: 0,

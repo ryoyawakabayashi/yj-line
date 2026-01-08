@@ -35,27 +35,43 @@ export interface ConversionStats {
 }
 
 /**
+ * ユーザーID から固定トークンを生成（8文字）
+ * 同じユーザーには常に同じトークンが付与される
+ */
+function generateUserToken(userId: string): string {
+  return crypto.createHash('sha256').update(userId).digest('hex').slice(0, 8);
+}
+
+/**
  * トラッキングトークン付きURLを生成
+ * ユーザーごとに固定のトークンを付与（経由元はutm_campaignで識別）
  */
 export async function generateTrackingUrl(
   userId: string,
   baseUrl: string,
   urlType: string
 ): Promise<string> {
-  // 8文字のランダムトークン生成
-  const token = crypto.randomBytes(4).toString('hex');
+  // ユーザー固定のトークン生成（同じユーザーは常に同じトークン）
+  const token = generateUserToken(userId);
 
-  // 有効期限: 30日
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  // 既存のトークンを確認
+  const { data: existing } = await supabase
+    .from('tracking_tokens')
+    .select('id')
+    .eq('token', token)
+    .single();
 
-  // DBに保存
-  await supabase.from('tracking_tokens').insert({
-    token,
-    user_id: userId,
-    url_type: urlType,
-    destination_url: baseUrl,
-    expires_at: expiresAt.toISOString(),
-  });
+  // 新規ユーザーの場合のみDBに保存
+  if (!existing) {
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1年
+    await supabase.from('tracking_tokens').insert({
+      token,
+      user_id: userId,
+      url_type: urlType,
+      destination_url: baseUrl,
+      expires_at: expiresAt.toISOString(),
+    });
+  }
 
   // URLにパラメータ追加
   const url = new URL(baseUrl);
