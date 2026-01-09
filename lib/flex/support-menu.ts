@@ -97,7 +97,7 @@ const TEXTS = {
     yoloDiscover: 'YOLO DISCOVER',
     yoloHome: 'YOLO HOME',
     yoloJapanDesc: '求人サイト',
-    yoloDiscoverDesc: '生活・イベント情報',
+    yoloDiscoverDesc: '無料体験サービス',
     yoloHomeDesc: '住宅情報サービス',
   },
   en: {
@@ -110,7 +110,7 @@ const TEXTS = {
     yoloDiscover: 'YOLO DISCOVER',
     yoloHome: 'YOLO HOME',
     yoloJapanDesc: 'Job Site',
-    yoloDiscoverDesc: 'Lifestyle & Events',
+    yoloDiscoverDesc: 'Free Experience Service',
     yoloHomeDesc: 'Housing Service',
   },
   ko: {
@@ -123,7 +123,7 @@ const TEXTS = {
     yoloDiscover: 'YOLO DISCOVER',
     yoloHome: 'YOLO HOME',
     yoloJapanDesc: '구인 사이트',
-    yoloDiscoverDesc: '생활/이벤트 정보',
+    yoloDiscoverDesc: '무료 체험 서비스',
     yoloHomeDesc: '주택 정보 서비스',
   },
   zh: {
@@ -136,7 +136,7 @@ const TEXTS = {
     yoloDiscover: 'YOLO DISCOVER',
     yoloHome: 'YOLO HOME',
     yoloJapanDesc: '求职网站',
-    yoloDiscoverDesc: '生活/活动信息',
+    yoloDiscoverDesc: '免费体验服务',
     yoloHomeDesc: '住房服务',
   },
   vi: {
@@ -149,7 +149,7 @@ const TEXTS = {
     yoloDiscover: 'YOLO DISCOVER',
     yoloHome: 'YOLO HOME',
     yoloJapanDesc: 'Trang tuyển dụng',
-    yoloDiscoverDesc: 'Thông tin sự kiện',
+    yoloDiscoverDesc: 'Dịch vụ trải nghiệm miễn phí',
     yoloHomeDesc: 'Dịch vụ nhà ở',
   },
 };
