@@ -33,6 +33,15 @@ export type SupportStep =
   | 'complete';        // 完了
 
 /**
+ * 確認待ちの状態（イエスドリ用）
+ */
+export interface PendingConfirmation {
+  type: string;           // 確認の種類 (e.g., 'withdraw', 'cancel', 'change_email')
+  question: string;       // ユーザーに表示した確認質問
+  faqAnswer?: string;     // 「はい」の場合に返すFAQの回答
+}
+
+/**
  * サポートモードの状態
  */
 export interface SupportModeState {
@@ -44,6 +53,7 @@ export interface SupportModeState {
     role: 'user' | 'assistant';
     content: string;
   }>;
+  pendingConfirmation?: PendingConfirmation;
 }
 
 /**

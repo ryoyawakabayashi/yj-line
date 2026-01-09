@@ -22,6 +22,8 @@ import {
   generateSummaryPrompt,
   getSupportMessage,
   sanitizeAiResponse,
+  detectConfirmationPattern,
+  getQuickReplyOptions,
 } from '../support/faq';
 import { ConversationState } from '@/types/conversation';
 import {
@@ -31,7 +33,6 @@ import {
 } from '@/types/support';
 import OpenAI from 'openai';
 import { config } from '../config';
-import { processUrlsInText } from '../tracking/url-processor';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -120,6 +121,71 @@ export async function handleSupportPostback(
 }
 
 /**
+ * クイックリプライ付きメッセージを作成
+ */
+function createQuickReplyMessage(text: string, lang: string) {
+  const options = getQuickReplyOptions(lang);
+  return {
+    type: 'text' as const,
+    text,
+    quickReply: {
+      items: [
+        {
+          type: 'action' as const,
+          action: {
+            type: 'message' as const,
+            label: options.yes,
+            text: options.yes,
+          },
+        },
+        {
+          type: 'action' as const,
+          action: {
+            type: 'message' as const,
+            label: options.no,
+            text: options.no,
+          },
+        },
+        {
+          type: 'action' as const,
+          action: {
+            type: 'message' as const,
+            label: options.other,
+            text: options.other,
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * 肯定的な返答かどうかを判定
+ */
+function isAffirmativeResponse(message: string, lang: string): boolean {
+  const options = getQuickReplyOptions(lang);
+  const affirmatives = [
+    options.yes,
+    'はい', 'yes', 'うん', 'そう', 'そうです', 'お願い', 'お願いします',
+    '예', '네', '是', '对', 'Có', 'Vâng',
+  ];
+  return affirmatives.some((a) => message.toLowerCase() === a.toLowerCase());
+}
+
+/**
+ * 否定的な返答かどうかを判定
+ */
+function isNegativeResponse(message: string, lang: string): boolean {
+  const options = getQuickReplyOptions(lang);
+  const negatives = [
+    options.no, options.other,
+    'いいえ', 'no', 'ちがう', '違う', '違います', 'いや',
+    '아니오', '아니', '否', '不是', 'Không',
+  ];
+  return negatives.some((n) => message.toLowerCase() === n.toLowerCase());
+}
+
+/**
  * サポートモード中のメッセージ処理
  */
 export async function handleSupportMessage(
@@ -149,6 +215,101 @@ export async function handleSupportMessage(
 
   // 会話履歴を更新
   const conversationHistory = supportState.conversationHistory || [];
+
+  // === 確認待ち状態のチェック ===
+  if (supportState.pendingConfirmation) {
+    const pending = supportState.pendingConfirmation;
+
+    if (isAffirmativeResponse(userMessage, lang)) {
+      // 「はい」の場合 → FAQ回答を返す
+      conversationHistory.push({ role: 'user', content: userMessage });
+
+      const response = pending.faqAnswer || getSupportMessage('escalate', lang);
+
+      // サポートモードではトラッキングURL変換をスキップ（元URLをそのまま表示）
+
+      conversationHistory.push({ role: 'assistant', content: response });
+
+      // 確認待ち状態をクリア
+      supportState.pendingConfirmation = undefined;
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: response,
+      });
+
+      // 3往復したらチケット作成
+      const userMessages = conversationHistory.filter((m) => m.role === 'user');
+      if (userMessages.length >= 3) {
+        await completeSupport(userId, supportState, lang);
+      }
+
+      return true;
+    } else if (isNegativeResponse(userMessage, lang)) {
+      // 「いいえ」の場合 → 確認待ちをクリアして再度質問を促す
+      conversationHistory.push({ role: 'user', content: userMessage });
+
+      const followUpMessages: Record<string, string> = {
+        ja: 'かしこまりました。他にどのようなことでお困りですか？',
+        en: 'I understand. What else can I help you with?',
+        ko: '알겠습니다. 다른 어떤 도움이 필요하신가요?',
+        zh: '好的，请问还有其他问题吗？',
+        vi: 'Tôi hiểu. Bạn cần giúp đỡ gì khác?',
+      };
+
+      const response = followUpMessages[lang] || followUpMessages.ja;
+      conversationHistory.push({ role: 'assistant', content: response });
+
+      // 確認待ち状態をクリア
+      supportState.pendingConfirmation = undefined;
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: response,
+      });
+
+      return true;
+    }
+    // それ以外の返答は新しい質問として処理を続行
+    supportState.pendingConfirmation = undefined;
+  }
+
+  // === 確認パターンの検出（イエスドリ） ===
+  const confirmationResult = detectConfirmationPattern(
+    userMessage,
+    supportState.service,
+    lang
+  );
+
+  if (confirmationResult && confirmationResult.faqAnswer) {
+    // 確認パターンにマッチ → クイックリプライ付きで確認質問を送信
+    conversationHistory.push({ role: 'user', content: userMessage });
+    conversationHistory.push({ role: 'assistant', content: confirmationResult.question });
+
+    // 確認待ち状態を保存
+    supportState.pendingConfirmation = {
+      type: confirmationResult.pattern.type,
+      question: confirmationResult.question,
+      faqAnswer: confirmationResult.faqAnswer,
+    };
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    // クイックリプライ付きで確認質問を送信
+    const quickReplyMessage = createQuickReplyMessage(confirmationResult.question, lang);
+    await replyMessage(replyToken, quickReplyMessage);
+
+    return true;
+  }
+
+  // === 通常のAI応答処理 ===
   conversationHistory.push({ role: 'user', content: userMessage });
 
   // 既知の問題を検索
@@ -185,8 +346,7 @@ export async function handleSupportMessage(
     // AI応答から不正なURL（FAQに存在しないURL）を除去
     aiResponse = sanitizeAiResponse(aiResponse);
 
-    // AI応答内のURLをトラッキングURL化
-    aiResponse = await processUrlsInText(aiResponse, userId, 'support');
+    // サポートモードではトラッキングURL変換をスキップ（元URLをそのまま表示）
 
     conversationHistory.push({ role: 'assistant', content: aiResponse });
 
@@ -224,7 +384,7 @@ export async function handleSupportMessage(
 async function completeSupport(
   userId: string,
   supportState: SupportModeState,
-  lang: string
+  _lang: string
 ): Promise<void> {
   const conversationHistory = supportState.conversationHistory || [];
 

@@ -52,7 +52,7 @@ export const SERVICE_FAQ: Record<ServiceType, string[]> = {
   ],
   YOLO_JAPAN: [
     // === アカウント・プロフィール ===
-    `Q: 求人に応募するには？\nA: まずYOLO JAPANに会員登録をお願いします。登録は https://www.yolo-japan.com/ja/recruit/regist/input${UTM} からできます。`,
+    `Q: 求人に応募するには？\nA: 【登録済みの方】\nマイページ https://www.yolo-japan.com/ja/recruit/mypage/${UTM} にログインし、気になる求人の「応募する」ボタンから応募できます。\n\n【まだ登録していない方】\nまずYOLO JAPANに会員登録をお願いします。登録は https://www.yolo-japan.com/ja/recruit/regist/input${UTM} からできます。`,
     `Q: 海外から応募できますか？\nA: 海外から応募することはできません。\n\na. 日本に住んでいて、仕事ができる在留カードがあっている人\nb. 日本永住者の人、永住ビザを持つ人。\nc. 日本国籍の人\n\nだけ応募できます。\n\nYOLO JAPANの仕事は、誰でも見ることができます。日本に来るときのために、登録してみてください！`,
     `Q: パスワードを忘れました\nA: https://www.yolo-japan.com/ja/recruit/login${UTM} から「パスワードを忘れた」をクリックしてリセットできます。`,
     `Q: 在留カードの更新サポートはありますか？\nA: 恐れ入りますが、現在在留カードの更新や支援は行っておりません。在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html に相談してください。`,
@@ -344,4 +344,285 @@ export function getSupportMessage(
 ): string {
   const messages = SUPPORT_MESSAGES[lang as keyof typeof SUPPORT_MESSAGES] || SUPPORT_MESSAGES.ja;
   return messages[key];
+}
+
+// =====================================================
+// イエスドリ（確認パターン）定義
+// =====================================================
+
+/**
+ * 確認パターンの定義
+ */
+export interface ConfirmationPattern {
+  type: string;                     // 確認の種類（一意識別子）
+  keywords: string[];               // トリガーとなるキーワード
+  questions: Record<string, string>; // 言語別の確認質問
+  faqKey?: string;                  // 対応するFAQのキーワード（検索用）
+  service?: 'YOLO_JAPAN' | 'YOLO_DISCOVER' | 'YOLO_HOME' | 'all';
+}
+
+/**
+ * 確認パターン一覧
+ * ユーザーの曖昧な入力 → 確認質問 → FAQ回答
+ */
+export const CONFIRMATION_PATTERNS: ConfirmationPattern[] = [
+  // === YOLO JAPAN 関連 ===
+  {
+    type: 'withdraw',
+    keywords: ['退会', '解約', 'アカウント削除', 'やめたい', '辞めたい', 'アカウントを消', 'delete account', 'cancel account', 'unsubscribe'],
+    questions: {
+      ja: 'YOLO JAPANのアカウントを退会（削除）したいということでよろしいでしょうか？',
+      en: 'Would you like to delete your YOLO JAPAN account?',
+      ko: 'YOLO JAPAN 계정을 탈퇴(삭제)하시겠습니까?',
+      zh: '您是要删除YOLO JAPAN账户吗？',
+      vi: 'Bạn muốn xóa tài khoản YOLO JAPAN của mình?',
+    },
+    faqKey: '退会したい',
+    service: 'YOLO_JAPAN',
+  },
+  {
+    type: 'change_email',
+    keywords: ['メールアドレス変更', 'メアド変更', 'email変更', 'change email', 'メール変えたい'],
+    questions: {
+      ja: 'YOLO JAPANに登録しているメールアドレスを変更したいということでよろしいでしょうか？',
+      en: 'Would you like to change your registered email address?',
+      ko: '등록된 이메일 주소를 변경하시겠습니까?',
+      zh: '您想更改注册的电子邮件地址吗？',
+      vi: 'Bạn muốn thay đổi địa chỉ email đã đăng ký?',
+    },
+    faqKey: 'メールアドレスを変更したい',
+    service: 'YOLO_JAPAN',
+  },
+  {
+    type: 'stop_mail',
+    keywords: ['メルマガ停止', 'メール停止', 'メールを止めたい', 'メール来ないで', 'stop email', 'unsubscribe mail'],
+    questions: {
+      ja: 'YOLO JAPANからのメールマガジン配信を停止したいということでよろしいでしょうか？',
+      en: 'Would you like to stop receiving email newsletters from YOLO JAPAN?',
+      ko: 'YOLO JAPAN의 이메일 뉴스레터 수신을 중지하시겠습니까?',
+      zh: '您想停止接收YOLO JAPAN的电子邮件通讯吗？',
+      vi: 'Bạn muốn ngừng nhận bản tin email từ YOLO JAPAN?',
+    },
+    faqKey: 'メルマガを停止したい',
+    service: 'YOLO_JAPAN',
+  },
+  {
+    type: 'forgot_password',
+    keywords: ['パスワード忘れ', 'パスワードわからない', 'ログインできない', 'forgot password', 'cant login'],
+    questions: {
+      ja: 'YOLO JAPANのパスワードをリセットしたいということでよろしいでしょうか？',
+      en: 'Would you like to reset your YOLO JAPAN password?',
+      ko: 'YOLO JAPAN 비밀번호를 재설정하시겠습니까?',
+      zh: '您想重置YOLO JAPAN密码吗？',
+      vi: 'Bạn muốn đặt lại mật khẩu YOLO JAPAN?',
+    },
+    faqKey: 'パスワードを忘れました',
+    service: 'YOLO_JAPAN',
+  },
+  {
+    type: 'cancel_interview',
+    keywords: ['面接キャンセル', '面接をやめたい', '面接辞退', 'cancel interview'],
+    questions: {
+      ja: '予定している面接をキャンセルしたいということでよろしいでしょうか？',
+      en: 'Would you like to cancel your scheduled interview?',
+      ko: '예정된 면접을 취소하시겠습니까?',
+      zh: '您想取消预定的面试吗？',
+      vi: 'Bạn muốn hủy buổi phỏng vấn đã lên lịch?',
+    },
+    faqKey: '面接をキャンセルしたい',
+    service: 'YOLO_JAPAN',
+  },
+  {
+    type: 'auto_cancel_reason',
+    keywords: ['勝手にキャンセル', '自動キャンセル', '勝手に辞退', 'キャンセルされた'],
+    questions: {
+      ja: '応募が自動的にキャンセル（辞退）になった件についてお困りでしょうか？',
+      en: 'Are you having trouble with your application being automatically cancelled?',
+      ko: '지원이 자동으로 취소된 건에 대해 문의하시나요?',
+      zh: '您是否对申请被自动取消感到困扰？',
+      vi: 'Bạn đang gặp vấn đề với đơn ứng tuyển bị tự động hủy?',
+    },
+    faqKey: '勝手に辞退になった',
+    service: 'YOLO_JAPAN',
+  },
+
+  // === YOLO DISCOVER 関連 ===
+  {
+    type: 'cancel_project',
+    keywords: ['キャンセルしたい', 'プロジェクトキャンセル', '予約キャンセル', '参加やめたい'],
+    questions: {
+      ja: 'YOLO DISCOVERのプロジェクト（予約）をキャンセルしたいということでよろしいでしょうか？',
+      en: 'Would you like to cancel your YOLO DISCOVER project reservation?',
+      ko: 'YOLO DISCOVER 프로젝트 예약을 취소하시겠습니까?',
+      zh: '您想取消YOLO DISCOVER项目预约吗？',
+      vi: 'Bạn muốn hủy đặt chỗ dự án YOLO DISCOVER?',
+    },
+    faqKey: 'キャンセルしたい',
+    service: 'YOLO_DISCOVER',
+  },
+  {
+    type: 'change_date',
+    keywords: ['日程変更', '体験日変更', '日付変更', 'change date', 'reschedule'],
+    questions: {
+      ja: 'YOLO DISCOVERの体験日を変更したいということでよろしいでしょうか？',
+      en: 'Would you like to change your YOLO DISCOVER experience date?',
+      ko: 'YOLO DISCOVER 체험일을 변경하시겠습니까?',
+      zh: '您想更改YOLO DISCOVER体验日期吗？',
+      vi: 'Bạn muốn thay đổi ngày trải nghiệm YOLO DISCOVER?',
+    },
+    faqKey: '体験日の変更',
+    service: 'YOLO_DISCOVER',
+  },
+  {
+    type: 'complete_report',
+    keywords: ['完了報告', '完了レポート', '報告方法', 'completion report', 'how to report'],
+    questions: {
+      ja: 'プロジェクトの完了報告の方法についてお知りになりたいですか？',
+      en: 'Would you like to know how to submit a completion report?',
+      ko: '완료 보고서 제출 방법을 알고 싶으신가요?',
+      zh: '您想了解如何提交完成报告吗？',
+      vi: 'Bạn muốn biết cách nộp báo cáo hoàn thành?',
+    },
+    faqKey: '完了報告はどうする',
+    service: 'YOLO_DISCOVER',
+  },
+  {
+    type: 'contact_manager',
+    keywords: ['担当者に連絡', 'マネージャーに連絡', 'メッセージ送りたい', 'contact manager'],
+    questions: {
+      ja: 'プロジェクト担当者への連絡方法についてお知りになりたいですか？',
+      en: 'Would you like to know how to contact the project manager?',
+      ko: '프로젝트 담당자에게 연락하는 방법을 알고 싶으신가요?',
+      zh: '您想了解如何联系项目负责人吗？',
+      vi: 'Bạn muốn biết cách liên hệ với người quản lý dự án?',
+    },
+    faqKey: 'プロジェクトの問い合わせ',
+    service: 'YOLO_DISCOVER',
+  },
+
+  // === 汎用パターン ===
+  {
+    type: 'error_occurred',
+    keywords: ['エラー', 'エラーが出る', 'error', 'バグ', '動かない', 'うまくいかない', '表示されない'],
+    questions: {
+      ja: 'エラーや不具合が発生していますか？どのような操作をした時に問題が起きましたか？',
+      en: 'Are you experiencing an error? What were you trying to do when the problem occurred?',
+      ko: '오류가 발생했나요? 문제가 발생했을 때 어떤 작업을 하고 있었나요?',
+      zh: '您遇到错误了吗？问题发生时您正在做什么操作？',
+      vi: 'Bạn đang gặp lỗi? Bạn đang làm gì khi vấn đề xảy ra?',
+    },
+    faqKey: 'エラーが発生した',
+    service: 'all',
+  },
+  {
+    type: 'not_receiving',
+    keywords: ['届かない', '来ない', 'メールが来ない', '通知が来ない', 'not receiving', '受け取れない'],
+    questions: {
+      ja: '何が届かないのか教えていただけますか？（メール / 通知 / スカウト / その他）',
+      en: 'What is not being received? (Email / Notifications / Scout messages / Other)',
+      ko: '무엇이 수신되지 않나요? (이메일 / 알림 / 스카우트 / 기타)',
+      zh: '什么没有收到？（电子邮件 / 通知 / 猎头消息 / 其他）',
+      vi: 'Cái gì không nhận được? (Email / Thông báo / Tin nhắn tuyển dụng / Khác)',
+    },
+    service: 'all',
+  },
+  {
+    type: 'want_to_change',
+    keywords: ['変更したい', '変えたい', 'change', '修正したい', 'edit'],
+    questions: {
+      ja: '何を変更されたいですか？（メールアドレス / パスワード / プロフィール / その他）',
+      en: 'What would you like to change? (Email / Password / Profile / Other)',
+      ko: '무엇을 변경하시겠습니까? (이메일 / 비밀번호 / 프로필 / 기타)',
+      zh: '您想更改什么？（电子邮件 / 密码 / 个人资料 / 其他）',
+      vi: 'Bạn muốn thay đổi gì? (Email / Mật khẩu / Hồ sơ / Khác)',
+    },
+    service: 'all',
+  },
+];
+
+/**
+ * ユーザーの入力から確認パターンを検出
+ * @param userMessage ユーザーのメッセージ
+ * @param service 選択されているサービス
+ * @param lang 言語
+ * @returns マッチしたパターンと確認質問、または null
+ */
+export function detectConfirmationPattern(
+  userMessage: string,
+  service: 'YOLO_JAPAN' | 'YOLO_DISCOVER' | 'YOLO_HOME' | undefined,
+  lang: string
+): { pattern: ConfirmationPattern; question: string; faqAnswer?: string } | null {
+  const lowerMessage = userMessage.toLowerCase();
+
+  for (const pattern of CONFIRMATION_PATTERNS) {
+    // サービスフィルタ
+    if (pattern.service !== 'all' && pattern.service !== service) {
+      continue;
+    }
+
+    // キーワードマッチ
+    const matched = pattern.keywords.some((keyword) =>
+      lowerMessage.includes(keyword.toLowerCase())
+    );
+
+    if (matched) {
+      const question = pattern.questions[lang] || pattern.questions['ja'];
+
+      // FAQ回答を検索
+      let faqAnswer: string | undefined;
+      if (pattern.faqKey && service) {
+        const faqs = SERVICE_FAQ[service] || [];
+        const matchedFaq = faqs.find((faq) =>
+          faq.toLowerCase().includes(pattern.faqKey!.toLowerCase())
+        );
+        if (matchedFaq) {
+          // Q: を除いた回答部分を抽出
+          const answerMatch = matchedFaq.match(/A:\s*([\s\S]+)/);
+          faqAnswer = answerMatch ? answerMatch[1].trim() : matchedFaq;
+        }
+      }
+
+      return { pattern, question, faqAnswer };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * クイックリプライ用の選択肢（言語別）
+ */
+export const QUICK_REPLY_OPTIONS = {
+  ja: {
+    yes: 'はい',
+    no: 'いいえ',
+    other: '他の質問がある',
+  },
+  en: {
+    yes: 'Yes',
+    no: 'No',
+    other: 'I have another question',
+  },
+  ko: {
+    yes: '예',
+    no: '아니오',
+    other: '다른 질문이 있어요',
+  },
+  zh: {
+    yes: '是',
+    no: '否',
+    other: '有其他问题',
+  },
+  vi: {
+    yes: 'Có',
+    no: 'Không',
+    other: 'Tôi có câu hỏi khác',
+  },
+};
+
+/**
+ * 言語に応じたクイックリプライ選択肢を取得
+ */
+export function getQuickReplyOptions(lang: string): { yes: string; no: string; other: string } {
+  return QUICK_REPLY_OPTIONS[lang as keyof typeof QUICK_REPLY_OPTIONS] || QUICK_REPLY_OPTIONS.ja;
 }

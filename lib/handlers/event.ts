@@ -75,13 +75,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
       // サポートモード発動トリガー
       const supportTriggers = [
-        'SUPPORT',
-        '問い合わせ',
-        'お問い合わせ',
-        'サポート',
-        'ヘルプ',
-        'help',
-        'support',
+        'SEOさん',
       ];
 
       if (supportTriggers.some(t => messageText.toLowerCase() === t.toLowerCase())) {
