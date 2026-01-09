@@ -1,5 +1,5 @@
 import { LineEvent } from '@/types/line';
-import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent } from '../database/queries';
+import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile } from '../database/queries';
 import { replyMessage, linkRichMenu } from '../line/client';
 import { config } from '../config';
 import { CONSTANTS } from '../constants';
@@ -73,6 +73,30 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         return;
       }
 
+      // サポートモード発動トリガー
+      const supportTriggers = [
+        'SUPPORT',
+        '問い合わせ',
+        'お問い合わせ',
+        'サポート',
+        'ヘルプ',
+        'help',
+        'support',
+      ];
+
+      if (supportTriggers.some(t => messageText.toLowerCase() === t.toLowerCase())) {
+        console.log('📞 サポートモード発動:', messageText);
+
+        // 診断モード中ならリセット
+        if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
+          console.log('🔄 診断モード中 → サポートモード → 診断リセット');
+          await clearConversationState(userId);
+        }
+
+        await handleSupportButton(userId, event.replyToken);
+        return;
+      }
+
       // リッチメニューボタンの処理
       const richMenuButtons = [
         'AI_MODE',
@@ -82,7 +106,6 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         'CONTACT',
         'LANG_CHANGE',
         'YOLO_DISCOVER',
-        'SUPPORT', // カスタマーサポート
       ];
 
       if (richMenuButtons.includes(messageText)) {
@@ -103,12 +126,6 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         // LANG_CHANGE: 言語選択画面表示
         if (messageText === 'LANG_CHANGE') {
           await handleChangeLanguage(event.replyToken);
-          return;
-        }
-
-        // SUPPORT: カスタマーサポート
-        if (messageText === 'SUPPORT') {
-          await handleSupportButton(userId, event.replyToken);
           return;
         }
 
@@ -174,6 +191,11 @@ async function handleLanguageSelection(
   try {
     await saveUserLang(userId, selectedLang);
     console.log('✅ 言語保存成功:', selectedLang);
+
+    // LINEプロフィールを取得して保存（非同期でバックグラウンド実行）
+    fetchAndSaveUserProfile(userId).catch(err =>
+      console.error('⚠️ プロフィール取得失敗:', err)
+    );
 
     const richMenuMap: Record<string, string> = {
       ja: config.richMenu.ja,

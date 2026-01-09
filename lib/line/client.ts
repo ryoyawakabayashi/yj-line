@@ -327,6 +327,44 @@ async function getFollowersAddedFromDB(startDate: string, endDate: string): Prom
   }
 }
 
+// LINE ユーザープロフィール取得
+export interface LineUserProfile {
+  userId: string;
+  displayName: string;
+  pictureUrl?: string;
+  statusMessage?: string;
+  language?: string;
+}
+
+export async function getUserProfile(userId: string): Promise<LineUserProfile | null> {
+  try {
+    const response = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${config.line.channelAccessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ LINE Profile Error: ${response.status} ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      userId: data.userId,
+      displayName: data.displayName,
+      pictureUrl: data.pictureUrl,
+      statusMessage: data.statusMessage,
+      language: data.language,
+    };
+  } catch (error) {
+    console.error('❌ getUserProfile エラー:', error);
+    return null;
+  }
+}
+
 // メッセージ統計から友達追加イベント数を取得
 export async function getFriendAddedCount(date?: string): Promise<number> {
   try {

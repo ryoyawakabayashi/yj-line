@@ -611,6 +611,8 @@ export interface ConversationMessage {
 export interface UserConversationDetail {
   userId: string;
   lang: string;
+  displayName: string | null;
+  pictureUrl: string | null;
   history: ConversationMessage[];
   diagnosisResults: DiagnosisResult[];
 }
@@ -629,16 +631,20 @@ export interface DiagnosisResult {
 export async function getUserConversationDetail(userId: string): Promise<UserConversationDetail | null> {
   try {
     // 会話履歴を取得
-    const { data: historyData } = await supabase
+    const { data: historyData, error: historyError } = await supabase
       .from('ai_conversation_history')
-      .select('history, updated_at')
+      .select('history')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    // ユーザー情報を取得
+    if (historyError) {
+      console.error('❌ ai_conversation_history取得エラー:', historyError);
+    }
+
+    // ユーザー情報を取得（プロフィール含む）
     const { data: userData } = await supabase
       .from('user_status')
-      .select('lang')
+      .select('lang, display_name, picture_url')
       .eq('user_id', userId)
       .single();
 
@@ -690,6 +696,8 @@ export async function getUserConversationDetail(userId: string): Promise<UserCon
     return {
       userId,
       lang: userData?.lang || 'unknown',
+      displayName: userData?.display_name || null,
+      pictureUrl: userData?.picture_url || null,
       history,
       diagnosisResults,
     };

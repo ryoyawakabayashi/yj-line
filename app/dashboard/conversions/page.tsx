@@ -6,10 +6,12 @@ import {
   CursorArrowRaysIcon,
   CheckCircleIcon,
   ArrowDownTrayIcon,
+  HandRaisedIcon,
 } from '@heroicons/react/24/outline';
 
 interface ConversionStats {
   uniqueIssuedUsers: number;
+  uniqueClickedUsers: number;
   totalTokens: number;
   totalClicks: number;
   totalConversions: number;
@@ -17,6 +19,17 @@ interface ConversionStats {
   clickRate: number;
   conversionRate: number;
 }
+
+type PeriodType = 'today' | 'yesterday' | 'week' | '2weeks' | 'month' | 'all';
+
+const PERIOD_OPTIONS: { value: PeriodType; label: string }[] = [
+  { value: 'today', label: '今日' },
+  { value: 'yesterday', label: '昨日' },
+  { value: 'week', label: '1週間' },
+  { value: '2weeks', label: '2週間' },
+  { value: 'month', label: '月間' },
+  { value: 'all', label: '全期間' },
+];
 
 interface ConvertedUser {
   userId: string;
@@ -42,14 +55,16 @@ export default function ConversionsPage() {
   const [details, setDetails] = useState<TrackingDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'users' | 'details'>('users');
+  const [period, setPeriod] = useState<PeriodType>('all');
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(period);
+  }, [period]);
 
-  const fetchData = async () => {
+  const fetchData = async (selectedPeriod: PeriodType) => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/conversions');
+      const res = await fetch(`/api/conversions?period=${selectedPeriod}`);
       const data = await res.json();
       setStats(data.stats);
       setUsers(data.users || []);
@@ -91,29 +106,54 @@ export default function ConversionsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">応募者追跡</h1>
           <p className="text-sm text-slate-500 mt-1">
             LINE Bot経由でサイト遷移→応募完了したユーザー
           </p>
         </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          <ArrowDownTrayIcon className="h-5 w-5" />
-          CSVエクスポート
-        </button>
+        <div className="flex items-center gap-3">
+          {/* 期間フィルター */}
+          <div className="flex bg-slate-100 rounded-lg p-1">
+            {PERIOD_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setPeriod(option.value)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition ${
+                  period === option.value
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            CSVエクスポート
+          </button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Stats Cards - ファネル表示 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
           title="発行者数"
           value={stats?.uniqueIssuedUsers || 0}
           icon={CursorArrowRaysIcon}
           color="blue"
+        />
+        <StatCard
+          title="クリック者数"
+          value={stats?.uniqueClickedUsers || 0}
+          subValue={`${stats?.clickRate || 0}%`}
+          icon={HandRaisedIcon}
+          color="orange"
         />
         <StatCard
           title="応募者数"

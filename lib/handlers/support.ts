@@ -15,17 +15,16 @@ import {
 } from '../database/support-queries';
 import {
   createSupportMenuFlex,
-  createServiceSelectFlex,
   createSupportCompleteFlex,
 } from '../flex/support-menu';
 import {
   generateSupportSystemPrompt,
   generateSummaryPrompt,
   getSupportMessage,
+  sanitizeAiResponse,
 } from '../support/faq';
 import { ConversationState } from '@/types/conversation';
 import {
-  TicketType,
   ServiceType,
   SupportModeState,
   SupportStep,
@@ -99,39 +98,13 @@ export async function handleSupportPostback(
     conversationHistory: [],
   };
 
-  const ticketType = params.get('type') as TicketType | null;
   const step = params.get('step');
   const service = params.get('service') as ServiceType | null;
 
-  // チケットタイプ選択（ご意見 or 不具合報告）
-  if (ticketType) {
-    supportState.ticketType = ticketType;
-
-    if (ticketType === 'bug') {
-      // 不具合報告の場合はサービス選択へ
-      supportState.step = 'select_service';
-      currentState.supportState = supportState;
-      await saveConversationState(userId, currentState);
-
-      const serviceSelectFlex = createServiceSelectFlex(lang);
-      await replyMessage(replyToken, serviceSelectFlex);
-    } else {
-      // ご意見の場合は詳細入力へ
-      supportState.step = 'describe_issue';
-      currentState.supportState = supportState;
-      await saveConversationState(userId, currentState);
-
-      await replyMessage(replyToken, {
-        type: 'text',
-        text: getSupportMessage('describeIssue', lang),
-      });
-    }
-    return true;
-  }
-
-  // サービス選択
+  // サービス選択（YOLO JAPAN / YOLO DISCOVER / YOLO HOME）
   if (step === 'service' && service) {
     supportState.service = service;
+    supportState.ticketType = 'feedback'; // お問い合わせとして処理
     supportState.step = 'describe_issue';
     currentState.supportState = supportState;
     await saveConversationState(userId, currentState);
@@ -208,6 +181,9 @@ export async function handleSupportMessage(
     let aiResponse =
       completion.choices[0]?.message?.content ||
       getSupportMessage('escalate', lang);
+
+    // AI応答から不正なURL（FAQに存在しないURL）を除去
+    aiResponse = sanitizeAiResponse(aiResponse);
 
     // AI応答内のURLをトラッキングURL化
     aiResponse = await processUrlsInText(aiResponse, userId, 'support');

@@ -155,9 +155,15 @@ export async function saveAnswerToSheet(
   }
 }
 
+export interface ConversationMessage {
+  role: string;
+  content: string;
+  timestamp?: string;
+}
+
 export async function getConversationHistory(
   userId: string
-): Promise<Array<{ role: string; content: string }>> {
+): Promise<ConversationMessage[]> {
   const { data, error } = await supabase
     .from('ai_conversation_history')
     .select('history')
@@ -168,19 +174,23 @@ export async function getConversationHistory(
     return [];
   }
 
-  return (data as { history: Array<{ role: string; content: string }> }).history || [];
+  return (data as { history: ConversationMessage[] }).history || [];
 }
 
 export async function saveConversationHistory(
   userId: string,
-  history: Array<{ role: string; content: string }>
+  history: ConversationMessage[]
 ): Promise<void> {
   const { error } = await supabase
     .from('ai_conversation_history')
-    .upsert({
-      user_id: userId,
-      history: history as any,
-    });
+    .upsert(
+      {
+        user_id: userId,
+        history: history as any,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id' }
+    );
 
   if (error) {
     console.error('❌ saveConversationHistory エラー:', error);
@@ -228,6 +238,37 @@ export async function recordFollowEvent(
     console.error('❌ recordFollowEvent エラー:', error);
   } else {
     console.log(`✅ ${eventType}イベントを記録: ${userId}`);
+  }
+}
+
+// LINEプロフィール情報を保存・更新
+export async function saveUserProfile(
+  userId: string,
+  displayName: string,
+  pictureUrl?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_status')
+    .update({
+      display_name: displayName,
+      picture_url: pictureUrl || null,
+    })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('❌ saveUserProfile エラー:', error);
+  } else {
+    console.log('✅ プロフィール保存完了:', displayName);
+  }
+}
+
+// LINEプロフィールを取得して保存（既存ユーザー用）
+export async function fetchAndSaveUserProfile(userId: string): Promise<void> {
+  const { getUserProfile } = await import('@/lib/line/client');
+  const profile = await getUserProfile(userId);
+
+  if (profile) {
+    await saveUserProfile(userId, profile.displayName, profile.pictureUrl);
   }
 }
 

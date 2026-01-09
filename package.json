@@ -11,7 +11,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:ai": "npx ts-node --project tsconfig.test.json __tests__/evaluation/ai-evaluator.ts"
+    "test:eval": "vitest run __tests__/evaluation/ai-response.test.ts"
   },
   "dependencies": {
     "@google-analytics/data": "^5.2.1",

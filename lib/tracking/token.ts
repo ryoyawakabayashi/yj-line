@@ -44,7 +44,8 @@ function generateUserToken(userId: string): string {
 
 /**
  * トラッキングトークン付きURLを生成
- * ユーザーごとに固定のトークンを付与（経由元はutm_campaignで識別）
+ * リダイレクト方式: /api/r/[token] → destination_url
+ * これによりクリック計測が可能
  */
 export async function generateTrackingUrl(
   userId: string,
@@ -57,7 +58,7 @@ export async function generateTrackingUrl(
   // 既存のトークンを確認
   const { data: existing, error: selectError } = await supabase
     .from('tracking_tokens')
-    .select('id')
+    .select('id, destination_url')
     .eq('token', token)
     .maybeSingle();
 
@@ -81,16 +82,19 @@ export async function generateTrackingUrl(
     } else {
       console.log('✅ tracking_tokens INSERT success:', { token, userId, urlType });
     }
+  } else if (existing.destination_url !== baseUrl) {
+    // 既存トークンだがURLが違う場合は更新
+    await supabase
+      .from('tracking_tokens')
+      .update({ destination_url: baseUrl, url_type: urlType })
+      .eq('token', token);
   }
 
-  // URLにパラメータ追加
-  const url = new URL(baseUrl);
-  url.searchParams.set('ref', token);
-  url.searchParams.set('utm_source', 'line');
-  url.searchParams.set('utm_medium', 'bot');
-  url.searchParams.set('utm_campaign', urlType);
+  // リダイレクトURL生成（クリック計測用）
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://your-app.vercel.app';
+  const redirectUrl = `${appUrl.startsWith('http') ? appUrl : `https://${appUrl}`}/api/r/${token}`;
 
-  return url.toString();
+  return redirectUrl;
 }
 
 /**

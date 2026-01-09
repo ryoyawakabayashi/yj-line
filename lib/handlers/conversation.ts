@@ -76,14 +76,16 @@ async function handleAIChatMessage(
   await showLoadingAnimation(userId, 5);
 
   const conversationHistory = await getConversationHistory(userId);
-  conversationHistory.push({ role: 'user', content: userMessage });
+  const now = new Date().toISOString();
+
+  conversationHistory.push({ role: 'user', content: userMessage, timestamp: now });
 
   let aiText = await callOpenAIWithHistory(lang, conversationHistory);
 
   // AI応答内のURLをトラッキングURL化
   aiText = await processUrlsInText(aiText, userId, 'autochat');
 
-  conversationHistory.push({ role: 'assistant', content: aiText });
+  conversationHistory.push({ role: 'assistant', content: aiText, timestamp: new Date().toISOString() });
   await saveConversationHistory(userId, conversationHistory);
 
   await replyMessage(replyToken, {

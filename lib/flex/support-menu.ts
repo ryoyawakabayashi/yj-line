@@ -80,94 +80,77 @@ interface FlexSeparator {
 
 type FlexComponent = FlexBox | FlexButton | FlexText | FlexImage | FlexSeparator;
 
+// 不具合報告用Google Form URL
+const BUG_REPORT_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform';
+
 /**
  * 多言語対応のテキスト
  */
 const TEXTS = {
   ja: {
     title: 'お問い合わせ',
-    description: 'ご用件を選択してください',
-    feedback: 'ご意見・ご要望',
+    description: 'どのサービスについてですか？',
     bug: '不具合報告',
-    feedbackDesc: 'サービスへのご意見やご要望',
     bugDesc: 'エラーや問題のご報告',
     altText: 'お問い合わせメニュー',
-    serviceTitle: 'サービス選択',
-    serviceDesc: 'どのサービスについてですか？',
-    yoloHome: 'YOLO HOME',
-    yoloDiscover: 'YOLO DISCOVER',
     yoloJapan: 'YOLO JAPAN',
-    yoloHomeDesc: '住宅情報サービス',
-    yoloDiscoverDesc: '生活・イベント情報',
+    yoloDiscover: 'YOLO DISCOVER',
+    yoloHome: 'YOLO HOME',
     yoloJapanDesc: '求人サイト',
+    yoloDiscoverDesc: '生活・イベント情報',
+    yoloHomeDesc: '住宅情報サービス',
   },
   en: {
     title: 'Contact Us',
-    description: 'Please select your inquiry type',
-    feedback: 'Feedback',
+    description: 'Which service is this about?',
     bug: 'Bug Report',
-    feedbackDesc: 'Your opinions and suggestions',
     bugDesc: 'Report errors or issues',
     altText: 'Contact Menu',
-    serviceTitle: 'Select Service',
-    serviceDesc: 'Which service is this about?',
-    yoloHome: 'YOLO HOME',
-    yoloDiscover: 'YOLO DISCOVER',
     yoloJapan: 'YOLO JAPAN',
-    yoloHomeDesc: 'Housing Service',
-    yoloDiscoverDesc: 'Lifestyle & Events',
+    yoloDiscover: 'YOLO DISCOVER',
+    yoloHome: 'YOLO HOME',
     yoloJapanDesc: 'Job Site',
+    yoloDiscoverDesc: 'Lifestyle & Events',
+    yoloHomeDesc: 'Housing Service',
   },
   ko: {
     title: '문의하기',
-    description: '문의 유형을 선택해 주세요',
-    feedback: '의견/요청',
+    description: '어떤 서비스에 대한 문의인가요?',
     bug: '버그 신고',
-    feedbackDesc: '서비스에 대한 의견이나 요청',
     bugDesc: '오류나 문제 신고',
     altText: '문의 메뉴',
-    serviceTitle: '서비스 선택',
-    serviceDesc: '어떤 서비스에 대한 문의인가요?',
-    yoloHome: 'YOLO HOME',
-    yoloDiscover: 'YOLO DISCOVER',
     yoloJapan: 'YOLO JAPAN',
-    yoloHomeDesc: '주택 정보 서비스',
-    yoloDiscoverDesc: '생활/이벤트 정보',
+    yoloDiscover: 'YOLO DISCOVER',
+    yoloHome: 'YOLO HOME',
     yoloJapanDesc: '구인 사이트',
+    yoloDiscoverDesc: '생활/이벤트 정보',
+    yoloHomeDesc: '주택 정보 서비스',
   },
   zh: {
     title: '联系我们',
-    description: '请选择您的咨询类型',
-    feedback: '意见/建议',
+    description: '这是关于哪个服务？',
     bug: '问题报告',
-    feedbackDesc: '您对服务的意见和建议',
     bugDesc: '报告错误或问题',
     altText: '联系菜单',
-    serviceTitle: '选择服务',
-    serviceDesc: '这是关于哪个服务？',
-    yoloHome: 'YOLO HOME',
-    yoloDiscover: 'YOLO DISCOVER',
     yoloJapan: 'YOLO JAPAN',
-    yoloHomeDesc: '住房服务',
-    yoloDiscoverDesc: '生活/活动信息',
+    yoloDiscover: 'YOLO DISCOVER',
+    yoloHome: 'YOLO HOME',
     yoloJapanDesc: '求职网站',
+    yoloDiscoverDesc: '生活/活动信息',
+    yoloHomeDesc: '住房服务',
   },
   vi: {
     title: 'Liên hệ',
-    description: 'Vui lòng chọn loại yêu cầu',
-    feedback: 'Góp ý',
+    description: 'Yêu cầu này liên quan đến dịch vụ nào?',
     bug: 'Báo lỗi',
-    feedbackDesc: 'Ý kiến và đề xuất của bạn',
     bugDesc: 'Báo cáo lỗi hoặc vấn đề',
     altText: 'Menu liên hệ',
-    serviceTitle: 'Chọn dịch vụ',
-    serviceDesc: 'Yêu cầu này liên quan đến dịch vụ nào?',
-    yoloHome: 'YOLO HOME',
-    yoloDiscover: 'YOLO DISCOVER',
     yoloJapan: 'YOLO JAPAN',
-    yoloHomeDesc: 'Dịch vụ nhà ở',
-    yoloDiscoverDesc: 'Thông tin sự kiện',
+    yoloDiscover: 'YOLO DISCOVER',
+    yoloHome: 'YOLO HOME',
     yoloJapanDesc: 'Trang tuyển dụng',
+    yoloDiscoverDesc: 'Thông tin sự kiện',
+    yoloHomeDesc: 'Dịch vụ nhà ở',
   },
 };
 
@@ -179,10 +162,45 @@ function getTexts(lang: string) {
 
 /**
  * サポートメニュー選択用 Flex Message
- * 「ご意見・ご要望」と「不具合報告」の2択
+ * サービス選択（YOLO JAPAN / YOLO DISCOVER / YOLO HOME）+ 不具合報告
  */
 export function createSupportMenuFlex(lang: string = 'ja'): FlexMessage {
   const t = getTexts(lang);
+
+  const serviceButton = (
+    name: string,
+    desc: string,
+    service: ServiceType,
+    color: string
+  ): FlexBox => ({
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      {
+        type: 'text',
+        text: name,
+        weight: 'bold',
+        size: 'lg',
+        color: '#FFFFFF',
+      },
+      {
+        type: 'text',
+        text: desc,
+        size: 'sm',
+        color: '#FFFFFF',
+        margin: 'sm',
+      },
+    ],
+    paddingAll: '15px',
+    backgroundColor: color,
+    cornerRadius: '10px',
+    action: {
+      type: 'postback',
+      label: name,
+      data: `action=support&step=service&service=${service}`,
+      displayText: name,
+    },
+  });
 
   return {
     type: 'flex',
@@ -216,42 +234,42 @@ export function createSupportMenuFlex(lang: string = 'ja'): FlexMessage {
         type: 'box',
         layout: 'vertical',
         contents: [
-          // ご意見・ご要望ボタン
+          // YOLO JAPAN
+          serviceButton(t.yoloJapan, t.yoloJapanDesc, 'YOLO_JAPAN', '#d10a1c'),
+          {
+            type: 'separator',
+            margin: 'lg',
+            color: '#EEEEEE',
+          },
+          // YOLO DISCOVER
           {
             type: 'box',
             layout: 'vertical',
             contents: [
-              {
-                type: 'text',
-                text: t.feedback,
-                weight: 'bold',
-                size: 'lg',
-                color: '#FFFFFF',
-              },
-              {
-                type: 'text',
-                text: t.feedbackDesc,
-                size: 'sm',
-                color: '#FFFFFF',
-                margin: 'sm',
-              },
+              serviceButton(t.yoloDiscover, t.yoloDiscoverDesc, 'YOLO_DISCOVER', '#f9c83d'),
             ],
-            paddingAll: '15px',
-            backgroundColor: '#4A90D9',
-            cornerRadius: '10px',
-            action: {
-              type: 'postback',
-              label: t.feedback,
-              data: 'action=support&type=feedback',
-              displayText: t.feedback,
-            },
+            margin: 'lg',
           },
           {
             type: 'separator',
             margin: 'lg',
             color: '#EEEEEE',
           },
-          // 不具合報告ボタン
+          // YOLO HOME
+          {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              serviceButton(t.yoloHome, t.yoloHomeDesc, 'YOLO_HOME', '#036ed9'),
+            ],
+            margin: 'lg',
+          },
+          {
+            type: 'separator',
+            margin: 'lg',
+            color: '#EEEEEE',
+          },
+          // 不具合報告ボタン（Google Formへのリンク）
           {
             type: 'box',
             layout: 'vertical',
@@ -272,128 +290,18 @@ export function createSupportMenuFlex(lang: string = 'ja'): FlexMessage {
               },
             ],
             paddingAll: '15px',
-            backgroundColor: '#E85D5D',
+            backgroundColor: '#666666',
             cornerRadius: '10px',
             margin: 'lg',
             action: {
-              type: 'postback',
+              type: 'uri',
               label: t.bug,
-              data: 'action=support&type=bug',
-              displayText: t.bug,
+              uri: BUG_REPORT_FORM_URL,
             },
           },
         ],
         paddingAll: '20px',
         spacing: 'md',
-      },
-    },
-  };
-}
-
-/**
- * サービス選択用 Flex Message
- * 不具合報告時に使用
- */
-export function createServiceSelectFlex(lang: string = 'ja'): FlexMessage {
-  const t = getTexts(lang);
-
-  const serviceButton = (
-    name: string,
-    desc: string,
-    service: ServiceType,
-    color: string
-  ): FlexBox => ({
-    type: 'box',
-    layout: 'vertical',
-    contents: [
-      {
-        type: 'text',
-        text: name,
-        weight: 'bold',
-        size: 'md',
-        color: '#FFFFFF',
-      },
-      {
-        type: 'text',
-        text: desc,
-        size: 'xs',
-        color: '#FFFFFF',
-        margin: 'sm',
-      },
-    ],
-    paddingAll: '12px',
-    backgroundColor: color,
-    cornerRadius: '8px',
-    action: {
-      type: 'postback',
-      label: name,
-      data: `action=support&step=service&service=${service}`,
-      displayText: name,
-    },
-  });
-
-  return {
-    type: 'flex',
-    altText: t.serviceTitle,
-    contents: {
-      type: 'bubble',
-      size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'text',
-            text: t.serviceTitle,
-            weight: 'bold',
-            size: 'xl',
-            color: '#E85D5D',
-          },
-          {
-            type: 'text',
-            text: t.serviceDesc,
-            size: 'sm',
-            color: '#666666',
-            margin: 'md',
-          },
-        ],
-        paddingAll: '20px',
-        backgroundColor: '#FFFFFF',
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          serviceButton(t.yoloHome, t.yoloHomeDesc, 'YOLO_HOME', '#5B9BD5'),
-          {
-            type: 'separator',
-            margin: 'md',
-            color: '#EEEEEE',
-          },
-          {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              serviceButton(t.yoloDiscover, t.yoloDiscoverDesc, 'YOLO_DISCOVER', '#70AD47'),
-            ],
-            margin: 'md',
-          },
-          {
-            type: 'separator',
-            margin: 'md',
-            color: '#EEEEEE',
-          },
-          {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-              serviceButton(t.yoloJapan, t.yoloJapanDesc, 'YOLO_JAPAN', '#FFC000'),
-            ],
-            margin: 'md',
-          },
-        ],
-        paddingAll: '20px',
-        spacing: 'sm',
       },
     },
   };

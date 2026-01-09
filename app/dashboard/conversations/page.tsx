@@ -15,6 +15,7 @@ interface ConversationUser {
 interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
+  timestamp?: string;
 }
 
 interface DiagnosisResult {
@@ -31,6 +32,8 @@ interface DiagnosisResult {
 interface UserDetail {
   userId: string;
   lang: string;
+  displayName: string | null;
+  pictureUrl: string | null;
   history: ConversationMessage[];
   diagnosisResults: DiagnosisResult[];
 }
@@ -203,11 +206,21 @@ export default function ConversationsPage() {
             {/* Header */}
             <div className="bg-white border-b border-slate-200 p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <UserIcon className="h-5 w-5 text-blue-600" />
-                </div>
+                {userDetail.pictureUrl ? (
+                  <img
+                    src={userDetail.pictureUrl}
+                    alt={userDetail.displayName || 'User'}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <UserIcon className="h-5 w-5 text-blue-600" />
+                  </div>
+                )}
                 <div>
-                  <p className="font-mono text-sm text-slate-700">{userDetail.userId}</p>
+                  <p className="font-semibold text-slate-800">
+                    {userDetail.displayName || userDetail.userId.substring(0, 12) + '...'}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {LANG_LABELS[userDetail.lang] || userDetail.lang} |
                     会話数: {userDetail.history.length} |
@@ -217,26 +230,33 @@ export default function ConversationsPage() {
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Messages - 新しい順に表示 */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col-reverse">
               {userDetail.history.length === 0 ? (
                 <div className="text-center text-slate-400 py-8">
                   会話履歴がありません
                 </div>
               ) : (
-                userDetail.history.map((msg, idx) => (
+                [...userDetail.history].reverse().map((msg, idx) => (
                   <div
                     key={idx}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                        msg.role === 'user'
-                          ? 'bg-blue-500 text-white rounded-br-md'
-                          : 'bg-white text-slate-700 border border-slate-200 rounded-bl-md'
-                      }`}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div
+                        className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                          msg.role === 'user'
+                            ? 'bg-blue-500 text-white rounded-br-md'
+                            : 'bg-white text-slate-700 border border-slate-200 rounded-bl-md'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                      {msg.timestamp && (
+                        <span className="text-xs text-slate-400 mt-1 px-1">
+                          {formatDate(msg.timestamp)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))
