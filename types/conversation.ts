@@ -47,11 +47,11 @@ export interface UserStatus {
 }
 
 export interface IntentDetection {
-  intent: 'job_search' | 'greeting' | 'contact' | 'unknown';
+  intent: 'job_search' | 'greeting' | 'contact' | 'support_request' | 'unknown';
   confidence: number;
   pattern: 'exact' | 'conditional' | 'implicit' | 'none';
   trigger: string | null;
-  action: 'start_diagnosis_immediately' | 'confirm_then_start' | 'greet' | 'show_contact' | 'use_openai';
+  action: 'start_diagnosis_immediately' | 'confirm_then_start' | 'greet' | 'show_contact' | 'show_support_menu' | 'use_openai';
   extractedInfo?: {
     location?: string;
     industry?: string;

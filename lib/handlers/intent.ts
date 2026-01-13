@@ -61,13 +61,56 @@ export function detectUserIntentAdvanced(
     }
   }
 
-  // 問い合わせパターン - 全言語をチェック
+  // サポート要望パターン（強いシグナル）- 全言語をチェック
+  const supportPatterns = {
+    ja: [
+      /問い合わせ/, /サポート/, /ヘルプ/, /困/, /トラブル/,
+      /不具合/, /バグ/, /エラー/, /動かない/, /できない/,
+      /おかしい/, /変/, /退会/, /解約/, /キャンセル/,
+      /返金/, /クレーム/, /苦情/, /人と話/, /オペレーター/,
+    ],
+    en: [
+      /support/, /help me/, /trouble/, /problem/, /issue/,
+      /bug/, /error/, /not working/, /can't/, /cannot/,
+      /cancel/, /refund/, /complaint/, /talk to.*human/,
+      /speak.*person/, /operator/,
+    ],
+    ko: [
+      /문의/, /도움/, /문제/, /오류/, /버그/,
+      /안돼/, /취소/, /환불/, /상담원/,
+    ],
+    zh: [
+      /咨询/, /帮助/, /问题/, /故障/, /错误/,
+      /不能/, /取消/, /退款/, /投诉/, /人工/,
+    ],
+    vi: [
+      /hỗ trợ/, /giúp/, /vấn đề/, /lỗi/,
+      /không được/, /hủy/, /hoàn tiền/,
+    ],
+  };
+
+  for (const [checkLang, patterns] of Object.entries(supportPatterns)) {
+    for (const pattern of patterns) {
+      if (pattern.test(lowerMessage) || pattern.test(message)) {
+        console.log(`✅ サポート要望検出 (${checkLang}):`, pattern.toString());
+        return {
+          intent: 'support_request',
+          confidence: 0.92,
+          pattern: 'exact',
+          trigger: pattern.toString(),
+          action: 'show_support_menu',
+        };
+      }
+    }
+  }
+
+  // 問い合わせパターン（弱いシグナル）- 全言語をチェック
   const contactPatterns = {
-    ja: [/問い合わせ/, /質問/, /相談/, /聞きたい/, /教えて/, /わからない/, /知りたい/, /連絡/],
-    en: [/contact/, /question/, /ask/, /inquiry/, /help/, /support/],
-    ko: [/문의/, /질문/, /상담/, /도움/],
-    zh: [/咨询/, /问题/, /询问/, /帮助/],
-    vi: [/liên hệ/, /hỏi/, /tư vấn/, /giúp đỡ/],
+    ja: [/質問/, /相談/, /聞きたい/, /教えて/, /わからない/, /知りたい/, /連絡/],
+    en: [/contact/, /question/, /ask/, /inquiry/],
+    ko: [/질문/, /상담/],
+    zh: [/询问/],
+    vi: [/liên hệ/, /hỏi/, /tư vấn/],
   };
 
   for (const patterns of Object.values(contactPatterns)) {

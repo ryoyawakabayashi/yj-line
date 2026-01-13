@@ -12,6 +12,7 @@ import {
   isSupportMode,
   exitSupportMode,
 } from './support';
+import { detectUserIntentAdvanced } from './intent';
 
 export async function handleEvent(event: LineEvent): Promise<void> {
   const { type, source } = event;
@@ -134,6 +135,68 @@ export async function handleEvent(event: LineEvent): Promise<void> {
       if (await isSupportMode(userId)) {
         const handled = await handleSupportMessage(userId, event.replyToken, messageText);
         if (handled) {
+          return;
+        }
+      }
+
+      // === 診断モード中のサポート要望検出 ===
+      // 診断モード中でもサポート要望を検出してサポートモードへ誘導
+      if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
+        const dbLang = await getUserLang(userId);
+        const intent = detectUserIntentAdvanced(messageText, dbLang);
+
+        if (intent.intent === 'support_request' && intent.confidence >= 0.9) {
+          console.log('🔄 診断モード中にサポート要望検出 → サポートモード誘導');
+
+          // 確認メッセージを送信（クイックリプライ付き）
+          const confirmMessages: Record<string, string> = {
+            ja: 'お困りのことがあるようですね。サポートに問い合わせますか？',
+            en: 'It seems you need help. Would you like to contact support?',
+            ko: '도움이 필요하신 것 같습니다. 고객지원에 문의하시겠습니까?',
+            zh: '您似乎需要帮助。要联系客服吗？',
+            vi: 'Có vẻ bạn cần hỗ trợ. Bạn có muốn liên hệ hỗ trợ không?',
+          };
+
+          const yesLabels: Record<string, string> = {
+            ja: 'はい、問い合わせる',
+            en: 'Yes, contact support',
+            ko: '예, 문의하기',
+            zh: '是的，联系客服',
+            vi: 'Có, liên hệ hỗ trợ',
+          };
+
+          const noLabels: Record<string, string> = {
+            ja: 'いいえ、続ける',
+            en: 'No, continue',
+            ko: '아니오, 계속하기',
+            zh: '否，继续',
+            vi: 'Không, tiếp tục',
+          };
+
+          await replyMessage(event.replyToken, {
+            type: 'text',
+            text: confirmMessages[dbLang] || confirmMessages.ja,
+            quickReply: {
+              items: [
+                {
+                  type: 'action',
+                  action: {
+                    type: 'postback',
+                    label: yesLabels[dbLang] || yesLabels.ja,
+                    data: 'action=support&step=confirm_switch',
+                  },
+                },
+                {
+                  type: 'action',
+                  action: {
+                    type: 'message',
+                    label: noLabels[dbLang] || noLabels.ja,
+                    text: noLabels[dbLang] || noLabels.ja,
+                  },
+                },
+              ],
+            },
+          });
           return;
         }
       }

@@ -5,14 +5,19 @@
 import { supabase } from './supabase';
 import {
   SupportTicket,
+  SupportMessage,
   KnownIssue,
   CreateTicketParams,
   SearchKnownIssuesParams,
   ServiceType,
   SupportStats,
+  TicketPriority,
+  MessageRole,
   toSupportTicket,
+  toSupportMessage,
   toKnownIssue,
   SupportTicketRow,
+  SupportMessageRow,
   KnownIssueRow,
 } from '@/types/support';
 
@@ -309,4 +314,225 @@ export async function resolveKnownIssue(issueId: string): Promise<boolean> {
 
   console.log(`✅ 既知の問題解決: ${issueId}`);
   return true;
+}
+
+// =====================================================
+// メッセージ永続化
+// =====================================================
+
+/**
+ * サポートメッセージを保存
+ */
+export async function saveMessage(
+  ticketId: string,
+  role: MessageRole,
+  content: string,
+  senderName?: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('support_messages')
+    .insert({
+      ticket_id: ticketId,
+      role,
+      content,
+      sender_name: senderName || null,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('❌ saveMessage エラー:', error);
+    return null;
+  }
+
+  return data.id;
+}
+
+/**
+ * チケットのメッセージ一覧を取得
+ */
+export async function getTicketMessages(
+  ticketId: string
+): Promise<SupportMessage[]> {
+  const { data, error } = await supabase
+    .from('support_messages')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('❌ getTicketMessages エラー:', error);
+    return [];
+  }
+
+  return (data as SupportMessageRow[]).map(toSupportMessage);
+}
+
+// =====================================================
+// 有人対応機能
+// =====================================================
+
+/**
+ * ユーザーのアクティブなチケットを取得
+ */
+export async function getActiveTicketByUserId(
+  userId: string
+): Promise<SupportTicket | null> {
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select('*')
+    .eq('user_id', userId)
+    .in('status', ['open', 'in_progress'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned
+      console.error('❌ getActiveTicketByUserId エラー:', error);
+    }
+    return null;
+  }
+
+  return toSupportTicket(data as SupportTicketRow);
+}
+
+/**
+ * チケットを取得
+ */
+export async function getTicketById(
+  ticketId: string
+): Promise<SupportTicket | null> {
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select('*')
+    .eq('id', ticketId)
+    .single();
+
+  if (error) {
+    console.error('❌ getTicketById エラー:', error);
+    return null;
+  }
+
+  return toSupportTicket(data as SupportTicketRow);
+}
+
+/**
+ * 有人対応モードを切り替え
+ */
+export async function toggleHumanTakeover(
+  ticketId: string,
+  enable: boolean,
+  operatorName?: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('support_tickets')
+    .update({
+      human_takeover: enable,
+      human_takeover_at: enable ? new Date().toISOString() : null,
+      human_operator_name: enable ? operatorName : null,
+      status: enable ? 'in_progress' : 'open',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', ticketId);
+
+  if (error) {
+    console.error('❌ toggleHumanTakeover エラー:', error);
+    return false;
+  }
+
+  console.log(`✅ 有人対応モード: ${ticketId} -> ${enable ? 'ON' : 'OFF'}`);
+  return true;
+}
+
+/**
+ * チケットをエスカレーション
+ */
+export async function escalateTicket(
+  ticketId: string,
+  reason: string,
+  priority: TicketPriority = 'normal'
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('support_tickets')
+    .update({
+      escalated_at: new Date().toISOString(),
+      escalation_reason: reason,
+      priority,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', ticketId);
+
+  if (error) {
+    console.error('❌ escalateTicket エラー:', error);
+    return false;
+  }
+
+  console.log(`✅ チケットエスカレーション: ${ticketId}`);
+  return true;
+}
+
+/**
+ * チケットを更新
+ */
+export async function updateTicket(
+  ticketId: string,
+  updates: Partial<{
+    status: string;
+    category: string;
+    priority: TicketPriority;
+    userDisplayName: string;
+    userLang: string;
+    aiSummary: string;
+    humanTakeover: boolean;
+    humanOperatorName: string;
+    escalatedAt: string;
+    escalationReason: string;
+  }>
+): Promise<boolean> {
+  const dbUpdates: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (updates.status !== undefined) dbUpdates.status = updates.status;
+  if (updates.category !== undefined) dbUpdates.category = updates.category;
+  if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+  if (updates.userDisplayName !== undefined) dbUpdates.user_display_name = updates.userDisplayName;
+  if (updates.userLang !== undefined) dbUpdates.user_lang = updates.userLang;
+  if (updates.aiSummary !== undefined) dbUpdates.ai_summary = updates.aiSummary;
+  if (updates.humanTakeover !== undefined) {
+    dbUpdates.human_takeover = updates.humanTakeover;
+    dbUpdates.human_takeover_at = updates.humanTakeover ? new Date().toISOString() : null;
+  }
+  if (updates.humanOperatorName !== undefined) dbUpdates.human_operator_name = updates.humanOperatorName;
+  if (updates.escalatedAt !== undefined) dbUpdates.escalated_at = updates.escalatedAt;
+  if (updates.escalationReason !== undefined) dbUpdates.escalation_reason = updates.escalationReason;
+
+  const { error } = await supabase
+    .from('support_tickets')
+    .update(dbUpdates)
+    .eq('id', ticketId);
+
+  if (error) {
+    console.error('❌ updateTicket エラー:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * 拡張統計を取得
+ */
+export async function getSupportStatsExtended(): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.rpc('get_support_stats_extended');
+
+  if (error) {
+    console.error('❌ getSupportStatsExtended エラー:', error);
+    // フォールバック
+    return getSupportStats() as unknown as Record<string, unknown>;
+  }
+
+  return data as Record<string, unknown>;
 }

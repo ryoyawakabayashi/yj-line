@@ -161,46 +161,61 @@ export function generateSupportSystemPrompt(params: {
   const basePrompt = `あなたはYOLOサービスのカスタマーサポートAIです。
 ユーザーからのお問い合わせに対応してください。
 
-## 【絶対禁止事項】★必ず守ること★
+## 【最重要】解決策を提示すること
+あなたの目的は**ユーザーの問題を解決すること**です。
+確認質問ばかりせず、FAQに該当する回答があれば**すぐに解決策を提示**してください。
+
+## 【絶対禁止事項】
 1. **URLを自分で作成・推測・生成することは絶対禁止**
 2. **FAQに記載されていないURLは絶対に案内しない**
-3. **憶測で回答しない。わからないことは「確認します」と伝える**
-4. **https:// で始まる文字列は、FAQにそのまま記載されているもの以外は出力禁止**
+3. **確認質問を2回以上連続で行うことは禁止** - 1回確認したら次は解決策を出す
 
-## 【最重要ルール】イエスドリ（確認してから回答）
-ユーザーの意図が100%明確でない場合は、必ず確認質問をしてから回答すること。
+## 回答の優先順位（この順番で対応）
+1. **FAQに該当する回答がある** → 即座にFAQの回答（URLを含む）をそのまま提示
+2. **FAQに近い内容がある** → FAQの回答を参考に解決策を提示
+3. **曖昧で複数の解釈がある** → 1回だけ確認質問し、次は必ず解決策を出す
+4. **FAQに該当がない** → 「担当者に確認します」と伝えて[ESCALATE]タグを付ける
 
-### 確認が必要なパターン
-| ユーザーの発言 | あなたの確認質問 |
-|--------------|----------------|
-| 解約したい | 「YOLO JAPANのアカウントを退会（削除）したいということでよろしいでしょうか？」 |
-| やめたい | 「何をやめたいのか教えていただけますか？」 |
-| できない | 「具体的にどの操作ができないのか教えていただけますか？」 |
-| 届かない | 「何が届かないのか教えていただけますか？（メール/通知/その他）」 |
-| 変更したい | 「何を変更されたいですか？（メールアドレス/パスワード/その他）」 |
-| うまくいかない | 「具体的にどのような問題が発生していますか？」 |
-| エラー | 「どのような操作をした時にエラーが出ましたか？」 |
+## 確認質問のルール
+- **1回だけ**確認質問をしたら、次は必ず解決策を提示する
+- ユーザーが「うん」「はい」と答えたら、**即座にFAQの回答を提示**する
+- 同じような確認質問を繰り返さない
 
-### ユーザーが「はい」「そうです」と確定したら
-→ FAQに該当する回答があれば、**FAQの内容をそのまま**案内する
-→ FAQに該当がなければ「担当者に確認して折り返しご連絡いたします」と回答
+## よくある問い合わせ → 即答パターン（URLを必ず含めること）
+
+**「企業と連絡取れない」「面接の連絡がない」「相手から連絡がこない」の場合：**
+→ 以下のように回答（URLを必ず含める）：
+「まだ連絡がない時は、自分で会社に連絡をお願いしています。会社のメールアドレスまたは電話番号は、面接の予約をした時の確認メールか、マイページの「面接日程」から調べることができます。
+マイページ：https://www.yolo-japan.com/ja/recruit/mypage/interview/ からメッセージ機能を使うこともできます。」
+
+**「退会したい」「解約したい」の場合：**
+→ 「https://www.yolo-japan.com/ja/withdraw/ からアカウントを消すことができます。」
+
+**「パスワード忘れた」の場合：**
+→ 「https://www.yolo-japan.com/ja/recruit/login から「パスワードを忘れた」をクリックしてリセットできます。」
 
 ## 基本ルール
 1. ユーザーの言語（${lang}）に合わせて応答する
-2. 応答は簡潔に、2-3文以内
-3. 丁寧で親切な対応を心がける
-4. FAQに該当する質問は、FAQの回答内容（URLを含む）を**そのままコピー**して使用
+2. 応答は簡潔に、解決策を明確に
+3. **FAQの回答にURLがある場合は、必ずそのURLも含めて回答すること**
+4. 丁寧で親切な対応を心がける
 
-## URLの取り扱い（重要）
-- FAQセクションに記載されているURLのみ使用可能
-- URLを少しでも変更・短縮・推測することは禁止
-- URLがわからない場合は「担当者に確認します」と回答し、URLは出力しない
+## URLの取り扱い【超重要】
+- **FAQの回答にURLが含まれている場合、そのURLを必ず出力すること**
+- URLを省略しない。ユーザーが行動できるようにURLを提示する
+- FAQセクションに記載されていないURLは絶対に案内しない
+- URLを変更・短縮・推測することは禁止
 
-## 特定トピックの回答ルール
-- **スカウト**: 「企業の採用担当者が直接送信しています」と必ず伝える（「ボット」「自動」は使わない）
-- **不採用理由**: 「企業側から開示されないため、お伝えできません」
-- **自動キャンセル**: 「一定期間返信がない場合、システムにより自動的にキャンセルされる仕様です」
-- **ビザサポート**: 「YOLO JAPANではビザに関するサポートは行っておりません」`;
+## エスカレーション判定
+以下の場合のみ、応答の最後に「[ESCALATE]」タグを付けてください：
+
+1. **FAQを確認しても該当する回答がない場合**
+2. **ユーザーが「人と話したい」「オペレーター」と要求した場合**
+3. **解決策を提示したが、ユーザーが「それでもできない」と言った場合**
+4. **感情的に不満を訴えている場合（怒り、失望など）**
+
+例：
+- 「申し訳ございませんが、この件については担当者に確認が必要です。[ESCALATE]」`;
 
 
   // サービス別FAQを追加
@@ -625,4 +640,214 @@ export const QUICK_REPLY_OPTIONS = {
  */
 export function getQuickReplyOptions(lang: string): { yes: string; no: string; other: string } {
   return QUICK_REPLY_OPTIONS[lang as keyof typeof QUICK_REPLY_OPTIONS] || QUICK_REPLY_OPTIONS.ja;
+}
+
+// =====================================================
+// AI分類機能（課題4: 分類精度向上）
+// =====================================================
+
+/**
+ * サポートチケットのカテゴリ
+ */
+export type TicketCategory =
+  | 'account'        // アカウント関連（退会、パスワード、メール変更等）
+  | 'application'    // 応募・面接関連
+  | 'project'        // プロジェクト関連（DISCOVER）
+  | 'payment'        // 支払い・報酬関連
+  | 'technical'      // 技術的問題（エラー、バグ等）
+  | 'visa'           // ビザ関連
+  | 'housing'        // 住居関連（HOME）
+  | 'general'        // 一般的な質問
+  | 'other';         // その他
+
+/**
+ * カテゴリ分類のためのキーワードマッピング
+ */
+const CATEGORY_KEYWORDS: Record<TicketCategory, string[]> = {
+  account: [
+    '退会', '解約', 'アカウント', 'パスワード', 'ログイン', 'メールアドレス',
+    '登録', 'プロフィール', '設定', 'メルマガ', '通知', 'ID',
+    'withdraw', 'account', 'password', 'login', 'email', 'unsubscribe',
+    '탈퇴', '계정', '비밀번호', '이메일',
+    '账户', '密码', '邮箱',
+    'tài khoản', 'mật khẩu',
+  ],
+  application: [
+    '応募', '面接', '採用', '不採用', '辞退', 'キャンセル', 'スカウト',
+    '求人', '仕事', '就職', '転職',
+    'application', 'interview', 'job', 'scout', 'hired', 'rejected',
+    '지원', '면접', '채용', '스카우트',
+    '申请', '面试', '工作',
+    'ứng tuyển', 'phỏng vấn', 'việc làm',
+  ],
+  project: [
+    'プロジェクト', '体験', '完了報告', 'チェックイン', '承認',
+    '参加', '予約', 'DISCOVER', '担当者',
+    'project', 'experience', 'report', 'checkin', 'reservation',
+    '프로젝트', '체험', '예약',
+    '项目', '体验', '预约',
+    'dự án', 'trải nghiệm',
+  ],
+  payment: [
+    '報酬', '支払い', '振込', '入金', '金額', 'ポイント', '謝礼',
+    'payment', 'reward', 'money', 'transfer',
+    '보상', '지불', '입금',
+    '报酬', '支付', '转账',
+    'thanh toán', 'tiền',
+  ],
+  technical: [
+    'エラー', 'バグ', '不具合', '動かない', '表示されない', 'できない',
+    'おかしい', '止まる', 'フリーズ', 'クラッシュ',
+    'error', 'bug', 'not working', 'crash', 'freeze', "can't",
+    '오류', '버그', '안돼',
+    '错误', '故障', '不能',
+    'lỗi', 'không hoạt động',
+  ],
+  visa: [
+    'ビザ', '在留カード', '在留資格', '就労', 'SOFA', '特定技能',
+    'visa', 'residence card', 'work permit',
+    '비자', '체류카드',
+    '签证', '在留卡',
+    'thị thực',
+  ],
+  housing: [
+    '物件', '住居', '賃貸', '家', 'HOME', 'アパート', 'マンション',
+    '入居', '契約', '家賃', '敷金', '礼金',
+    'housing', 'apartment', 'rent', 'property',
+    '주택', '아파트', '임대',
+    '房子', '公寓', '租房',
+    'nhà ở', 'căn hộ',
+  ],
+  general: [
+    '質問', '教えて', 'どうやって', '方法', 'やり方', 'わからない',
+    '知りたい', 'ヘルプ',
+    'question', 'how to', 'help', 'tell me',
+    '질문', '방법', '도움',
+    '问题', '怎么', '帮助',
+    'câu hỏi', 'làm sao', 'giúp',
+  ],
+  other: [],
+};
+
+/**
+ * メッセージからカテゴリを推定（キーワードベース）
+ * @param message ユーザーのメッセージ
+ * @returns 推定されたカテゴリ
+ */
+export function classifyTicketCategory(message: string): TicketCategory {
+  const lowerMessage = message.toLowerCase();
+  const scores: Record<TicketCategory, number> = {
+    account: 0,
+    application: 0,
+    project: 0,
+    payment: 0,
+    technical: 0,
+    visa: 0,
+    housing: 0,
+    general: 0,
+    other: 0,
+  };
+
+  // 各カテゴリのキーワードマッチをスコアリング
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    for (const keyword of keywords) {
+      if (lowerMessage.includes(keyword.toLowerCase())) {
+        scores[category as TicketCategory] += 1;
+      }
+    }
+  }
+
+  // 最高スコアのカテゴリを返す
+  let maxCategory: TicketCategory = 'other';
+  let maxScore = 0;
+
+  for (const [category, score] of Object.entries(scores)) {
+    if (score > maxScore) {
+      maxScore = score;
+      maxCategory = category as TicketCategory;
+    }
+  }
+
+  // スコアが0の場合は'other'
+  if (maxScore === 0) {
+    return 'other';
+  }
+
+  return maxCategory;
+}
+
+/**
+ * AI分類用のプロンプト生成
+ */
+export function generateCategoryClassificationPrompt(
+  conversationHistory: Array<{ role: string; content: string }>
+): string {
+  const conversationText = conversationHistory
+    .filter((m) => m.role === 'user')
+    .map((m) => m.content)
+    .join('\n');
+
+  return `以下のサポート問い合わせを分類してください。
+
+カテゴリ一覧:
+- account: アカウント関連（退会、パスワード、メール変更、ログイン等）
+- application: 応募・面接関連（求人応募、面接、スカウト、採用結果等）
+- project: プロジェクト関連（YOLO DISCOVER体験、完了報告、予約等）
+- payment: 支払い・報酬関連（報酬、振込、ポイント等）
+- technical: 技術的問題（エラー、バグ、動作不良等）
+- visa: ビザ・在留資格関連
+- housing: 住居関連（YOLO HOME、物件、賃貸等）
+- general: 一般的な質問（使い方、情報確認等）
+- other: 上記に該当しない
+
+問い合わせ内容:
+${conversationText}
+
+回答は以下のJSON形式のみで返してください（説明不要）:
+{"category": "カテゴリ名", "confidence": 0.0-1.0}`;
+}
+
+/**
+ * エラー報告時の追加質問（構造化ヒアリング）
+ */
+export const ERROR_FOLLOWUP_QUESTIONS: Record<string, Record<string, string>> = {
+  when: {
+    ja: 'いつ頃から発生していますか？',
+    en: 'When did this start happening?',
+    ko: '언제부터 발생했나요?',
+    zh: '什么时候开始发生的？',
+    vi: 'Điều này bắt đầu xảy ra khi nào?',
+  },
+  device: {
+    ja: 'どのデバイスで発生していますか？（スマートフォン/PC）',
+    en: 'Which device are you using? (Smartphone/PC)',
+    ko: '어떤 기기에서 발생하나요? (스마트폰/PC)',
+    zh: '您使用的是什么设备？（智能手机/电脑）',
+    vi: 'Bạn đang sử dụng thiết bị nào? (Điện thoại/Máy tính)',
+  },
+  steps: {
+    ja: 'どのような操作をした時に発生しましたか？',
+    en: 'What were you doing when this occurred?',
+    ko: '어떤 작업을 할 때 발생했나요?',
+    zh: '您在做什么操作时发生的？',
+    vi: 'Bạn đang làm gì khi điều này xảy ra?',
+  },
+  frequency: {
+    ja: '毎回発生しますか？それとも時々ですか？',
+    en: 'Does it happen every time or occasionally?',
+    ko: '매번 발생하나요? 아니면 가끔?',
+    zh: '每次都发生还是偶尔？',
+    vi: 'Nó xảy ra mỗi lần hay thỉnh thoảng?',
+  },
+};
+
+/**
+ * エラー報告用の追加質問を取得
+ */
+export function getErrorFollowupQuestion(
+  questionType: keyof typeof ERROR_FOLLOWUP_QUESTIONS,
+  lang: string
+): string {
+  const questions = ERROR_FOLLOWUP_QUESTIONS[questionType];
+  return questions[lang] || questions.ja;
 }

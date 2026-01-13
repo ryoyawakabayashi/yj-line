@@ -2,7 +2,7 @@
 // Support Handler for Customer Support AI
 // =====================================================
 
-import { replyMessage, showLoadingAnimation } from '../line/client';
+import { replyMessage, showLoadingAnimation, getUserProfile, pushMessage } from '../line/client';
 import {
   getConversationState,
   saveConversationState,
@@ -11,20 +11,30 @@ import {
 } from '../database/queries';
 import {
   createSupportTicket,
-  getKnownIssues,
+  updateTicket,
+  getActiveTicketByUserId,
+  saveMessage,
+  toggleHumanTakeover,
 } from '../database/support-queries';
 import {
   createSupportMenuFlex,
   createSupportCompleteFlex,
 } from '../flex/support-menu';
 import {
-  generateSupportSystemPrompt,
   generateSummaryPrompt,
   getSupportMessage,
-  sanitizeAiResponse,
-  detectConfirmationPattern,
-  getQuickReplyOptions,
+  classifyTicketCategory,
 } from '../support/faq';
+import {
+  classifyMessage,
+  isGreeting,
+  GREETING_MESSAGES,
+  ESCALATION_MESSAGES,
+  detectAmbiguousPattern,
+  getFAQResponseById,
+  AmbiguousPattern,
+} from '../support/classifier';
+import { notifyEscalation } from '../notifications/slack';
 import { ConversationState } from '@/types/conversation';
 import {
   ServiceType,
@@ -117,55 +127,22 @@ export async function handleSupportPostback(
     return true;
   }
 
-  return false;
-}
+  // 診断モードからのサポートモード切り替え確認
+  if (step === 'confirm_switch') {
+    console.log('🔄 診断モード → サポートモード切り替え確定');
+    await clearConversationState(userId);
+    await handleSupportButton(userId, replyToken);
+    return true;
+  }
 
-/**
- * クイックリプライ付きメッセージを作成
- */
-function createQuickReplyMessage(text: string, lang: string) {
-  const options = getQuickReplyOptions(lang);
-  return {
-    type: 'text' as const,
-    text,
-    quickReply: {
-      items: [
-        {
-          type: 'action' as const,
-          action: {
-            type: 'message' as const,
-            label: options.yes,
-            text: options.yes,
-          },
-        },
-        {
-          type: 'action' as const,
-          action: {
-            type: 'message' as const,
-            label: options.no,
-            text: options.no,
-          },
-        },
-        {
-          type: 'action' as const,
-          action: {
-            type: 'message' as const,
-            label: options.other,
-            text: options.other,
-          },
-        },
-      ],
-    },
-  };
+  return false;
 }
 
 /**
  * 肯定的な返答かどうかを判定
  */
-function isAffirmativeResponse(message: string, lang: string): boolean {
-  const options = getQuickReplyOptions(lang);
+function isAffirmativeResponse(message: string): boolean {
   const affirmatives = [
-    options.yes,
     'はい', 'yes', 'うん', 'そう', 'そうです', 'お願い', 'お願いします',
     '예', '네', '是', '对', 'Có', 'Vâng',
   ];
@@ -175,10 +152,8 @@ function isAffirmativeResponse(message: string, lang: string): boolean {
 /**
  * 否定的な返答かどうかを判定
  */
-function isNegativeResponse(message: string, lang: string): boolean {
-  const options = getQuickReplyOptions(lang);
+function isNegativeResponse(message: string): boolean {
   const negatives = [
-    options.no, options.other,
     'いいえ', 'no', 'ちがう', '違う', '違います', 'いや',
     '아니오', '아니', '否', '不是', 'Không',
   ];
@@ -193,6 +168,17 @@ export async function handleSupportMessage(
   replyToken: string,
   userMessage: string
 ): Promise<boolean> {
+  // === 有人対応モードのチェック ===
+  // アクティブなチケットがあり、有人対応中の場合はAI応答をスキップ
+  const activeTicket = await getActiveTicketByUserId(userId);
+  if (activeTicket?.humanTakeover) {
+    // メッセージをDBに保存（ダッシュボードで表示するため）
+    await saveMessage(activeTicket.id, 'user', userMessage);
+    console.log(`📝 有人対応中メッセージ保存: ${activeTicket.id}`);
+    // AI応答はスキップ（ダッシュボードからオペレーターが対応）
+    return true;
+  }
+
   const currentState = await getConversationState(userId);
 
   if (!currentState || currentState.mode !== 'support') {
@@ -220,7 +206,7 @@ export async function handleSupportMessage(
   if (supportState.pendingConfirmation) {
     const pending = supportState.pendingConfirmation;
 
-    if (isAffirmativeResponse(userMessage, lang)) {
+    if (isAffirmativeResponse(userMessage)) {
       // 「はい」の場合 → FAQ回答を返す
       conversationHistory.push({ role: 'user', content: userMessage });
 
@@ -241,14 +227,8 @@ export async function handleSupportMessage(
         text: response,
       });
 
-      // 3往復したらチケット作成
-      const userMessages = conversationHistory.filter((m) => m.role === 'user');
-      if (userMessages.length >= 3) {
-        await completeSupport(userId, supportState, lang);
-      }
-
       return true;
-    } else if (isNegativeResponse(userMessage, lang)) {
+    } else if (isNegativeResponse(userMessage)) {
       // 「いいえ」の場合 → 確認待ちをクリアして再度質問を促す
       conversationHistory.push({ role: 'user', content: userMessage });
 
@@ -280,111 +260,145 @@ export async function handleSupportMessage(
     supportState.pendingConfirmation = undefined;
   }
 
-  // === 確認パターンの検出（イエスドリ） ===
-  const confirmationResult = detectConfirmationPattern(
+  // === 新方式: AIは分類のみ、回答は定型文 ===
+  conversationHistory.push({ role: 'user', content: userMessage });
+
+  // 1. 挨拶チェック
+  if (isGreeting(userMessage)) {
+    const greetingResponse = GREETING_MESSAGES[lang] || GREETING_MESSAGES.ja;
+    conversationHistory.push({ role: 'assistant', content: greetingResponse });
+
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: greetingResponse,
+    });
+    return true;
+  }
+
+  // 2. 曖昧なパターンをチェック → クイックリプライで選択肢を出す
+  const ambiguousResult = detectAmbiguousPattern(userMessage, lang);
+  if (ambiguousResult) {
+    console.log(`❓ 曖昧なパターン検出: ${userMessage}`);
+
+    // クイックリプライ付きで選択肢を提示
+    const quickReplyItems = ambiguousResult.pattern.choices.map((choice) => ({
+      type: 'action' as const,
+      action: {
+        type: 'message' as const,
+        label: choice.label,
+        text: choice.label,
+      },
+    }));
+
+    // 選択肢の情報を保存（次のメッセージで使う）
+    supportState.pendingQuickReply = {
+      choices: ambiguousResult.pattern.choices,
+    };
+    conversationHistory.push({ role: 'assistant', content: ambiguousResult.question });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: ambiguousResult.question,
+      quickReply: {
+        items: quickReplyItems,
+      },
+    });
+    return true;
+  }
+
+  // 3. クイックリプライの選択肢が選ばれた場合
+  if (supportState.pendingQuickReply) {
+    const choices = supportState.pendingQuickReply.choices;
+    const selectedChoice = choices.find((c: { label: string; faqId: string }) =>
+      userMessage.includes(c.label) || c.label.includes(userMessage)
+    );
+
+    if (selectedChoice) {
+      const faqResponse = getFAQResponseById(selectedChoice.faqId, supportState.service, lang);
+      if (faqResponse) {
+        conversationHistory.push({ role: 'assistant', content: faqResponse });
+        supportState.pendingQuickReply = undefined;
+        supportState.conversationHistory = conversationHistory;
+        currentState.supportState = supportState;
+        await saveConversationState(userId, currentState);
+
+        await replyMessage(replyToken, {
+          type: 'text',
+          text: faqResponse,
+        });
+
+        console.log(`✅ クイックリプライ選択: ${selectedChoice.faqId}`);
+        return true;
+      }
+    }
+    // 選択肢に該当しない場合は通常のフローへ
+    supportState.pendingQuickReply = undefined;
+  }
+
+  // 4. AIでFAQを分類
+  console.log(`🔍 メッセージ分類中: ${userMessage}`);
+  const classification = await classifyMessage(
     userMessage,
     supportState.service,
     lang
   );
 
-  if (confirmationResult && confirmationResult.faqAnswer) {
-    // 確認パターンにマッチ → クイックリプライ付きで確認質問を送信
-    conversationHistory.push({ role: 'user', content: userMessage });
-    conversationHistory.push({ role: 'assistant', content: confirmationResult.question });
+  console.log(`📋 分類結果: matched=${classification.matched}, faqId=${classification.faqId}, confidence=${classification.confidence}`);
 
-    // 確認待ち状態を保存
-    supportState.pendingConfirmation = {
-      type: confirmationResult.pattern.type,
-      question: confirmationResult.question,
-      faqAnswer: confirmationResult.faqAnswer,
-    };
+  // 5. FAQにマッチした場合 → 定型文を返す
+  if (classification.matched && classification.response) {
+    conversationHistory.push({ role: 'assistant', content: classification.response });
+
     supportState.conversationHistory = conversationHistory;
     currentState.supportState = supportState;
     await saveConversationState(userId, currentState);
 
-    // クイックリプライ付きで確認質問を送信
-    const quickReplyMessage = createQuickReplyMessage(confirmationResult.question, lang);
-    await replyMessage(replyToken, quickReplyMessage);
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: classification.response,
+    });
 
+    console.log(`✅ FAQ回答: ${classification.faqId}`);
     return true;
   }
 
-  // === 通常のAI応答処理 ===
-  conversationHistory.push({ role: 'user', content: userMessage });
+  // 6. FAQにマッチしない場合 → エスカレーション
+  console.log(`🚨 FAQにマッチせず、エスカレーション: ${userMessage}`);
 
-  // 既知の問題を検索
-  const knownIssues = supportState.service
-    ? await getKnownIssues(supportState.service)
-    : [];
+  const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
+  conversationHistory.push({ role: 'assistant', content: escalationResponse });
 
-  // AIで応答生成
-  const systemPrompt = generateSupportSystemPrompt({
-    ticketType: supportState.ticketType || 'feedback',
-    service: supportState.service,
-    lang,
-    knownIssues,
+  supportState.conversationHistory = conversationHistory;
+  currentState.supportState = supportState;
+  await saveConversationState(userId, currentState);
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: escalationResponse,
   });
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...conversationHistory.map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
-    });
+  // エスカレーション処理
+  await handleEscalation(userId, supportState, lang, 'FAQに該当なし');
 
-    let aiResponse =
-      completion.choices[0]?.message?.content ||
-      getSupportMessage('escalate', lang);
-
-    // AI応答から不正なURL（FAQに存在しないURL）を除去
-    aiResponse = sanitizeAiResponse(aiResponse);
-
-    // サポートモードではトラッキングURL変換をスキップ（元URLをそのまま表示）
-
-    conversationHistory.push({ role: 'assistant', content: aiResponse });
-
-    // 会話を保存
-    supportState.conversationHistory = conversationHistory;
-    currentState.supportState = supportState;
-    await saveConversationState(userId, currentState);
-
-    // 応答を送信
-    await replyMessage(replyToken, {
-      type: 'text',
-      text: aiResponse,
-    });
-
-    // 3往復したらチケット作成して完了
-    const userMessages = conversationHistory.filter((m) => m.role === 'user');
-    if (userMessages.length >= 3) {
-      await completeSupport(userId, supportState, lang);
-    }
-
-    return true;
-  } catch (error) {
-    console.error('❌ サポートAI応答エラー:', error);
-    await replyMessage(replyToken, {
-      type: 'text',
-      text: getSupportMessage('escalate', lang),
-    });
-    return true;
-  }
+  return true;
 }
 
 /**
- * サポート完了処理
+ * エスカレーション処理（AIが対応できない場合）
+ * チケット作成 → 有人対応モードON → Slack通知
  */
-async function completeSupport(
+async function handleEscalation(
   userId: string,
   supportState: SupportModeState,
-  _lang: string
+  lang: string,
+  reason: string
 ): Promise<void> {
   const conversationHistory = supportState.conversationHistory || [];
 
@@ -409,13 +423,138 @@ async function completeSupport(
     .join('\n');
 
   // チケット作成
-  await createSupportTicket({
+  const ticketId = await createSupportTicket({
     userId,
     ticketType: supportState.ticketType || 'feedback',
     service: supportState.service,
     content,
     aiSummary,
   });
+
+  if (ticketId) {
+    // LINEプロフィールを取得
+    let userDisplayName: string | undefined;
+    try {
+      const profile = await getUserProfile(userId);
+      userDisplayName = profile?.displayName;
+
+      // 会話履歴からカテゴリを推定
+      const userMessages = conversationHistory
+        .filter((m) => m.role === 'user')
+        .map((m) => m.content)
+        .join(' ');
+      const category = classifyTicketCategory(userMessages);
+
+      await updateTicket(ticketId, {
+        userDisplayName,
+        userLang: lang,
+        category,
+        escalatedAt: new Date().toISOString(),
+        escalationReason: reason,
+      });
+    } catch (error) {
+      console.error('⚠️ チケット更新失敗:', error);
+    }
+
+    // 有人対応モードをON
+    await toggleHumanTakeover(ticketId, true, undefined);
+
+    // 会話履歴をメッセージとして保存
+    for (const msg of conversationHistory) {
+      await saveMessage(ticketId, msg.role as 'user' | 'assistant', msg.content);
+    }
+
+    // Slack通知
+    await notifyEscalation({
+      ticketId,
+      userId,
+      userDisplayName,
+      service: supportState.service,
+      summary: aiSummary || content.slice(0, 100),
+      reason,
+    });
+
+    console.log(`✅ エスカレーション完了: ${ticketId}`);
+
+    // ユーザーに有人対応開始を通知
+    const escalationMessages: Record<string, string> = {
+      ja: 'オペレーターに接続しました。少々お待ちください。',
+      en: 'Connected to an operator. Please wait a moment.',
+      ko: '상담원에게 연결되었습니다. 잠시만 기다려주세요.',
+      zh: '已连接到客服人员。请稍等。',
+      vi: 'Đã kết nối với nhân viên hỗ trợ. Vui lòng đợi.',
+    };
+    await pushMessage(userId, [{
+      type: 'text',
+      text: escalationMessages[lang] || escalationMessages.ja,
+    }]);
+  }
+
+  // 会話状態をクリア
+  await clearConversationState(userId);
+}
+
+/**
+ * サポート完了処理
+ */
+async function completeSupport(
+  userId: string,
+  supportState: SupportModeState,
+  lang: string
+): Promise<void> {
+  const conversationHistory = supportState.conversationHistory || [];
+
+  // AIで要約を生成
+  let aiSummary = '';
+  try {
+    const summaryPrompt = generateSummaryPrompt(conversationHistory);
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: summaryPrompt }],
+      max_tokens: 150,
+      temperature: 0.3,
+    });
+    aiSummary = completion.choices[0]?.message?.content || '';
+  } catch (error) {
+    console.error('❌ 要約生成エラー:', error);
+  }
+
+  // 会話内容を結合
+  const content = conversationHistory
+    .map((m) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+    .join('\n');
+
+  // チケット作成
+  const ticketId = await createSupportTicket({
+    userId,
+    ticketType: supportState.ticketType || 'feedback',
+    service: supportState.service,
+    content,
+    aiSummary,
+  });
+
+  // LINEプロフィールを取得してチケットに保存 + カテゴリ分類
+  if (ticketId) {
+    try {
+      const profile = await getUserProfile(userId);
+
+      // 会話履歴からカテゴリを推定
+      const userMessages = conversationHistory
+        .filter((m) => m.role === 'user')
+        .map((m) => m.content)
+        .join(' ');
+      const category = classifyTicketCategory(userMessages);
+
+      await updateTicket(ticketId, {
+        userDisplayName: profile?.displayName,
+        userLang: lang,
+        category,
+      });
+      console.log(`✅ チケット更新: ${profile?.displayName || userId}, カテゴリ: ${category}`);
+    } catch (error) {
+      console.error('⚠️ チケット更新失敗:', error);
+    }
+  }
 
   // 会話状態をクリア
   await clearConversationState(userId);

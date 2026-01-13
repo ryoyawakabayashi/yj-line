@@ -42,6 +42,16 @@ export interface PendingConfirmation {
 }
 
 /**
+ * クイックリプライ選択待ちの状態
+ */
+export interface PendingQuickReply {
+  choices: Array<{
+    label: string;
+    faqId: string;
+  }>;
+}
+
+/**
  * サポートモードの状態
  */
 export interface SupportModeState {
@@ -54,7 +64,18 @@ export interface SupportModeState {
     content: string;
   }>;
   pendingConfirmation?: PendingConfirmation;
+  pendingQuickReply?: PendingQuickReply;
 }
+
+/**
+ * チケット優先度
+ */
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+/**
+ * メッセージロール
+ */
+export type MessageRole = 'user' | 'assistant' | 'system' | 'operator';
 
 /**
  * サポートチケット
@@ -69,6 +90,41 @@ export interface SupportTicket {
   status: TicketStatus;
   createdAt: Date;
   updatedAt: Date;
+  // 拡張フィールド
+  escalatedAt?: Date | null;
+  escalationReason?: string | null;
+  priority?: TicketPriority;
+  userDisplayName?: string | null;
+  userLang?: string | null;
+  category?: string | null;
+  metadata?: Record<string, unknown>;
+  humanTakeover?: boolean;
+  humanTakeoverAt?: Date | null;
+  humanOperatorName?: string | null;
+}
+
+/**
+ * サポートメッセージ
+ */
+export interface SupportMessage {
+  id: string;
+  ticketId: string;
+  role: MessageRole;
+  content: string;
+  senderName?: string | null;
+  createdAt: Date;
+}
+
+/**
+ * DBから取得したサポートメッセージ（snake_case）
+ */
+export interface SupportMessageRow {
+  id: string;
+  ticket_id: string;
+  role: MessageRole;
+  content: string;
+  sender_name: string | null;
+  created_at: string;
 }
 
 /**
@@ -110,6 +166,17 @@ export interface SupportTicketRow {
   status: TicketStatus;
   created_at: string;
   updated_at: string;
+  // 拡張フィールド
+  escalated_at?: string | null;
+  escalation_reason?: string | null;
+  priority?: TicketPriority;
+  user_display_name?: string | null;
+  user_lang?: string | null;
+  category?: string | null;
+  metadata?: Record<string, unknown>;
+  human_takeover?: boolean;
+  human_takeover_at?: string | null;
+  human_operator_name?: string | null;
 }
 
 /**
@@ -163,6 +230,31 @@ export function toSupportTicket(row: SupportTicketRow): SupportTicket {
     status: row.status,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+    // 拡張フィールド
+    escalatedAt: row.escalated_at ? new Date(row.escalated_at) : null,
+    escalationReason: row.escalation_reason,
+    priority: row.priority,
+    userDisplayName: row.user_display_name,
+    userLang: row.user_lang,
+    category: row.category,
+    metadata: row.metadata,
+    humanTakeover: row.human_takeover,
+    humanTakeoverAt: row.human_takeover_at ? new Date(row.human_takeover_at) : null,
+    humanOperatorName: row.human_operator_name,
+  };
+}
+
+/**
+ * SupportMessageRow を SupportMessage に変換
+ */
+export function toSupportMessage(row: SupportMessageRow): SupportMessage {
+  return {
+    id: row.id,
+    ticketId: row.ticket_id,
+    role: row.role,
+    content: row.content,
+    senderName: row.sender_name,
+    createdAt: new Date(row.created_at),
   };
 }
 

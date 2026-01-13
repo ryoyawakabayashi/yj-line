@@ -14,6 +14,7 @@ import {
   DocumentTextIcon,
   SparklesIcon,
   UserGroupIcon,
+  LifebuoyIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -39,6 +40,12 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'アクティビティ', href: '/dashboard/activity', icon: ClockIcon },
       { label: '会話履歴', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
       { label: '応募者追跡', href: '/dashboard/conversions', icon: UserGroupIcon },
+    ],
+  },
+  {
+    title: 'サポート',
+    items: [
+      { label: 'チケット一覧', href: '/dashboard/support', icon: LifebuoyIcon },
     ],
   },
   {
