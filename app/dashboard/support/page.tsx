@@ -11,6 +11,7 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
+import { fetchWithAuth } from '@/lib/auth/dashboard-client';
 
 interface SupportTicket {
   id: string;
@@ -81,8 +82,8 @@ export default function SupportDashboardPage() {
   const fetchData = async () => {
     try {
       const [ticketsRes, statsRes] = await Promise.all([
-        fetch('/api/dashboard/support'),
-        fetch('/api/dashboard/support/stats'),
+        fetchWithAuth('/api/dashboard/support'),
+        fetchWithAuth('/api/dashboard/support/stats'),
       ]);
 
       if (ticketsRes.ok) {

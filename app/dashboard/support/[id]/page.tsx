@@ -10,6 +10,7 @@ import {
   SparklesIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
+import { fetchWithAuth, getAuthHeaders } from '@/lib/auth/dashboard-client';
 
 interface SupportTicket {
   id: string;
@@ -94,8 +95,8 @@ export default function SupportTicketDetailPage() {
   const fetchTicketData = async () => {
     try {
       const [ticketRes, messagesRes] = await Promise.all([
-        fetch(`/api/dashboard/support/${ticketId}`),
-        fetch(`/api/support/messages/${ticketId}`),
+        fetchWithAuth(`/api/dashboard/support/${ticketId}`),
+        fetchWithAuth(`/api/support/messages/${ticketId}`),
       ]);
 
       if (ticketRes.ok) {
@@ -117,7 +118,7 @@ export default function SupportTicketDetailPage() {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch(`/api/support/messages/${ticketId}`);
+      const res = await fetchWithAuth(`/api/support/messages/${ticketId}`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
@@ -131,7 +132,7 @@ export default function SupportTicketDetailPage() {
     try {
       const res = await fetch('/api/support/takeover', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ticketId,
           enable: !isHumanMode,
@@ -155,7 +156,7 @@ export default function SupportTicketDetailPage() {
     try {
       const res = await fetch('/api/support/send-message', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ticketId,
           message: newMessage,
@@ -178,7 +179,7 @@ export default function SupportTicketDetailPage() {
     try {
       const res = await fetch(`/api/dashboard/support/${ticketId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ status }),
       });
 

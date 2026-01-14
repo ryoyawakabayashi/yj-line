@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTicketById, updateTicket, updateTicketStatus } from '@/lib/database/support-queries';
+import { checkDashboardAuth, unauthorizedResponse } from '@/lib/auth/dashboard-auth';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // 認証チェック
+  const auth = checkDashboardAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const { id } = await params;
     const ticket = await getTicketById(id);
@@ -50,6 +57,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // 認証チェック
+  const auth = checkDashboardAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const { id } = await params;
     const body = await request.json();

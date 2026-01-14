@@ -12,7 +12,6 @@ import {
 import {
   createSupportTicket,
   updateTicket,
-  getActiveTicketByUserId,
   saveMessage,
   toggleHumanTakeover,
 } from '../database/support-queries';
@@ -32,7 +31,10 @@ import {
   ESCALATION_MESSAGES,
   detectAmbiguousPattern,
   getFAQResponseById,
-  AmbiguousPattern,
+  FAQ_CONFIRM_MESSAGES,
+  FAQ_CONFIRM_YES,
+  FAQ_CONFIRM_NO,
+  FAQ_TOPIC_NAMES,
 } from '../support/classifier';
 import { notifyEscalation } from '../notifications/slack';
 import { ConversationState } from '@/types/conversation';
@@ -162,23 +164,14 @@ function isNegativeResponse(message: string): boolean {
 
 /**
  * サポートモード中のメッセージ処理
+ * Note: 有人対応モードのチェックはevent.tsで先に行われるため、
+ *       ここに到達した時点で有人対応中ではないことが保証される
  */
 export async function handleSupportMessage(
   userId: string,
   replyToken: string,
   userMessage: string
 ): Promise<boolean> {
-  // === 有人対応モードのチェック ===
-  // アクティブなチケットがあり、有人対応中の場合はAI応答をスキップ
-  const activeTicket = await getActiveTicketByUserId(userId);
-  if (activeTicket?.humanTakeover) {
-    // メッセージをDBに保存（ダッシュボードで表示するため）
-    await saveMessage(activeTicket.id, 'user', userMessage);
-    console.log(`📝 有人対応中メッセージ保存: ${activeTicket.id}`);
-    // AI応答はスキップ（ダッシュボードからオペレーターが対応）
-    return true;
-  }
-
   const currentState = await getConversationState(userId);
 
   if (!currentState || currentState.mode !== 'support') {
@@ -296,6 +289,7 @@ export async function handleSupportMessage(
 
     // 選択肢の情報を保存（次のメッセージで使う）
     supportState.pendingQuickReply = {
+      type: 'ambiguous',
       choices: ambiguousResult.pattern.choices,
     };
     conversationHistory.push({ role: 'assistant', content: ambiguousResult.question });
@@ -315,14 +309,16 @@ export async function handleSupportMessage(
 
   // 3. クイックリプライの選択肢が選ばれた場合
   if (supportState.pendingQuickReply) {
-    const choices = supportState.pendingQuickReply.choices;
-    const selectedChoice = choices.find((c: { label: string; faqId: string }) =>
-      userMessage.includes(c.label) || c.label.includes(userMessage)
-    );
+    const pendingQR = supportState.pendingQuickReply;
 
-    if (selectedChoice) {
-      const faqResponse = getFAQResponseById(selectedChoice.faqId, supportState.service, lang);
-      if (faqResponse) {
+    // 3a. FAQ確認タイプ（「はい」「いいえ」選択）
+    if (pendingQR.type === 'faq_confirm' && pendingQR.confirmFaq) {
+      const yesLabel = FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja;
+      const noLabel = FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja;
+
+      // 「はい」が選択された → FAQ回答を返す
+      if (userMessage.includes(yesLabel) || userMessage === yesLabel) {
+        const faqResponse = pendingQR.confirmFaq.response;
         conversationHistory.push({ role: 'assistant', content: faqResponse });
         supportState.pendingQuickReply = undefined;
         supportState.conversationHistory = conversationHistory;
@@ -334,12 +330,64 @@ export async function handleSupportMessage(
           text: faqResponse,
         });
 
-        console.log(`✅ クイックリプライ選択: ${selectedChoice.faqId}`);
+        console.log(`✅ FAQ確認→はい: ${pendingQR.confirmFaq.faqId}`);
         return true;
       }
+
+      // 「いいえ」が選択された → エスカレーション
+      if (userMessage.includes(noLabel) || userMessage === noLabel) {
+        supportState.pendingQuickReply = undefined;
+        supportState.conversationHistory = conversationHistory;
+        currentState.supportState = supportState;
+
+        const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
+        conversationHistory.push({ role: 'assistant', content: escalationResponse });
+        await saveConversationState(userId, currentState);
+
+        await replyMessage(replyToken, {
+          type: 'text',
+          text: escalationResponse,
+        });
+
+        // エスカレーション処理
+        await handleEscalation(userId, supportState, lang, 'FAQ確認で「いいえ」選択');
+
+        console.log(`🚨 FAQ確認→いいえ、エスカレーション`);
+        return true;
+      }
+
+      // どちらでもない場合は通常のフローへ
+      supportState.pendingQuickReply = undefined;
     }
-    // 選択肢に該当しない場合は通常のフローへ
-    supportState.pendingQuickReply = undefined;
+
+    // 3b. 曖昧パターンタイプ（複数選択肢から選択）
+    if (pendingQR.type === 'ambiguous' || !pendingQR.type) {
+      const choices = pendingQR.choices;
+      const selectedChoice = choices.find((c: { label: string; faqId: string }) =>
+        userMessage.includes(c.label) || c.label.includes(userMessage)
+      );
+
+      if (selectedChoice) {
+        const faqResponse = getFAQResponseById(selectedChoice.faqId, supportState.service, lang);
+        if (faqResponse) {
+          conversationHistory.push({ role: 'assistant', content: faqResponse });
+          supportState.pendingQuickReply = undefined;
+          supportState.conversationHistory = conversationHistory;
+          currentState.supportState = supportState;
+          await saveConversationState(userId, currentState);
+
+          await replyMessage(replyToken, {
+            type: 'text',
+            text: faqResponse,
+          });
+
+          console.log(`✅ クイックリプライ選択: ${selectedChoice.faqId}`);
+          return true;
+        }
+      }
+      // 選択肢に該当しない場合は通常のフローへ
+      supportState.pendingQuickReply = undefined;
+    }
   }
 
   // 4. AIでFAQを分類
@@ -352,8 +400,10 @@ export async function handleSupportMessage(
 
   console.log(`📋 分類結果: matched=${classification.matched}, faqId=${classification.faqId}, confidence=${classification.confidence}`);
 
-  // 5. FAQにマッチした場合 → 定型文を返す
-  if (classification.matched && classification.response) {
+  const confidence = classification.confidence || 0;
+
+  // 5a. 高信頼度（≥0.85）→ FAQ即回答
+  if (confidence >= 0.85 && classification.matched && classification.response) {
     conversationHistory.push({ role: 'assistant', content: classification.response });
 
     supportState.conversationHistory = conversationHistory;
@@ -365,12 +415,69 @@ export async function handleSupportMessage(
       text: classification.response,
     });
 
-    console.log(`✅ FAQ回答: ${classification.faqId}`);
+    console.log(`✅ FAQ即回答（confidence=${confidence}）: ${classification.faqId}`);
     return true;
   }
 
-  // 6. FAQにマッチしない場合 → エスカレーション
-  console.log(`🚨 FAQにマッチせず、エスカレーション: ${userMessage}`);
+  // 5b. 中間信頼度（0.60-0.85）→ 確認クイックリプライ
+  if (confidence >= 0.60 && confidence < 0.85 && classification.faqId && classification.response) {
+    const faqId = classification.faqId;
+    const topicNames = FAQ_TOPIC_NAMES[faqId];
+    const topicName = topicNames?.[lang] || topicNames?.ja || faqId;
+
+    // 確認メッセージを生成
+    const confirmTemplate = FAQ_CONFIRM_MESSAGES[lang] || FAQ_CONFIRM_MESSAGES.ja;
+    const confirmMessage = confirmTemplate.replace('{topic}', topicName);
+
+    // pendingQuickReplyを設定（faq_confirmタイプ）
+    supportState.pendingQuickReply = {
+      type: 'faq_confirm',
+      choices: [
+        { label: FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja, faqId: faqId },
+        { label: FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja, faqId: '__escalate__' },
+      ],
+      confirmFaq: {
+        faqId: faqId,
+        response: classification.response,
+      },
+    };
+
+    conversationHistory.push({ role: 'assistant', content: confirmMessage });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: confirmMessage,
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja,
+              text: FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja,
+            },
+          },
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja,
+              text: FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja,
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`🤔 FAQ確認中（confidence=${confidence}）: ${faqId}`);
+    return true;
+  }
+
+  // 5c. 低信頼度（<0.60）→ エスカレーション
+  console.log(`🚨 低信頼度（confidence=${confidence}）、エスカレーション: ${userMessage}`);
 
   const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
   conversationHistory.push({ role: 'assistant', content: escalationResponse });
@@ -385,7 +492,7 @@ export async function handleSupportMessage(
   });
 
   // エスカレーション処理
-  await handleEscalation(userId, supportState, lang, 'FAQに該当なし');
+  await handleEscalation(userId, supportState, lang, `FAQに該当なし（confidence=${confidence}）`);
 
   return true;
 }
@@ -402,19 +509,34 @@ async function handleEscalation(
 ): Promise<void> {
   const conversationHistory = supportState.conversationHistory || [];
 
-  // AIで要約を生成
+  // ユーザーの元メッセージを取得（最新のもの）
+  const userMessages = conversationHistory
+    .filter((m) => m.role === 'user')
+    .map((m) => m.content);
+  const originalMessage = userMessages[userMessages.length - 1] || '';
+
+  // AIで日本語要約を生成（多言語→日本語）
   let aiSummary = '';
   try {
-    const summaryPrompt = generateSummaryPrompt(conversationHistory);
+    const summaryPrompt = `以下のカスタマーサポートの会話を**日本語で**簡潔に要約してください。
+ユーザーが何に困っているか、何を求めているかを明確に。
+50文字以内で要約してください。
+
+会話:
+${conversationHistory.map((m) => `${m.role === 'user' ? 'ユーザー' : 'AI'}: ${m.content}`).join('\n')}
+
+日本語要約:`;
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: summaryPrompt }],
-      max_tokens: 150,
+      max_tokens: 100,
       temperature: 0.3,
     });
     aiSummary = completion.choices[0]?.message?.content || '';
   } catch (error) {
     console.error('❌ 要約生成エラー:', error);
+    // フォールバック: 元メッセージをそのまま使用
+    aiSummary = originalMessage;
   }
 
   // 会話内容を結合
@@ -464,13 +586,15 @@ async function handleEscalation(
       await saveMessage(ticketId, msg.role as 'user' | 'assistant', msg.content);
     }
 
-    // Slack通知
+    // Slack通知（日本語要約 + 元メッセージ + 言語情報）
     await notifyEscalation({
       ticketId,
       userId,
       userDisplayName,
+      userLang: lang,
       service: supportState.service,
-      summary: aiSummary || content.slice(0, 100),
+      summary: aiSummary || '要約生成に失敗',
+      originalMessage,
       reason,
     });
 

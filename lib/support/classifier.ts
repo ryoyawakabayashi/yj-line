@@ -352,34 +352,85 @@ https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
     },
   },
   {
+    id: 'search_specific_job',
+    keywords: [
+      // 職種（英語）
+      'dishwashing', 'dishwasher', 'cleaning', 'cleaner', 'factory', 'warehouse', 'restaurant', 'hotel', 'convenience store', 'konbini', 'delivery', 'driver', 'kitchen', 'cooking', 'server', 'waiter', 'waitress', 'cashier', 'retail', 'shop', 'store', 'supermarket', 'construction', 'manufacturing', 'packing', 'sorting', 'assembly', 'food processing', 'bento', 'laundry', 'housekeeping', 'caregiver', 'nursing', 'translator', 'interpreter', 'office', 'it job', 'engineer', 'part-time', 'full-time', 'baito', 'arubaito',
+      // 地域（英語）
+      'job in tokyo', 'job in osaka', 'job in nagoya', 'job in kyoto', 'job in fukuoka', 'job in yokohama', 'job in sapporo', 'job in kobe', 'job in hiroshima', 'job in sendai', 'work in tokyo', 'work in osaka', 'work in japan', 'jobs near', 'jobs around',
+      // 職種（日本語）
+      '皿洗い', '洗い場', '清掃', 'クリーニング', '工場', '倉庫', 'レストラン', 'ホテル', 'コンビニ', '配達', 'ドライバー', 'キッチン', '調理', 'ホール', 'ウェイター', 'レジ', '販売', 'スーパー', '建設', '製造', '梱包', '仕分け', '組立', '食品加工', '弁当', 'ランドリー', 'ハウスキーピング', '介護', '通訳', '翻訳', 'オフィス', 'エンジニア', 'アルバイト', 'パート', '正社員',
+      // 地域（日本語）
+      '東京の仕事', '大阪の仕事', '名古屋の仕事', '京都の仕事', '福岡の仕事', '横浜の仕事', '札幌の仕事', '神戸の仕事', '広島の仕事', '仙台の仕事', '近くの仕事', '周辺の仕事',
+      // 韓国語
+      '도쿄 일자리', '오사카 일자리', '공장', '창고', '레스토랑', '호텔', '편의점', '배달', '청소', '주방', '아르바이트',
+      // 中国語
+      '东京工作', '大阪工作', '工厂', '仓库', '餐厅', '酒店', '便利店', '送货', '清洁', '厨房', '兼职',
+      // ベトナム語
+      'việc làm tokyo', 'việc làm osaka', 'nhà máy', 'nhà kho', 'nhà hàng', 'khách sạn', 'cửa hàng tiện lợi', 'giao hàng', 'dọn dẹp', 'bếp', 'bán thời gian',
+    ],
+    responses: {
+      ja: `こちらのメッセージから特定の仕事を検索することはできません。
+
+メニューの「仕事を探す」から、以下の方法で探してください：
+・AIで探す → 条件を伝えて仕事を探せます
+・サイトから探す → 自分で検索できます
+
+まだ登録していない方は、まず会員登録をお願いします：
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+      en: `I cannot search for specific jobs from this message.
+
+Please use "Find Jobs" in the menu:
+・AI Search → Tell us your conditions and we'll find jobs for you
+・Search on Site → Search by yourself
+
+If you haven't registered yet, please sign up first:
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+      ko: `이 메시지에서는 특정 일자리를 검색할 수 없습니다.
+
+메뉴의 "일자리 찾기"를 이용해 주세요:
+・AI 검색 → 조건을 말씀해 주시면 일자리를 찾아드립니다
+・사이트에서 검색 → 직접 검색할 수 있습니다
+
+아직 등록하지 않으셨다면 먼저 회원가입을 해주세요:
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+      zh: `无法从此消息中搜索特定工作。
+
+请使用菜单中的"找工作"：
+・AI搜索 → 告诉我们您的条件，我们会为您找工作
+・网站搜索 → 自己搜索
+
+如果您还没有注册，请先注册：
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+      vi: `Tôi không thể tìm kiếm công việc cụ thể từ tin nhắn này.
+
+Vui lòng sử dụng "Tìm việc" trong menu:
+・Tìm bằng AI → Cho chúng tôi biết điều kiện của bạn
+・Tìm trên trang web → Tự tìm kiếm
+
+Nếu bạn chưa đăng ký, vui lòng đăng ký trước:
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+    },
+  },
+  {
     id: 'search_jobs',
     keywords: ['仕事を探', '求人', '仕事ありますか', 'looking for job', 'find job', '일자리', '找工作'],
     responses: {
-      ja: `求人検索はこちらから：
-https://www.yolo-japan.com/ja/recruit/${UTM}
-
-特集ページもご覧ください：
-https://www.yolo-japan.com/ja/recruit/feature/theme${UTM}`,
-      en: `Search for jobs here:
-https://www.yolo-japan.com/ja/recruit/${UTM}
-
-Also check our featured jobs:
-https://www.yolo-japan.com/ja/recruit/feature/theme${UTM}`,
-      ko: `구인 검색은 여기에서:
-https://www.yolo-japan.com/ja/recruit/${UTM}
-
-특집 페이지도 확인하세요:
-https://www.yolo-japan.com/ja/recruit/feature/theme${UTM}`,
-      zh: `在这里搜索职位：
-https://www.yolo-japan.com/ja/recruit/${UTM}
-
-也请查看特集页面：
-https://www.yolo-japan.com/ja/recruit/feature/theme${UTM}`,
-      vi: `Tìm việc làm tại đây:
-https://www.yolo-japan.com/ja/recruit/${UTM}
-
-Cũng xem trang đặc biệt:
-https://www.yolo-japan.com/ja/recruit/feature/theme${UTM}`,
+      ja: `メニューの「仕事を探す」から、以下の方法で探してください：
+・AIで探す → 条件を伝えて仕事を探せます
+・サイトから探す → 自分で検索できます`,
+      en: `Please use "Find Jobs" in the menu:
+・AI Search → Tell us your conditions and we'll find jobs for you
+・Search on Site → Search by yourself`,
+      ko: `메뉴의 "일자리 찾기"를 이용해 주세요:
+・AI 검색 → 조건을 말씀해 주시면 일자리를 찾아드립니다
+・사이트에서 검색 → 직접 검색할 수 있습니다`,
+      zh: `请使用菜单中的"找工作"：
+・AI搜索 → 告诉我们您的条件，我们会为您找工作
+・网站搜索 → 自己搜索`,
+      vi: `Vui lòng sử dụng "Tìm việc" trong menu:
+・Tìm bằng AI → Cho chúng tôi biết điều kiện của bạn
+・Tìm trên trang web → Tự tìm kiếm`,
     },
   },
 ];
@@ -585,6 +636,151 @@ export const GREETING_MESSAGES: Record<string, string> = {
   ko: '안녕하세요! 어떻게 도와드릴까요?',
   zh: '您好！有什么可以帮您的？',
   vi: 'Xin chào! Tôi có thể giúp gì cho bạn?',
+};
+
+/**
+ * FAQ確認用の文言（中間confidence時に使用）
+ */
+export const FAQ_CONFIRM_MESSAGES: Record<string, string> = {
+  ja: '「{topic}」についてのお問い合わせですか？',
+  en: 'Is your question about "{topic}"?',
+  ko: '"{topic}"에 관한 문의이신가요?',
+  zh: '您的问题是关于"{topic}"吗？',
+  vi: 'Câu hỏi của bạn có phải về "{topic}" không?',
+};
+
+/**
+ * FAQ確認の「はい」ラベル
+ */
+export const FAQ_CONFIRM_YES: Record<string, string> = {
+  ja: 'はい',
+  en: 'Yes',
+  ko: '네',
+  zh: '是的',
+  vi: 'Có',
+};
+
+/**
+ * FAQ確認の「いいえ」ラベル
+ */
+export const FAQ_CONFIRM_NO: Record<string, string> = {
+  ja: 'いいえ、違います',
+  en: 'No, something else',
+  ko: '아니요, 다른 문의입니다',
+  zh: '不是，是其他问题',
+  vi: 'Không, về vấn đề khác',
+};
+
+/**
+ * FAQ IDからトピック名を取得（確認メッセージ用）
+ */
+export const FAQ_TOPIC_NAMES: Record<string, Record<string, string>> = {
+  no_contact_from_company: {
+    ja: '企業からの連絡がない',
+    en: 'no response from company',
+    ko: '회사로부터 연락이 없음',
+    zh: '没有收到公司回复',
+    vi: 'không nhận được phản hồi từ công ty',
+  },
+  withdraw_account: {
+    ja: 'アカウント退会',
+    en: 'account deletion',
+    ko: '계정 탈퇴',
+    zh: '删除账户',
+    vi: 'xóa tài khoản',
+  },
+  forgot_password: {
+    ja: 'パスワードを忘れた',
+    en: 'forgot password',
+    ko: '비밀번호 찾기',
+    zh: '忘记密码',
+    vi: 'quên mật khẩu',
+  },
+  stop_newsletter: {
+    ja: 'メルマガ停止',
+    en: 'unsubscribe newsletter',
+    ko: '뉴스레터 해지',
+    zh: '取消订阅',
+    vi: 'hủy đăng ký bản tin',
+  },
+  cancel_interview: {
+    ja: '面接キャンセル',
+    en: 'cancel interview',
+    ko: '면접 취소',
+    zh: '取消面试',
+    vi: 'hủy phỏng vấn',
+  },
+  application_no_reply: {
+    ja: '応募後の返事がない',
+    en: 'no reply after applying',
+    ko: '지원 후 답변이 없음',
+    zh: '申请后没有回复',
+    vi: 'không có phản hồi sau khi nộp đơn',
+  },
+  auto_cancelled: {
+    ja: '自動キャンセル',
+    en: 'auto cancellation',
+    ko: '자동 취소',
+    zh: '自动取消',
+    vi: 'tự động hủy',
+  },
+  change_email: {
+    ja: 'メールアドレス変更',
+    en: 'change email address',
+    ko: '이메일 변경',
+    zh: '更改邮箱',
+    vi: 'thay đổi email',
+  },
+  error_report: {
+    ja: 'エラー・不具合報告',
+    en: 'error/bug report',
+    ko: '오류 신고',
+    zh: '错误报告',
+    vi: 'báo cáo lỗi',
+  },
+  how_to_apply: {
+    ja: '応募方法',
+    en: 'how to apply',
+    ko: '지원 방법',
+    zh: '如何申请',
+    vi: 'cách nộp đơn',
+  },
+  search_specific_job: {
+    ja: '特定の仕事を探す',
+    en: 'searching for specific jobs',
+    ko: '특정 일자리 검색',
+    zh: '搜索特定工作',
+    vi: 'tìm công việc cụ thể',
+  },
+  search_jobs: {
+    ja: '仕事を探す',
+    en: 'job search',
+    ko: '일자리 찾기',
+    zh: '找工作',
+    vi: 'tìm việc làm',
+  },
+  // YOLO DISCOVER
+  cancel_project: {
+    ja: 'プロジェクトキャンセル',
+    en: 'project cancellation',
+    ko: '프로젝트 취소',
+    zh: '取消项目',
+    vi: 'hủy dự án',
+  },
+  completion_report: {
+    ja: '完了報告',
+    en: 'completion report',
+    ko: '완료 보고',
+    zh: '完成报告',
+    vi: 'báo cáo hoàn thành',
+  },
+  contact_manager: {
+    ja: '担当者への連絡',
+    en: 'contacting manager',
+    ko: '담당자 연락',
+    zh: '联系负责人',
+    vi: 'liên hệ quản lý',
+  },
 };
 
 /**

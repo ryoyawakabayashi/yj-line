@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTicketById, toggleHumanTakeover, saveMessage } from '@/lib/database/support-queries';
 import { pushMessage } from '@/lib/line/client';
 import { notifyHumanTakeoverStart } from '@/lib/notifications/slack';
+import { checkDashboardAuth, unauthorizedResponse } from '@/lib/auth/dashboard-auth';
 
 export async function POST(request: NextRequest) {
+  // 認証チェック
+  const auth = checkDashboardAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const { ticketId, enable, operatorName } = await request.json();
 

@@ -45,10 +45,16 @@ export interface PendingConfirmation {
  * クイックリプライ選択待ちの状態
  */
 export interface PendingQuickReply {
+  type: 'ambiguous' | 'faq_confirm';  // ambiguous: 曖昧パターン, faq_confirm: FAQ確認
   choices: Array<{
     label: string;
     faqId: string;
   }>;
+  // faq_confirm用: 確認対象のFAQ情報
+  confirmFaq?: {
+    faqId: string;
+    response: string;
+  };
 }
 
 /**

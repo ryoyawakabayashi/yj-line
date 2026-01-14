@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTicketById, saveMessage } from '@/lib/database/support-queries';
 import { pushMessage } from '@/lib/line/client';
+import { checkDashboardAuth, unauthorizedResponse } from '@/lib/auth/dashboard-auth';
 
 export async function POST(request: NextRequest) {
+  // 認証チェック
+  const auth = checkDashboardAuth(request);
+  if (!auth.authenticated) {
+    return unauthorizedResponse(auth.error);
+  }
+
   try {
     const { ticketId, message, operatorName } = await request.json();
 

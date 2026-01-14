@@ -1,5 +1,6 @@
 import { LineEvent } from '@/types/line';
 import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile } from '../database/queries';
+import { getActiveTicketByUserId, saveMessage } from '../database/support-queries';
 import { replyMessage, linkRichMenu } from '../line/client';
 import { config } from '../config';
 import { CONSTANTS } from '../constants';
@@ -48,6 +49,17 @@ export async function handleEvent(event: LineEvent): Promise<void> {
     if (type === 'message' && event.message.type === 'text') {
       const messageText = event.message.text.trim();
       console.log(`💬 メッセージ受信: ${messageText}`);
+
+      // === 有人対応モードのチェック（最優先） ===
+      // conversation_stateに関係なく、有人対応中のチケットがあれば
+      // ユーザーメッセージをDBに保存してAI応答をスキップ
+      const activeTicket = await getActiveTicketByUserId(userId);
+      if (activeTicket?.humanTakeover) {
+        await saveMessage(activeTicket.id, 'user', messageText);
+        console.log(`📝 有人対応中メッセージ保存: ${activeTicket.id} - ${messageText.slice(0, 50)}`);
+        // AI応答はスキップ（ダッシュボードからオペレーターが対応）
+        return;
+      }
 
       // 現在の会話状態を取得
       const currentState = await getConversationState(userId);
