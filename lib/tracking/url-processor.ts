@@ -18,12 +18,15 @@ const TRACKABLE_DOMAINS = [
  * URLソース種別
  */
 export type UrlSourceType =
-  | 'diagnosis'    // 診断結果から
-  | 'support'      // サポートAIから
-  | 'autochat'     // AIトーク（自由会話）から
-  | 'richmenu'     // リッチメニューから
-  | 'faq'          // FAQ応答から
-  | 'followup';    // フォローアップから
+  | 'diagnosis'           // 診断結果から
+  | 'support'             // サポートAIから（汎用）
+  | 'support_yolo_japan'  // サポート - YOLO JAPAN
+  | 'support_yolo_home'   // サポート - YOLO HOME
+  | 'support_yolo_discover' // サポート - YOLO DISCOVER
+  | 'autochat'            // AIトーク（自由会話）から
+  | 'richmenu'            // リッチメニューから
+  | 'faq'                 // FAQ応答から
+  | 'followup';           // フォローアップから
 
 /**
  * テキスト内のURLを検出する正規表現
@@ -65,6 +68,12 @@ export async function processUrlsInText(
       if (isTrackable) {
         // トラッキングURLを生成
         const trackingUrl = await generateTrackingUrl(userId, originalUrl, sourceType);
+        // デバッグ: URL処理ログ
+        console.log('🔄 URL処理:', {
+          original: originalUrl,
+          tracked: trackingUrl,
+          sourceType
+        });
         // テキスト内のURLを置換
         processedText = processedText.split(originalUrl).join(trackingUrl);
       }

@@ -286,3 +286,131 @@ export async function notifyTicketResolved(
     return false;
   }
 }
+
+// =====================================================
+// YOLO DISCOVER 企業トラブル通知（CS + Cマーケ両部署）
+// =====================================================
+
+// 環境変数から両部署のWebhook URLを取得
+const SLACK_CS_WEBHOOK_URL = process.env.SLACK_CS_WEBHOOK_URL;
+const SLACK_MARKETING_WEBHOOK_URL = process.env.SLACK_MARKETING_WEBHOOK_URL;
+
+export interface EnterpriseTroubleNotification {
+  userId: string;
+  userDisplayName?: string;
+  userLang?: string;
+  message: string;
+  category: string;
+  patternId: string;
+  timestamp: string;
+}
+
+/**
+ * YOLO DISCOVER企業トラブル通知（両部署同時通知）
+ */
+export async function notifyYoloDiscoverEnterpriseTrouble(
+  data: EnterpriseTroubleNotification
+): Promise<boolean> {
+  const webhooks = [
+    { name: 'CS', url: SLACK_CS_WEBHOOK_URL },
+    { name: 'Cマーケ', url: SLACK_MARKETING_WEBHOOK_URL },
+  ].filter(w => w.url);
+
+  if (webhooks.length === 0) {
+    console.warn('⚠️ SLACK_CS_WEBHOOK_URL / SLACK_MARKETING_WEBHOOK_URL not configured - skipping enterprise trouble notification');
+    // フォールバック: 通常のサポートWebhookに送信
+    if (SLACK_WEBHOOK_URL) {
+      webhooks.push({ name: 'Support', url: SLACK_WEBHOOK_URL });
+    } else {
+      return false;
+    }
+  }
+
+  const langName = data.userLang ? (LANG_NAMES[data.userLang] || data.userLang) : '不明';
+
+  const slackMessage = {
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '🚨 YOLO DISCOVER 企業トラブル - 緊急対応',
+          emoji: true,
+        },
+      },
+      {
+        type: 'section',
+        fields: [
+          {
+            type: 'mrkdwn',
+            text: `*👤 ユーザー:*\n${data.userDisplayName || 'Unknown'}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*🌐 使用言語:*\n${langName}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*🏷️ カテゴリー:*\n${data.category}`,
+          },
+          {
+            type: 'mrkdwn',
+            text: `*⏰ 受信時刻:*\n${new Date(data.timestamp).toLocaleString('ja-JP')}`,
+          },
+        ],
+      },
+      {
+        type: 'divider',
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*💬 ユーザーメッセージ:*\n\`\`\`${data.message.slice(0, 500)}${data.message.length > 500 ? '...' : ''}\`\`\``,
+        },
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `📋 パターンID: \`${data.patternId}\` | UserID: \`${data.userId.slice(0, 10)}...\``,
+          },
+        ],
+      },
+    ],
+    attachments: [
+      {
+        color: '#FF0000',
+        fallback: `YOLO DISCOVER企業トラブル: ${data.category}`,
+      },
+    ],
+  };
+
+  // 両部署に同時送信
+  const results = await Promise.all(
+    webhooks.map(async (webhook) => {
+      try {
+        const response = await fetch(webhook.url!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(slackMessage),
+        });
+
+        if (!response.ok) {
+          console.error(`❌ ${webhook.name}への通知失敗:`, response.status);
+          return false;
+        }
+
+        console.log(`✅ ${webhook.name}への企業トラブル通知成功`);
+        return true;
+      } catch (error) {
+        console.error(`❌ ${webhook.name}への通知エラー:`, error);
+        return false;
+      }
+    })
+  );
+
+  // 少なくとも1つ成功すればtrue
+  return results.some(r => r);
+}

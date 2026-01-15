@@ -44,8 +44,8 @@ function generateUserToken(userId: string): string {
 
 /**
  * トラッキングトークン付きURLを生成
- * リダイレクト方式: /api/r/[token] → destination_url
- * これによりクリック計測が可能
+ * ユニークなUTMパラメータ（utm_content=トークン）を付与
+ * GA4やYOLO JAPAN側でトークンからCV追跡可能
  */
 export async function generateTrackingUrl(
   userId: string,
@@ -90,11 +90,27 @@ export async function generateTrackingUrl(
       .eq('token', token);
   }
 
-  // リダイレクトURL生成（クリック計測用）
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'https://your-app.vercel.app';
-  const redirectUrl = `${appUrl.startsWith('http') ? appUrl : `https://${appUrl}`}/api/r/${token}`;
+  // URLにユニークなUTMパラメータを付与
+  // utm_content にユーザートークンを設定（GA4/YOLO JAPANでCV追跡用）
+  const url = new URL(baseUrl);
+  url.searchParams.set('utm_source', 'line');
+  url.searchParams.set('utm_medium', 'bot');
+  url.searchParams.set('utm_campaign', urlType);
+  url.searchParams.set('utm_content', token); // ユニークなユーザートークン
 
-  return redirectUrl;
+  // デバッグ: 生成されたURLの詳細をログ出力
+  console.log('🔗 トラッキングURL生成:', {
+    userId: userId.slice(0, 8) + '...',
+    token,
+    urlType,
+    utm_source: 'line',
+    utm_medium: 'bot',
+    utm_campaign: urlType,
+    utm_content: token,
+    finalUrl: url.toString()
+  });
+
+  return url.toString();
 }
 
 /**

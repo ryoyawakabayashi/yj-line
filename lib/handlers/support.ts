@@ -36,7 +36,17 @@ import {
   FAQ_CONFIRM_NO,
   FAQ_TOPIC_NAMES,
 } from '../support/classifier';
-import { notifyEscalation } from '../notifications/slack';
+import { notifyEscalation, notifyYoloDiscoverEnterpriseTrouble } from '../notifications/slack';
+import {
+  detectSpecialPattern,
+  BUG_REPORT_MESSAGES,
+  ENTERPRISE_TROUBLE_MESSAGES,
+} from '../support/special-patterns';
+import {
+  handleFunnelFlow,
+  handleCategoryQuickReply,
+} from './funnel';
+import { startDiagnosisMode } from './diagnosis';
 import { ConversationState } from '@/types/conversation';
 import {
   ServiceType,
@@ -45,10 +55,24 @@ import {
 } from '@/types/support';
 import OpenAI from 'openai';
 import { config } from '../config';
+import { processUrlsInText, UrlSourceType } from '../tracking/url-processor';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
 });
+
+/**
+ * サービス種別からトラッキングURLソースタイプを取得
+ */
+function getServiceUrlType(service: ServiceType | undefined): UrlSourceType {
+  if (!service) return 'support';
+  const serviceMap: Record<ServiceType, UrlSourceType> = {
+    YOLO_JAPAN: 'support_yolo_japan',
+    YOLO_HOME: 'support_yolo_home',
+    YOLO_DISCOVER: 'support_yolo_discover',
+  };
+  return serviceMap[service] || 'support';
+}
 
 /**
  * サポートボタン押下時の処理
@@ -203,9 +227,10 @@ export async function handleSupportMessage(
       // 「はい」の場合 → FAQ回答を返す
       conversationHistory.push({ role: 'user', content: userMessage });
 
-      const response = pending.faqAnswer || getSupportMessage('escalate', lang);
+      let response = pending.faqAnswer || getSupportMessage('escalate', lang);
 
-      // サポートモードではトラッキングURL変換をスキップ（元URLをそのまま表示）
+      // FAQ回答内のURLにトラッキングパラメータを付与（サービス種別を含む）
+      response = await processUrlsInText(response, userId, getServiceUrlType(supportState.service));
 
       conversationHistory.push({ role: 'assistant', content: response });
 
@@ -272,6 +297,163 @@ export async function handleSupportMessage(
     return true;
   }
 
+  // 1.5. 特殊パターン検出（バグ報告・企業トラブル）
+  const specialPattern = detectSpecialPattern(userMessage, supportState.service);
+
+  if (specialPattern.type === 'bug_report') {
+    // バグ報告パターン → Googleフォーム案内
+    const bugResponse = BUG_REPORT_MESSAGES[lang] || BUG_REPORT_MESSAGES.ja;
+    conversationHistory.push({ role: 'assistant', content: bugResponse });
+
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: bugResponse,
+    });
+
+    console.log(`🐛 バグ報告パターン案内: ${specialPattern.patternName}`);
+    return true;
+  }
+
+  if (specialPattern.type === 'enterprise_trouble' && supportState.service === 'YOLO_DISCOVER') {
+    // YOLO DISCOVER企業トラブル → CS+Cマーケに通知
+    const troubleResponse = ENTERPRISE_TROUBLE_MESSAGES[lang] || ENTERPRISE_TROUBLE_MESSAGES.ja;
+    conversationHistory.push({ role: 'assistant', content: troubleResponse });
+
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    // ユーザーに返信
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: troubleResponse,
+    });
+
+    // 両部署にSlack通知
+    const userProfile = await getUserProfile(userId);
+    await notifyYoloDiscoverEnterpriseTrouble({
+      userId,
+      userDisplayName: userProfile?.displayName,
+      userLang: lang,
+      message: userMessage,
+      category: specialPattern.patternName || '企業トラブル',
+      patternId: specialPattern.patternId || 'unknown',
+      timestamp: new Date().toISOString(),
+    });
+
+    console.log(`🏢 企業トラブルパターン通知: ${specialPattern.patternName}`);
+    return true;
+  }
+
+  // 1.6. ファネルフロー処理（カテゴリー絞り込み）
+  const funnelResult = await handleFunnelFlow(
+    userId,
+    replyToken,
+    userMessage,
+    lang,
+    supportState.service,
+    supportState.currentCategoryId
+  );
+
+  if (funnelResult.handled) {
+    // ファネルフローで処理された
+    if (funnelResult.action === 'diagnosis' && funnelResult.data?.presetData) {
+      // AI診断をプリセット付きで発火
+      await startDiagnosisMode(userId, replyToken, lang, funnelResult.data.presetData);
+      // サポートモードを終了してdiagnosisモードへ
+      const newState: ConversationState = {
+        mode: 'diagnosis',
+        currentQuestion: 1,
+        answers: {},
+        selectedIndustries: [],
+        lang,
+      };
+      await saveConversationState(userId, newState);
+      return true;
+    }
+
+    if (funnelResult.action === 'subcategory' && funnelResult.data?.categoryId) {
+      // サブカテゴリー選択中として状態を保存
+      supportState.currentCategoryId = funnelResult.data.categoryId;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+      return true;
+    }
+
+    if (funnelResult.action === 'escalate') {
+      // エスカレーション処理
+      const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
+      conversationHistory.push({ role: 'assistant', content: escalationResponse });
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: escalationResponse,
+      });
+
+      await handleEscalation(userId, supportState, lang, 'ファネルフローからのエスカレーション');
+      return true;
+    }
+
+    // その他のアクション（FAQ、URL）は既にfunnelで処理済み
+    return true;
+  }
+
+  // 1.7. クイックリプライからカテゴリー選択された場合
+  const categoryResult = await handleCategoryQuickReply(
+    userId,
+    replyToken,
+    userMessage,
+    lang,
+    supportState.service
+  );
+
+  if (categoryResult.handled) {
+    if (categoryResult.action === 'diagnosis') {
+      await startDiagnosisMode(userId, replyToken, lang, categoryResult.data?.presetData);
+      const newState: ConversationState = {
+        mode: 'diagnosis',
+        currentQuestion: 1,
+        answers: {},
+        selectedIndustries: [],
+        lang,
+      };
+      await saveConversationState(userId, newState);
+      return true;
+    }
+
+    if (categoryResult.action === 'subcategory' && categoryResult.data?.categoryId) {
+      supportState.currentCategoryId = categoryResult.data.categoryId;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+      return true;
+    }
+
+    if (categoryResult.action === 'escalate') {
+      const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
+      conversationHistory.push({ role: 'assistant', content: escalationResponse });
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: escalationResponse,
+      });
+
+      await handleEscalation(userId, supportState, lang, 'カテゴリー選択からのエスカレーション');
+      return true;
+    }
+
+    return true;
+  }
+
   // 2. 曖昧なパターンをチェック → クイックリプライで選択肢を出す
   const ambiguousResult = detectAmbiguousPattern(userMessage, lang);
   if (ambiguousResult) {
@@ -318,7 +500,9 @@ export async function handleSupportMessage(
 
       // 「はい」が選択された → FAQ回答を返す
       if (userMessage.includes(yesLabel) || userMessage === yesLabel) {
-        const faqResponse = pendingQR.confirmFaq.response;
+        let faqResponse = pendingQR.confirmFaq.response;
+        // FAQ回答内のURLにトラッキングパラメータを付与（サービス種別を含む）
+        faqResponse = await processUrlsInText(faqResponse, userId, getServiceUrlType(supportState.service));
         conversationHistory.push({ role: 'assistant', content: faqResponse });
         supportState.pendingQuickReply = undefined;
         supportState.conversationHistory = conversationHistory;
@@ -368,8 +552,10 @@ export async function handleSupportMessage(
       );
 
       if (selectedChoice) {
-        const faqResponse = getFAQResponseById(selectedChoice.faqId, supportState.service, lang);
+        let faqResponse = getFAQResponseById(selectedChoice.faqId, supportState.service, lang);
         if (faqResponse) {
+          // FAQ回答内のURLにトラッキングパラメータを付与（サービス種別を含む）
+          faqResponse = await processUrlsInText(faqResponse, userId, getServiceUrlType(supportState.service));
           conversationHistory.push({ role: 'assistant', content: faqResponse });
           supportState.pendingQuickReply = undefined;
           supportState.conversationHistory = conversationHistory;
@@ -404,7 +590,9 @@ export async function handleSupportMessage(
 
   // 5a. 高信頼度（≥0.85）→ FAQ即回答
   if (confidence >= 0.85 && classification.matched && classification.response) {
-    conversationHistory.push({ role: 'assistant', content: classification.response });
+    // FAQ回答内のURLにトラッキングパラメータを付与（サービス種別を含む）
+    const trackedResponse = await processUrlsInText(classification.response, userId, getServiceUrlType(supportState.service));
+    conversationHistory.push({ role: 'assistant', content: trackedResponse });
 
     supportState.conversationHistory = conversationHistory;
     currentState.supportState = supportState;
@@ -412,7 +600,7 @@ export async function handleSupportMessage(
 
     await replyMessage(replyToken, {
       type: 'text',
-      text: classification.response,
+      text: trackedResponse,
     });
 
     console.log(`✅ FAQ即回答（confidence=${confidence}）: ${classification.faqId}`);

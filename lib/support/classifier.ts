@@ -433,6 +433,941 @@ https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
 ・Tìm trên trang web → Tự tìm kiếm`,
     },
   },
+  // ===== CSV追加FAQ: General =====
+  {
+    id: 'what_is_yolo_japan',
+    keywords: ['YOLO JAPANとは', 'ヨロジャパンとは', 'what is yolo japan', '요로재팬이란', 'YOLO JAPAN是什么', 'YOLO JAPAN là gì'],
+    responses: {
+      ja: `YOLO JAPANは外国人向けのアルバイト・求人サイトです。
+日本で仕事を探している外国人のための求人情報を掲載しています。
+
+詳しくはこちら：
+https://www.yolo-japan.com/ja/${UTM}`,
+      en: `YOLO JAPAN is a job site for foreigners in Japan.
+We post job listings for foreigners looking for work in Japan.
+
+Learn more here:
+https://www.yolo-japan.com/ja/${UTM}`,
+      ko: `YOLO JAPAN은 외국인을 위한 아르바이트·구인 사이트입니다.
+일본에서 일자리를 찾는 외국인을 위한 구인 정보를 게재하고 있습니다.
+
+자세한 내용은 여기:
+https://www.yolo-japan.com/ja/${UTM}`,
+      zh: `YOLO JAPAN是面向外国人的兼职·求职网站。
+我们发布面向在日本找工作的外国人的招聘信息。
+
+了解更多：
+https://www.yolo-japan.com/ja/${UTM}`,
+      vi: `YOLO JAPAN là trang web việc làm bán thời gian dành cho người nước ngoài.
+Chúng tôi đăng thông tin tuyển dụng cho người nước ngoài đang tìm việc tại Nhật Bản.
+
+Tìm hiểu thêm tại:
+https://www.yolo-japan.com/ja/${UTM}`,
+    },
+  },
+  {
+    id: 'registration_free',
+    keywords: ['登録無料', '料金', 'お金かかる', '無料ですか', 'is it free', 'free to register', '무료인가요', '免费吗', 'có miễn phí không'],
+    responses: {
+      ja: `はい、YOLO JAPANへの登録・利用は完全無料です。
+求人への応募や企業とのやり取りに料金は一切かかりません。`,
+      en: `Yes, registration and use of YOLO JAPAN is completely free.
+There are no fees for applying to jobs or communicating with companies.`,
+      ko: `네, YOLO JAPAN 등록 및 이용은 완전 무료입니다.
+구인 지원이나 기업과의 연락에 요금이 들지 않습니다.`,
+      zh: `是的，YOLO JAPAN的注册和使用完全免费。
+申请工作或与公司沟通不收取任何费用。`,
+      vi: `Có, việc đăng ký và sử dụng YOLO JAPAN hoàn toàn miễn phí.
+Không mất phí khi ứng tuyển công việc hoặc liên lạc với công ty.`,
+    },
+  },
+  {
+    id: 'how_to_register',
+    keywords: ['登録方法', '会員登録', 'アカウント作成', 'how to register', 'create account', '등록 방법', '如何注册', 'cách đăng ký'],
+    responses: {
+      ja: `YOLO JAPANへの登録方法：
+
+こちらから会員登録できます：
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+
+必要な情報を入力して、メール認証を完了すると登録完了です。`,
+      en: `How to register for YOLO JAPAN:
+
+You can register here:
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+
+Enter the required information and complete email verification to finish registration.`,
+      ko: `YOLO JAPAN 등록 방법:
+
+여기에서 회원 등록할 수 있습니다:
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+
+필요한 정보를 입력하고 이메일 인증을 완료하면 등록이 완료됩니다.`,
+      zh: `YOLO JAPAN注册方法：
+
+您可以在此注册：
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+
+输入所需信息并完成邮箱验证即可完成注册。`,
+      vi: `Cách đăng ký YOLO JAPAN:
+
+Bạn có thể đăng ký tại đây:
+https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+
+Nhập thông tin cần thiết và hoàn thành xác minh email để hoàn tất đăng ký.`,
+    },
+  },
+  {
+    id: 'visa_requirements',
+    keywords: ['ビザ', '在留資格', 'visa', '비자', '签证', 'thị thực', '就労ビザ', 'work permit'],
+    responses: {
+      ja: `応募できる仕事はあなたの在留資格（ビザ）によって異なります。
+
+各求人ページに応募可能な在留資格が記載されていますので、ご確認ください。
+
+在留資格について不明な場合は、入国管理局にお問い合わせください。`,
+      en: `The jobs you can apply for depend on your visa status.
+
+Each job posting shows the eligible visa types, so please check before applying.
+
+If you're unsure about your visa status, please contact the Immigration Bureau.`,
+      ko: `지원할 수 있는 일자리는 체류 자격(비자)에 따라 다릅니다.
+
+각 구인 페이지에 지원 가능한 체류 자격이 기재되어 있으니 확인해 주세요.
+
+체류 자격에 대해 불명확한 경우 입국관리국에 문의해 주세요.`,
+      zh: `您可以申请的工作取决于您的在留资格（签证）。
+
+每个职位页面都会显示可申请的在留资格，请查看后申请。
+
+如果您不确定自己的在留资格，请联系入国管理局。`,
+      vi: `Công việc bạn có thể ứng tuyển phụ thuộc vào tư cách lưu trú (visa) của bạn.
+
+Mỗi trang tuyển dụng sẽ hiển thị các loại visa đủ điều kiện, vui lòng kiểm tra trước khi ứng tuyển.
+
+Nếu bạn không chắc về tình trạng visa của mình, vui lòng liên hệ Cục Quản lý Xuất nhập cảnh.`,
+    },
+  },
+  // ===== CSV追加FAQ: Account/Profile =====
+  {
+    id: 'edit_profile',
+    keywords: ['プロフィール編集', 'プロフィール変更', '情報変更', 'edit profile', 'update profile', '프로필 수정', '编辑资料', 'chỉnh sửa hồ sơ'],
+    responses: {
+      ja: `プロフィールの編集はマイページから行えます：
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+ログイン後、「プロフィール編集」から変更してください。`,
+      en: `You can edit your profile from My Page:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+After logging in, click "Edit Profile" to make changes.`,
+      ko: `마이페이지에서 프로필을 수정할 수 있습니다:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+로그인 후 "프로필 수정"을 클릭하여 변경하세요.`,
+      zh: `您可以从我的页面编辑个人资料：
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+登录后，点击"编辑资料"进行更改。`,
+      vi: `Bạn có thể chỉnh sửa hồ sơ từ Trang cá nhân:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+Sau khi đăng nhập, nhấp "Chỉnh sửa hồ sơ" để thay đổi.`,
+    },
+  },
+  {
+    id: 'change_phone',
+    keywords: ['電話番号変更', '電話変更', 'change phone', 'update phone', '전화번호 변경', '更改电话', 'thay đổi số điện thoại'],
+    responses: {
+      ja: `電話番号の変更はマイページから行えます：
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+ログイン後、プロフィール編集から電話番号を変更してください。`,
+      en: `You can change your phone number from My Page:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+After logging in, edit your profile to change the phone number.`,
+      ko: `마이페이지에서 전화번호를 변경할 수 있습니다:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+로그인 후 프로필 수정에서 전화번호를 변경하세요.`,
+      zh: `您可以从我的页面更改电话号码：
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+登录后，编辑个人资料以更改电话号码。`,
+      vi: `Bạn có thể thay đổi số điện thoại từ Trang cá nhân:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+Sau khi đăng nhập, chỉnh sửa hồ sơ để thay đổi số điện thoại.`,
+    },
+  },
+  {
+    id: 'upload_resume',
+    keywords: ['履歴書', 'レジュメ', '職務経歴書', 'resume', 'CV', '이력서', '简历', 'hồ sơ xin việc'],
+    responses: {
+      ja: `履歴書・職務経歴書はマイページからアップロードできます：
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+ログイン後、「履歴書・職務経歴書」から追加・編集してください。`,
+      en: `You can upload your resume/CV from My Page:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+After logging in, add or edit from "Resume/CV" section.`,
+      ko: `마이페이지에서 이력서를 업로드할 수 있습니다:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+로그인 후 "이력서" 섹션에서 추가 또는 편집하세요.`,
+      zh: `您可以从我的页面上传简历：
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+登录后，从"简历"部分添加或编辑。`,
+      vi: `Bạn có thể tải lên CV từ Trang cá nhân:
+https://www.yolo-japan.com/ja/recruit/mypage/profile/${UTM}
+
+Sau khi đăng nhập, thêm hoặc chỉnh sửa từ phần "CV".`,
+    },
+  },
+  {
+    id: 'login_issue',
+    keywords: ['ログインできない', 'サインインできない', 'cant login', 'cannot sign in', '로그인 안됨', '无法登录', 'không thể đăng nhập'],
+    responses: {
+      ja: `ログインできない場合は、以下をお試しください：
+
+1. パスワードを忘れた場合は、こちらからリセット：
+https://www.yolo-japan.com/ja/recruit/login${UTM}
+「パスワードを忘れた」をクリックしてください。
+
+2. メールアドレスが間違っている可能性がある場合は、登録時のメールアドレスをご確認ください。
+
+3. それでも解決しない場合は、お問い合わせフォームからご連絡ください。`,
+      en: `If you can't login, please try the following:
+
+1. If you forgot your password, reset it here:
+https://www.yolo-japan.com/ja/recruit/login${UTM}
+Click "Forgot password".
+
+2. If the email might be wrong, please check the email address you used during registration.
+
+3. If the issue persists, please contact us through the inquiry form.`,
+      ko: `로그인이 안 되는 경우 다음을 시도해 주세요:
+
+1. 비밀번호를 잊으셨다면 여기에서 재설정:
+https://www.yolo-japan.com/ja/recruit/login${UTM}
+"비밀번호를 잊으셨나요?"를 클릭하세요.
+
+2. 이메일이 틀렸을 수 있다면 등록 시 사용한 이메일을 확인해 주세요.
+
+3. 문제가 지속되면 문의 양식으로 연락해 주세요.`,
+      zh: `如果无法登录，请尝试以下方法：
+
+1. 如果忘记密码，请在此重置：
+https://www.yolo-japan.com/ja/recruit/login${UTM}
+点击"忘记密码"。
+
+2. 如果邮箱可能有误，请确认注册时使用的邮箱。
+
+3. 如果问题仍然存在，请通过咨询表单联系我们。`,
+      vi: `Nếu không thể đăng nhập, vui lòng thử các cách sau:
+
+1. Nếu quên mật khẩu, đặt lại tại đây:
+https://www.yolo-japan.com/ja/recruit/login${UTM}
+Nhấp "Quên mật khẩu".
+
+2. Nếu email có thể sai, vui lòng kiểm tra email bạn đã dùng khi đăng ký.
+
+3. Nếu vấn đề vẫn tiếp diễn, vui lòng liên hệ qua biểu mẫu hỏi đáp.`,
+    },
+  },
+  {
+    id: 'no_verification_email',
+    keywords: ['認証メール届かない', '確認メール届かない', 'verification email', 'confirmation email not received', '인증 메일', '验证邮件', 'email xác minh'],
+    responses: {
+      ja: `認証メールが届かない場合：
+
+1. 迷惑メールフォルダをご確認ください
+2. メールアドレスが正しいかご確認ください
+3. @yolo-japan.com からのメールを受信できるよう設定してください
+
+それでも届かない場合は、再度登録をお試しいただくか、お問い合わせください。`,
+      en: `If you haven't received the verification email:
+
+1. Please check your spam folder
+2. Make sure your email address is correct
+3. Enable receiving emails from @yolo-japan.com
+
+If you still don't receive it, please try registering again or contact us.`,
+      ko: `인증 메일이 오지 않는 경우:
+
+1. 스팸 폴더를 확인해 주세요
+2. 이메일 주소가 올바른지 확인해 주세요
+3. @yolo-japan.com에서 오는 메일을 수신할 수 있도록 설정해 주세요
+
+그래도 오지 않으면 다시 등록하거나 문의해 주세요.`,
+      zh: `如果没有收到验证邮件：
+
+1. 请检查垃圾邮件文件夹
+2. 请确认邮箱地址是否正确
+3. 请设置允许接收来自 @yolo-japan.com 的邮件
+
+如果仍然收不到，请尝试重新注册或联系我们。`,
+      vi: `Nếu không nhận được email xác minh:
+
+1. Vui lòng kiểm tra thư mục spam
+2. Đảm bảo địa chỉ email của bạn chính xác
+3. Cho phép nhận email từ @yolo-japan.com
+
+Nếu vẫn không nhận được, vui lòng thử đăng ký lại hoặc liên hệ với chúng tôi.`,
+    },
+  },
+  // ===== CSV追加FAQ: About Jobs =====
+  {
+    id: 'job_requirements',
+    keywords: ['応募条件', '必要な資格', 'job requirements', 'qualifications', '지원 조건', '应聘条件', 'điều kiện ứng tuyển'],
+    responses: {
+      ja: `応募条件は求人ごとに異なります。
+
+各求人ページに記載されている「応募資格」「必要なスキル」をご確認ください。
+
+一般的に確認される項目：
+・在留資格（ビザ）
+・日本語レベル
+・勤務可能時間`,
+      en: `Job requirements vary by position.
+
+Please check the "Requirements" and "Required Skills" on each job listing.
+
+Common requirements include:
+・Visa status
+・Japanese language level
+・Available working hours`,
+      ko: `지원 조건은 구인마다 다릅니다.
+
+각 구인 페이지의 "지원 자격", "필요한 스킬"을 확인해 주세요.
+
+일반적으로 확인되는 항목:
+・체류 자격(비자)
+・일본어 레벨
+・근무 가능 시간`,
+      zh: `应聘条件因职位而异。
+
+请查看每个职位页面上的"应聘资格"和"所需技能"。
+
+一般需要确认的项目：
+・在留资格（签证）
+・日语水平
+・可工作时间`,
+      vi: `Yêu cầu công việc khác nhau theo từng vị trí.
+
+Vui lòng kiểm tra "Yêu cầu" và "Kỹ năng cần thiết" trên mỗi trang tuyển dụng.
+
+Các yêu cầu phổ biến bao gồm:
+・Tư cách lưu trú (visa)
+・Trình độ tiếng Nhật
+・Thời gian làm việc khả dụng`,
+    },
+  },
+  {
+    id: 'salary_payment',
+    keywords: ['給料', '賃金', '時給', 'salary', 'wage', 'payment', '급여', '工资', 'lương', '支払い'],
+    responses: {
+      ja: `給与に関する情報は各求人ページに記載されています。
+
+支払い方法・支払い日は企業によって異なりますので、面接時にご確認ください。
+
+YOLO JAPANは求人情報の掲載サイトであり、給与の支払いは雇用企業が行います。`,
+      en: `Salary information is listed on each job posting.
+
+Payment method and pay day vary by company, so please confirm during the interview.
+
+YOLO JAPAN is a job listing site - salary is paid by the hiring company.`,
+      ko: `급여 정보는 각 구인 페이지에 기재되어 있습니다.
+
+지불 방법과 지급일은 회사마다 다르므로 면접 시 확인해 주세요.
+
+YOLO JAPAN은 구인 정보 사이트이며, 급여는 고용 기업이 지급합니다.`,
+      zh: `工资信息列在每个职位页面上。
+
+付款方式和发薪日因公司而异，请在面试时确认。
+
+YOLO JAPAN是招聘信息网站，工资由雇用公司支付。`,
+      vi: `Thông tin lương được liệt kê trên mỗi trang tuyển dụng.
+
+Phương thức thanh toán và ngày trả lương khác nhau tùy công ty, vui lòng xác nhận khi phỏng vấn.
+
+YOLO JAPAN là trang đăng tin tuyển dụng - lương được trả bởi công ty tuyển dụng.`,
+    },
+  },
+  {
+    id: 'interview_preparation',
+    keywords: ['面接準備', '面接対策', 'interview tips', 'interview preparation', '면접 준비', '面试准备', 'chuẩn bị phỏng vấn'],
+    responses: {
+      ja: `面接準備のポイント：
+
+1. 時間厳守（5-10分前に到着）
+2. 清潔な服装
+3. 必要書類の準備（在留カード、履歴書など）
+4. 志望動機を準備
+5. 質問があれば用意しておく
+
+面接の詳細は予約確認メールをご確認ください。`,
+      en: `Interview preparation tips:
+
+1. Be punctual (arrive 5-10 minutes early)
+2. Dress neatly
+3. Prepare necessary documents (residence card, resume, etc.)
+4. Prepare your motivation for applying
+5. Prepare questions if you have any
+
+Check your booking confirmation email for interview details.`,
+      ko: `면접 준비 팁:
+
+1. 시간 엄수 (5-10분 전에 도착)
+2. 깔끔한 복장
+3. 필요 서류 준비 (재류카드, 이력서 등)
+4. 지원 동기 준비
+5. 질문이 있으면 준비
+
+면접 세부사항은 예약 확인 메일을 확인하세요.`,
+      zh: `面试准备提示：
+
+1. 准时（提前5-10分钟到达）
+2. 穿着整洁
+3. 准备必要文件（在留卡、简历等）
+4. 准备应聘动机
+5. 如有问题请准备好
+
+请查看预约确认邮件了解面试详情。`,
+      vi: `Mẹo chuẩn bị phỏng vấn:
+
+1. Đúng giờ (đến sớm 5-10 phút)
+2. Ăn mặc gọn gàng
+3. Chuẩn bị giấy tờ cần thiết (thẻ lưu trú, CV, v.v.)
+4. Chuẩn bị động cơ ứng tuyển
+5. Chuẩn bị câu hỏi nếu có
+
+Kiểm tra email xác nhận đặt lịch để biết chi tiết phỏng vấn.`,
+    },
+  },
+  {
+    id: 'working_hours',
+    keywords: ['勤務時間', '働く時間', 'シフト', 'working hours', 'shift', '근무 시간', '工作时间', 'giờ làm việc'],
+    responses: {
+      ja: `勤務時間やシフトは求人ごとに異なります。
+
+各求人ページの「勤務時間」欄をご確認ください。
+
+※留学生の方は週28時間以内の制限があります（長期休暇中は除く）。在留資格の条件をご確認ください。`,
+      en: `Working hours and shifts vary by job.
+
+Please check the "Working Hours" section on each job listing.
+
+*Students are limited to 28 hours per week (except during long vacations). Please check your visa conditions.`,
+      ko: `근무 시간과 시프트는 구인마다 다릅니다.
+
+각 구인 페이지의 "근무 시간" 란을 확인해 주세요.
+
+※유학생은 주 28시간 이내 제한이 있습니다(장기 휴가 제외). 체류 자격 조건을 확인해 주세요.`,
+      zh: `工作时间和班次因工作而异。
+
+请查看每个职位页面的"工作时间"部分。
+
+※留学生每周工作不得超过28小时（长假除外）。请确认您的签证条件。`,
+      vi: `Giờ làm việc và ca làm khác nhau tùy công việc.
+
+Vui lòng kiểm tra phần "Giờ làm việc" trên mỗi trang tuyển dụng.
+
+*Sinh viên bị giới hạn 28 giờ/tuần (trừ kỳ nghỉ dài). Vui lòng kiểm tra điều kiện visa của bạn.`,
+    },
+  },
+  {
+    id: 'job_not_available',
+    keywords: ['求人がない', '仕事が見つからない', 'no jobs available', 'job not found', '일자리가 없어요', '没有工作', 'không có việc làm'],
+    responses: {
+      ja: `お探しの条件に合う求人が見つからない場合：
+
+1. 検索条件を広げてみてください（エリア、職種など）
+2. 定期的に新しい求人が追加されるので、後日再度ご確認ください
+3. メルマガに登録すると新着求人のお知らせを受け取れます
+
+求人検索はこちら：
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      en: `If you can't find jobs matching your criteria:
+
+1. Try broadening your search (area, job type, etc.)
+2. New jobs are added regularly, so please check again later
+3. Subscribe to our newsletter to get notified about new jobs
+
+Search jobs here:
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      ko: `조건에 맞는 일자리를 찾을 수 없는 경우:
+
+1. 검색 조건을 넓혀보세요 (지역, 직종 등)
+2. 정기적으로 새 구인이 추가되니 나중에 다시 확인해 주세요
+3. 뉴스레터에 등록하면 새 구인 알림을 받을 수 있습니다
+
+일자리 검색:
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      zh: `如果找不到符合条件的工作：
+
+1. 尝试扩大搜索范围（地区、职种等）
+2. 定期会有新工作添加，请稍后再查看
+3. 订阅邮件可以收到新工作通知
+
+搜索工作：
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      vi: `Nếu không tìm thấy việc làm phù hợp:
+
+1. Thử mở rộng tìm kiếm (khu vực, loại công việc, v.v.)
+2. Công việc mới được thêm thường xuyên, vui lòng kiểm tra lại sau
+3. Đăng ký nhận bản tin để nhận thông báo việc làm mới
+
+Tìm việc tại đây:
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+    },
+  },
+  {
+    id: 'transportation_expenses',
+    keywords: ['交通費', '通勤手当', 'transportation', 'commute allowance', '교통비', '交通费', 'phí đi lại'],
+    responses: {
+      ja: `交通費支給の有無は求人ごとに異なります。
+
+各求人ページの「待遇・福利厚生」欄をご確認ください。
+詳細は面接時に企業にご確認いただくことをお勧めします。`,
+      en: `Transportation allowance varies by job.
+
+Please check the "Benefits" section on each job listing.
+We recommend confirming details with the company during the interview.`,
+      ko: `교통비 지급 여부는 구인마다 다릅니다.
+
+각 구인 페이지의 "대우/복리후생" 란을 확인해 주세요.
+면접 시 회사에 자세한 내용을 확인하시는 것을 권장합니다.`,
+      zh: `交通费因工作而异。
+
+请查看每个职位页面的"待遇/福利"部分。
+建议在面试时向公司确认详情。`,
+      vi: `Phụ cấp đi lại khác nhau tùy công việc.
+
+Vui lòng kiểm tra phần "Phúc lợi" trên mỗi trang tuyển dụng.
+Chúng tôi khuyên bạn nên xác nhận chi tiết với công ty khi phỏng vấn.`,
+    },
+  },
+  // ===== CSV追加FAQ: YOLO HOME =====
+  {
+    id: 'what_is_yolo_home',
+    keywords: ['YOLO HOMEとは', 'ヨロホームとは', 'what is yolo home', 'YOLO HOME是什么', 'YOLO HOME là gì', '요로홈이란'],
+    responses: {
+      ja: `YOLO HOMEは外国人向けの賃貸物件を紹介するサービスです。
+
+初期費用が安い物件や、外国人でも入居しやすい物件を掲載しています。
+
+詳しくはこちら：
+https://yolohome.jp/${UTM}`,
+      en: `YOLO HOME is a service that introduces rental properties for foreigners.
+
+We list properties with low initial costs and properties that are foreigner-friendly.
+
+Learn more here:
+https://yolohome.jp/${UTM}`,
+      ko: `YOLO HOME은 외국인을 위한 임대 물건을 소개하는 서비스입니다.
+
+초기 비용이 저렴한 물건과 외국인도 입주하기 쉬운 물건을 게재하고 있습니다.
+
+자세한 내용은 여기:
+https://yolohome.jp/${UTM}`,
+      zh: `YOLO HOME是为外国人介绍租赁房产的服务。
+
+我们刊登初期费用低、外国人也容易入住的房产。
+
+了解更多：
+https://yolohome.jp/${UTM}`,
+      vi: `YOLO HOME là dịch vụ giới thiệu bất động sản cho thuê dành cho người nước ngoài.
+
+Chúng tôi đăng các bất động sản với chi phí ban đầu thấp và thân thiện với người nước ngoài.
+
+Tìm hiểu thêm tại:
+https://yolohome.jp/${UTM}`,
+    },
+  },
+  {
+    id: 'search_property',
+    keywords: ['物件を探す', '部屋探し', 'search property', 'find apartment', '물건 찾기', '找房子', 'tìm nhà'],
+    responses: {
+      ja: `YOLO HOMEで物件を探す：
+https://yolohome.jp/${UTM}
+
+エリア、家賃、部屋タイプなどで検索できます。
+気になる物件があれば、お問い合わせください。`,
+      en: `Search properties on YOLO HOME:
+https://yolohome.jp/${UTM}
+
+You can search by area, rent, room type, etc.
+If you find a property you like, please contact us.`,
+      ko: `YOLO HOME에서 물건 검색:
+https://yolohome.jp/${UTM}
+
+지역, 임대료, 방 타입 등으로 검색할 수 있습니다.
+관심 있는 물건이 있으면 문의해 주세요.`,
+      zh: `在YOLO HOME搜索房产：
+https://yolohome.jp/${UTM}
+
+您可以按地区、租金、房型等搜索。
+如果找到喜欢的房产，请联系我们。`,
+      vi: `Tìm kiếm bất động sản trên YOLO HOME:
+https://yolohome.jp/${UTM}
+
+Bạn có thể tìm theo khu vực, giá thuê, loại phòng, v.v.
+Nếu bạn tìm thấy bất động sản ưng ý, vui lòng liên hệ với chúng tôi.`,
+    },
+  },
+  {
+    id: 'rental_requirements',
+    keywords: ['入居条件', '賃貸条件', 'rental requirements', 'lease conditions', '입주 조건', '入住条件', 'điều kiện thuê nhà'],
+    responses: {
+      ja: `外国人の方の入居に必要なもの（一般的な例）：
+
+・在留カード
+・収入証明（給与明細など）
+・緊急連絡先
+・保証人または保証会社の利用
+
+詳細は物件ごとに異なりますので、YOLO HOMEにお問い合わせください：
+https://yolohome.jp/${UTM}`,
+      en: `What foreigners generally need to rent (common requirements):
+
+・Residence card
+・Proof of income (pay slips, etc.)
+・Emergency contact
+・Guarantor or use of guarantee company
+
+Details vary by property, so please contact YOLO HOME:
+https://yolohome.jp/${UTM}`,
+      ko: `외국인 입주에 필요한 것 (일반적인 예):
+
+・재류카드
+・수입 증명 (급여명세서 등)
+・긴급 연락처
+・보증인 또는 보증회사 이용
+
+자세한 내용은 물건마다 다르므로 YOLO HOME에 문의하세요:
+https://yolohome.jp/${UTM}`,
+      zh: `外国人入住一般需要的东西：
+
+・在留卡
+・收入证明（工资单等）
+・紧急联系人
+・担保人或使用担保公司
+
+详情因房产而异，请联系YOLO HOME：
+https://yolohome.jp/${UTM}`,
+      vi: `Những gì người nước ngoài thường cần để thuê nhà:
+
+・Thẻ lưu trú
+・Chứng minh thu nhập (phiếu lương, v.v.)
+・Liên hệ khẩn cấp
+・Người bảo lãnh hoặc sử dụng công ty bảo lãnh
+
+Chi tiết khác nhau tùy bất động sản, vui lòng liên hệ YOLO HOME:
+https://yolohome.jp/${UTM}`,
+    },
+  },
+  // ===== 実問い合わせCSV追加: YOLO JAPAN =====
+  {
+    id: 'passport_registration_error',
+    keywords: ['パスポート登録', 'パスポートエラー', '在留カードが必要', 'passport registration', 'passport error', '여권 등록', '护照注册'],
+    responses: {
+      ja: `パスポート登録でエラーが出る場合：
+
+外国籍の方は在留カードの登録が必要です。
+パスポートだけでは登録できません。
+
+在留カードをお持ちでない場合は、登録・応募ができません。`,
+      en: `If you get an error during passport registration:
+
+Foreign nationals need to register their residence card.
+Registration with passport only is not possible.
+
+If you don't have a residence card, you cannot register or apply.`,
+      ko: `여권 등록 시 오류가 발생하는 경우:
+
+외국인은 재류카드 등록이 필요합니다.
+여권만으로는 등록할 수 없습니다.
+
+재류카드가 없으면 등록 및 지원이 불가능합니다.`,
+      zh: `护照注册出现错误时：
+
+外国人需要注册在留卡。
+仅凭护照无法注册。
+
+如果没有在留卡，则无法注册或申请。`,
+      vi: `Nếu gặp lỗi khi đăng ký hộ chiếu:
+
+Người nước ngoài cần đăng ký thẻ lưu trú.
+Không thể đăng ký chỉ với hộ chiếu.
+
+Nếu không có thẻ lưu trú, bạn không thể đăng ký hoặc ứng tuyển.`,
+    },
+  },
+  {
+    id: 'invalid_account',
+    keywords: ['無効なアカウント', 'アカウントが無効', 'invalid account', 'account invalid', '무효 계정', '无效账户'],
+    responses: {
+      ja: `「無効なアカウント」と表示される場合：
+
+Googleで作成したアカウントは、Googleでログインしてください。
+メールアドレスとパスワードでのログインはできません。
+
+ログインページで「Googleでログイン」を選択してください：
+https://www.yolo-japan.com/ja/recruit/login${UTM}`,
+      en: `If you see "Invalid account":
+
+Accounts created with Google must log in with Google.
+You cannot log in with email and password.
+
+Select "Login with Google" on the login page:
+https://www.yolo-japan.com/ja/recruit/login${UTM}`,
+      ko: `"무효한 계정"이 표시되는 경우:
+
+Google로 만든 계정은 Google로 로그인해야 합니다.
+이메일과 비밀번호로는 로그인할 수 없습니다.
+
+로그인 페이지에서 "Google로 로그인"을 선택하세요:
+https://www.yolo-japan.com/ja/recruit/login${UTM}`,
+      zh: `如果显示"无效账户"：
+
+用Google创建的账户必须用Google登录。
+无法用邮箱和密码登录。
+
+在登录页面选择"用Google登录"：
+https://www.yolo-japan.com/ja/recruit/login${UTM}`,
+      vi: `Nếu thấy "Tài khoản không hợp lệ":
+
+Tài khoản tạo bằng Google phải đăng nhập bằng Google.
+Không thể đăng nhập bằng email và mật khẩu.
+
+Chọn "Đăng nhập bằng Google" trên trang đăng nhập:
+https://www.yolo-japan.com/ja/recruit/login${UTM}`,
+    },
+  },
+  {
+    id: 'video_upload_error',
+    keywords: ['動画アップロード', '動画をアップ', 'ビデオアップロード', 'video upload', 'upload video', '동영상 업로드', '视频上传'],
+    responses: {
+      ja: `動画がアップロードできない場合：
+
+1. 動画ファイルを確認してください（MP4推奨）
+2. ブラウザのキャッシュを削除してください
+3. Wi-Fi環境で再度お試しください
+
+それでも解決しない場合は、障害報告フォームからご連絡ください：
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform`,
+      en: `If you cannot upload video:
+
+1. Check your video file (MP4 recommended)
+2. Clear your browser cache
+3. Try again with Wi-Fi
+
+If the issue persists, please report it:
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform`,
+      ko: `동영상 업로드가 안 되는 경우:
+
+1. 동영상 파일을 확인하세요 (MP4 권장)
+2. 브라우저 캐시를 삭제하세요
+3. Wi-Fi 환경에서 다시 시도하세요
+
+그래도 해결되지 않으면 장애 신고 양식으로 연락해 주세요:
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform`,
+      zh: `如果无法上传视频：
+
+1. 检查视频文件（推荐MP4）
+2. 清除浏览器缓存
+3. 在Wi-Fi环境下重试
+
+如果问题仍然存在，请通过故障报告表单联系我们：
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform`,
+      vi: `Nếu không thể tải video lên:
+
+1. Kiểm tra file video (khuyến nghị MP4)
+2. Xóa bộ nhớ cache trình duyệt
+3. Thử lại trong môi trường Wi-Fi
+
+Nếu vấn đề vẫn tiếp diễn, vui lòng báo cáo:
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform`,
+    },
+  },
+  {
+    id: 'interview_link_not_received',
+    keywords: ['面接リンク', '面接URLが届かない', 'interview link', 'interview URL', '면접 링크', '面试链接'],
+    responses: {
+      ja: `面接リンクが届かない場合は、企業へ直接連絡をお願いします。
+
+会社の連絡先は以下で確認できます：
+・面接予約時の確認メール
+・マイページの「面接日程」
+
+マイページ：
+https://www.yolo-japan.com/ja/recruit/mypage/interview/${UTM}`,
+      en: `If you haven't received the interview link, please contact the company directly.
+
+You can find the company's contact:
+・In the confirmation email when you scheduled the interview
+・In "Interview Schedule" on My Page
+
+My Page:
+https://www.yolo-japan.com/ja/recruit/mypage/interview/${UTM}`,
+      ko: `면접 링크를 받지 못한 경우 기업에 직접 연락해 주세요.
+
+회사 연락처 확인 방법:
+・면접 예약 시 받은 확인 메일
+・마이페이지의 "면접 일정"
+
+마이페이지:
+https://www.yolo-japan.com/ja/recruit/mypage/interview/${UTM}`,
+      zh: `如果没有收到面试链接，请直接联系公司。
+
+您可以在以下位置找到公司联系方式：
+・预约面试时收到的确认邮件
+・我的页面中的"面试日程"
+
+我的页面：
+https://www.yolo-japan.com/ja/recruit/mypage/interview/${UTM}`,
+      vi: `Nếu chưa nhận được link phỏng vấn, vui lòng liên hệ trực tiếp với công ty.
+
+Bạn có thể tìm thông tin liên hệ của công ty:
+・Trong email xác nhận khi đặt lịch phỏng vấn
+・Trong "Lịch phỏng vấn" trên Trang cá nhân
+
+Trang cá nhân:
+https://www.yolo-japan.com/ja/recruit/mypage/interview/${UTM}`,
+    },
+  },
+  {
+    id: 'site_error',
+    keywords: ['サイトエラー', 'サイト障害', 'サイトが動かない', 'site error', 'website error', '사이트 오류', '网站错误'],
+    responses: {
+      ja: `サイトに障害・エラーがある場合は、障害報告フォームからご連絡ください：
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform
+
+できるだけ詳しく状況を教えていただけると、調査がスムーズに進みます。
+・エラーが起きた画面のスクリーンショット
+・エラーメッセージの内容
+・使用しているデバイス・ブラウザ`,
+      en: `If you experience site errors, please report using this form:
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform
+
+The more details you provide, the faster we can investigate:
+・Screenshot of the error screen
+・Error message content
+・Device and browser you're using`,
+      ko: `사이트 오류가 발생한 경우 이 양식으로 신고해 주세요:
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform
+
+자세한 정보를 제공해 주시면 조사가 빨라집니다:
+・오류 화면 스크린샷
+・오류 메시지 내용
+・사용 중인 기기 및 브라우저`,
+      zh: `如果遇到网站错误，请使用此表单报告：
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform
+
+提供越详细的信息，我们调查得越快：
+・错误界面截图
+・错误消息内容
+・使用的设备和浏览器`,
+      vi: `Nếu gặp lỗi trang web, vui lòng báo cáo qua biểu mẫu này:
+https://docs.google.com/forms/d/e/1FAIpQLScXaHTBdf2q9JJvvYD90LEX9uvjkcEY7vRxHredVWLgXxdAhw/viewform
+
+Càng chi tiết, chúng tôi càng điều tra nhanh hơn:
+・Ảnh chụp màn hình lỗi
+・Nội dung thông báo lỗi
+・Thiết bị và trình duyệt đang sử dụng`,
+    },
+  },
+  {
+    id: 'residence_card_rejected',
+    keywords: ['在留カード不採用', '在留カードが承認されない', 'residence card rejected', 'card not approved', '재류카드 미승인', '在留卡未通过'],
+    responses: {
+      ja: `在留カードが承認されない場合：
+
+登録情報と在留カードの情報が一致していない可能性があります。
+以下を確認してください：
+・氏名（ローマ字）
+・生年月日
+・在留カード番号
+
+情報を修正して再申請してください。`,
+      en: `If your residence card is not approved:
+
+The registered information may not match the residence card.
+Please check:
+・Name (in Roman letters)
+・Date of birth
+・Residence card number
+
+Correct the information and reapply.`,
+      ko: `재류카드가 승인되지 않는 경우:
+
+등록 정보와 재류카드 정보가 일치하지 않을 수 있습니다.
+다음을 확인하세요:
+・이름 (로마자)
+・생년월일
+・재류카드 번호
+
+정보를 수정하고 다시 신청하세요.`,
+      zh: `如果在留卡未获批准：
+
+注册信息可能与在留卡不符。
+请检查：
+・姓名（罗马字母）
+・出生日期
+・在留卡号码
+
+更正信息后重新申请。`,
+      vi: `Nếu thẻ lưu trú không được phê duyệt:
+
+Thông tin đăng ký có thể không khớp với thẻ lưu trú.
+Vui lòng kiểm tra:
+・Tên (chữ La Mã)
+・Ngày sinh
+・Số thẻ lưu trú
+
+Sửa thông tin và nộp lại.`,
+    },
+  },
+  {
+    id: 'why_rejected',
+    keywords: ['なぜ不採用', '不採用の理由', 'why rejected', 'rejection reason', '왜 불합격', '为什么落选'],
+    responses: {
+      ja: `不採用の理由は開示されておりません。
+
+企業が候補者を選考する際の詳細な理由は、YOLO JAPANでは把握しておりません。
+
+他の求人にも積極的に応募してみてください：
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      en: `Rejection reasons are not disclosed.
+
+YOLO JAPAN does not have access to the detailed reasons companies use to select candidates.
+
+Please try applying to other jobs:
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      ko: `불합격 이유는 공개되지 않습니다.
+
+YOLO JAPAN은 기업이 후보자를 선발하는 상세한 이유를 파악하지 못합니다.
+
+다른 구인에도 적극적으로 지원해 보세요:
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      zh: `不公开落选原因。
+
+YOLO JAPAN无法获知企业选拔候选人的详细原因。
+
+请尝试申请其他职位：
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+      vi: `Lý do từ chối không được công khai.
+
+YOLO JAPAN không có thông tin về lý do chi tiết mà công ty sử dụng để chọn ứng viên.
+
+Vui lòng thử ứng tuyển các công việc khác:
+https://www.yolo-japan.com/ja/recruit/${UTM}`,
+    },
+  },
 ];
 
 /**
@@ -530,6 +1465,198 @@ Chọn dự án và nộp báo cáo hoàn thành.`,
 ①Truy cập Trang cá nhân: https://wom.yolo-japan.com/ja/mypage/${UTM}
 ②Dự án đang thực hiện: https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
 ③Nhấp "Gửi tin nhắn" trên dự án liên quan`,
+    },
+  },
+  // ===== 実問い合わせCSV追加 =====
+  {
+    id: 'change_schedule',
+    keywords: ['日程変更', '日程を変更', 'スケジュール変更', 'reschedule', 'change date', '일정 변경', '更改日期', 'thay đổi lịch'],
+    responses: {
+      ja: `日程変更はメッセージ機能からお願いします：
+
+実行中のプロジェクト：
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+該当プロジェクトの「メッセージを送信」から企業へ連絡してください。`,
+      en: `Please request schedule changes via the message function:
+
+Active Projects:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+Click "Send Message" on the relevant project to contact the company.`,
+      ko: `일정 변경은 메시지 기능을 통해 요청해 주세요:
+
+진행 중인 프로젝트:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+해당 프로젝트의 "메시지 보내기"를 클릭하여 기업에 연락하세요.`,
+      zh: `请通过消息功能申请日程变更：
+
+进行中的项目：
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+点击相关项目的"发送消息"联系企业。`,
+      vi: `Vui lòng yêu cầu thay đổi lịch qua chức năng tin nhắn:
+
+Dự án đang thực hiện:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+Nhấp "Gửi tin nhắn" trên dự án liên quan để liên hệ công ty.`,
+    },
+  },
+  {
+    id: 'japanese_participation',
+    keywords: ['日本人', '旅行者', '会員カード', 'japanese', 'traveler', 'member card', '일본인', '日本人参加', 'người Nhật'],
+    responses: {
+      ja: `YOLO DISCOVERには日本人の方も参加可能です。
+
+参加には運転免許証の登録が必要です。
+登録・応募・チェックイン・完了報告をすれば参加できます。
+
+詳しくはこちら：
+https://wom.yolo-japan.com/${UTM}`,
+      en: `Japanese citizens can also participate in YOLO DISCOVER.
+
+Driver's license registration is required to participate.
+You can participate by registering, applying, checking in, and submitting completion reports.
+
+Learn more:
+https://wom.yolo-japan.com/${UTM}`,
+      ko: `일본인도 YOLO DISCOVER에 참가할 수 있습니다.
+
+참가하려면 운전면허증 등록이 필요합니다.
+등록, 지원, 체크인, 완료 보고를 하면 참가할 수 있습니다.
+
+자세한 내용:
+https://wom.yolo-japan.com/${UTM}`,
+      zh: `日本人也可以参加YOLO DISCOVER。
+
+参加需要注册驾驶执照。
+完成注册、申请、签到、完成报告即可参加。
+
+了解更多：
+https://wom.yolo-japan.com/${UTM}`,
+      vi: `Người Nhật cũng có thể tham gia YOLO DISCOVER.
+
+Cần đăng ký giấy phép lái xe để tham gia.
+Bạn có thể tham gia bằng cách đăng ký, ứng tuyển, check-in và nộp báo cáo hoàn thành.
+
+Tìm hiểu thêm:
+https://wom.yolo-japan.com/${UTM}`,
+    },
+  },
+  {
+    id: 'checkin_issue',
+    keywords: ['チェックインできない', 'チェックイン', 'check-in', 'check in', '체크인', '签到', 'không thể check-in'],
+    responses: {
+      ja: `チェックインできない場合は、メッセージ機能で企業にチェックイン処理をお願いしてください：
+
+実行中のプロジェクト：
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+該当プロジェクトの「メッセージを送信」から連絡してください。`,
+      en: `If you cannot check in, please ask the company to process your check-in via message:
+
+Active Projects:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+Click "Send Message" on the relevant project to contact them.`,
+      ko: `체크인이 안 되는 경우, 메시지 기능으로 기업에 체크인 처리를 요청해 주세요:
+
+진행 중인 프로젝트:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+해당 프로젝트의 "메시지 보내기"를 클릭하세요.`,
+      zh: `如果无法签到，请通过消息功能要求企业处理签到：
+
+进行中的项目：
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+点击相关项目的"发送消息"联系他们。`,
+      vi: `Nếu không thể check-in, vui lòng yêu cầu công ty xử lý check-in qua tin nhắn:
+
+Dự án đang thực hiện:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}
+
+Nhấp "Gửi tin nhắn" trên dự án liên quan để liên hệ.`,
+    },
+  },
+  {
+    id: 'project_cancelled_message',
+    keywords: ['キャンセルされた', 'メッセージが見れない', 'プロジェクト消えた', 'cancelled project', 'cannot see message', '취소된 프로젝트', '项目被取消'],
+    responses: {
+      ja: `キャンセルされたプロジェクトのメッセージを確認したい場合は、緊急連絡先へお問い合わせください：
+
+実行中のプロジェクト → 緊急連絡先
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      en: `If you want to check messages from a cancelled project, please contact the emergency contact:
+
+Active Projects → Emergency Contact
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      ko: `취소된 프로젝트의 메시지를 확인하려면 긴급 연락처로 문의해 주세요:
+
+진행 중인 프로젝트 → 긴급 연락처
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      zh: `如果想查看已取消项目的消息，请联系紧急联系人：
+
+进行中的项目 → 紧急联系人
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      vi: `Nếu muốn xem tin nhắn từ dự án đã hủy, vui lòng liên hệ số khẩn cấp:
+
+Dự án đang thực hiện → Liên hệ khẩn cấp
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+    },
+  },
+  {
+    id: 'work_permit_required',
+    keywords: ['就労資格', '資格外許可', 'なぜ資格が必要', 'work permit', 'why qualification', '취업 자격', '为什么需要资格'],
+    responses: {
+      ja: `YOLO DISCOVERは報酬を伴う活動に該当するため、就労資格が必要です。
+
+留学生の方は「資格外活動許可」があれば参加可能です。
+旅行者の方は単発のお仕事に参加できます（資格外活動許可は不要）。`,
+      en: `YOLO DISCOVER requires work qualification as it involves compensated activities.
+
+Students can participate with "Permission to Engage in Activity Other Than That Permitted".
+Travelers can participate in one-time jobs (no work permit required).`,
+      ko: `YOLO DISCOVER는 보수가 수반되는 활동이므로 취업 자격이 필요합니다.
+
+유학생은 "자격외 활동 허가"가 있으면 참가 가능합니다.
+여행자는 단발성 일자리에 참가할 수 있습니다(자격외 활동 허가 불필요).`,
+      zh: `YOLO DISCOVER涉及有偿活动，因此需要工作资格。
+
+留学生持有"资格外活动许可"即可参加。
+旅行者可以参加一次性工作（不需要资格外活动许可）。`,
+      vi: `YOLO DISCOVER yêu cầu tư cách làm việc vì liên quan đến hoạt động có thù lao.
+
+Du học sinh có thể tham gia nếu có "Giấy phép hoạt động ngoài tư cách".
+Du khách có thể tham gia công việc một lần (không cần giấy phép).`,
+    },
+  },
+  {
+    id: 'completion_not_approved',
+    keywords: ['完了報告が承認されない', '報告が承認されない', 'report not approved', '보고서 미승인', '报告未批准'],
+    responses: {
+      ja: `完了報告の承認は企業が7日以内に行います。
+
+7日経っても承認されない場合は、メッセージ機能で企業にお問い合わせください：
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      en: `Completion reports are approved by the company within 7 days.
+
+If not approved after 7 days, please contact the company via message:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      ko: `완료 보고서는 기업이 7일 이내에 승인합니다.
+
+7일이 지나도 승인되지 않으면 메시지 기능으로 기업에 문의하세요:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      zh: `完成报告由企业在7天内批准。
+
+如果7天后仍未批准，请通过消息功能联系企业：
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
+      vi: `Báo cáo hoàn thành được công ty phê duyệt trong vòng 7 ngày.
+
+Nếu sau 7 ngày vẫn chưa được phê duyệt, vui lòng liên hệ công ty qua tin nhắn:
+https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
     },
   },
 ];
@@ -759,6 +1886,136 @@ export const FAQ_TOPIC_NAMES: Record<string, Record<string, string>> = {
     zh: '找工作',
     vi: 'tìm việc làm',
   },
+  // CSV追加: General
+  what_is_yolo_japan: {
+    ja: 'YOLO JAPANとは',
+    en: 'what is YOLO JAPAN',
+    ko: 'YOLO JAPAN이란',
+    zh: 'YOLO JAPAN是什么',
+    vi: 'YOLO JAPAN là gì',
+  },
+  registration_free: {
+    ja: '登録無料',
+    en: 'free registration',
+    ko: '무료 등록',
+    zh: '免费注册',
+    vi: 'đăng ký miễn phí',
+  },
+  how_to_register: {
+    ja: '登録方法',
+    en: 'how to register',
+    ko: '등록 방법',
+    zh: '如何注册',
+    vi: 'cách đăng ký',
+  },
+  visa_requirements: {
+    ja: 'ビザ・在留資格',
+    en: 'visa requirements',
+    ko: '비자 요건',
+    zh: '签证要求',
+    vi: 'yêu cầu visa',
+  },
+  // CSV追加: Account/Profile
+  edit_profile: {
+    ja: 'プロフィール編集',
+    en: 'edit profile',
+    ko: '프로필 수정',
+    zh: '编辑资料',
+    vi: 'chỉnh sửa hồ sơ',
+  },
+  change_phone: {
+    ja: '電話番号変更',
+    en: 'change phone number',
+    ko: '전화번호 변경',
+    zh: '更改电话号码',
+    vi: 'thay đổi số điện thoại',
+  },
+  upload_resume: {
+    ja: '履歴書アップロード',
+    en: 'upload resume',
+    ko: '이력서 업로드',
+    zh: '上传简历',
+    vi: 'tải lên CV',
+  },
+  login_issue: {
+    ja: 'ログインできない',
+    en: 'login issues',
+    ko: '로그인 문제',
+    zh: '登录问题',
+    vi: 'vấn đề đăng nhập',
+  },
+  no_verification_email: {
+    ja: '認証メールが届かない',
+    en: 'verification email not received',
+    ko: '인증 메일 미수신',
+    zh: '未收到验证邮件',
+    vi: 'không nhận được email xác minh',
+  },
+  // CSV追加: About Jobs
+  job_requirements: {
+    ja: '応募条件',
+    en: 'job requirements',
+    ko: '지원 조건',
+    zh: '应聘条件',
+    vi: 'yêu cầu công việc',
+  },
+  salary_payment: {
+    ja: '給料・賃金',
+    en: 'salary and payment',
+    ko: '급여',
+    zh: '工资',
+    vi: 'lương',
+  },
+  interview_preparation: {
+    ja: '面接準備',
+    en: 'interview preparation',
+    ko: '면접 준비',
+    zh: '面试准备',
+    vi: 'chuẩn bị phỏng vấn',
+  },
+  working_hours: {
+    ja: '勤務時間',
+    en: 'working hours',
+    ko: '근무 시간',
+    zh: '工作时间',
+    vi: 'giờ làm việc',
+  },
+  job_not_available: {
+    ja: '求人が見つからない',
+    en: 'no jobs available',
+    ko: '일자리를 찾을 수 없음',
+    zh: '找不到工作',
+    vi: 'không tìm thấy việc làm',
+  },
+  transportation_expenses: {
+    ja: '交通費',
+    en: 'transportation allowance',
+    ko: '교통비',
+    zh: '交通费',
+    vi: 'phí đi lại',
+  },
+  // CSV追加: YOLO HOME
+  what_is_yolo_home: {
+    ja: 'YOLO HOMEとは',
+    en: 'what is YOLO HOME',
+    ko: 'YOLO HOME이란',
+    zh: 'YOLO HOME是什么',
+    vi: 'YOLO HOME là gì',
+  },
+  search_property: {
+    ja: '物件を探す',
+    en: 'search property',
+    ko: '물건 찾기',
+    zh: '找房子',
+    vi: 'tìm nhà',
+  },
+  rental_requirements: {
+    ja: '入居条件',
+    en: 'rental requirements',
+    ko: '입주 조건',
+    zh: '入住条件',
+    vi: 'điều kiện thuê nhà',
+  },
   // YOLO DISCOVER
   cancel_project: {
     ja: 'プロジェクトキャンセル',
@@ -780,6 +2037,99 @@ export const FAQ_TOPIC_NAMES: Record<string, Record<string, string>> = {
     ko: '담당자 연락',
     zh: '联系负责人',
     vi: 'liên hệ quản lý',
+  },
+  // ===== 実問い合わせCSV追加: YOLO DISCOVER =====
+  change_schedule: {
+    ja: '日程変更',
+    en: 'schedule change',
+    ko: '일정 변경',
+    zh: '更改日程',
+    vi: 'thay đổi lịch trình',
+  },
+  japanese_participation: {
+    ja: '日本人の参加',
+    en: 'Japanese participation',
+    ko: '일본인 참가',
+    zh: '日本人参加',
+    vi: 'người Nhật tham gia',
+  },
+  checkin_issue: {
+    ja: 'チェックイン問題',
+    en: 'check-in issue',
+    ko: '체크인 문제',
+    zh: '签到问题',
+    vi: 'vấn đề check-in',
+  },
+  project_cancelled_message: {
+    ja: 'キャンセル後のメッセージ',
+    en: 'message after cancellation',
+    ko: '취소 후 메시지',
+    zh: '取消后消息',
+    vi: 'tin nhắn sau khi hủy',
+  },
+  work_permit_required: {
+    ja: '就労資格',
+    en: 'work permit required',
+    ko: '취업 자격',
+    zh: '工作许可',
+    vi: 'giấy phép lao động',
+  },
+  completion_not_approved: {
+    ja: '完了報告が承認されない',
+    en: 'completion not approved',
+    ko: '완료 보고 미승인',
+    zh: '完成报告未批准',
+    vi: 'báo cáo hoàn thành chưa được duyệt',
+  },
+  // ===== 実問い合わせCSV追加: YOLO JAPAN =====
+  passport_registration_error: {
+    ja: 'パスポート登録エラー',
+    en: 'passport registration error',
+    ko: '여권 등록 오류',
+    zh: '护照注册错误',
+    vi: 'lỗi đăng ký hộ chiếu',
+  },
+  invalid_account: {
+    ja: '無効なアカウント',
+    en: 'invalid account',
+    ko: '유효하지 않은 계정',
+    zh: '无效账户',
+    vi: 'tài khoản không hợp lệ',
+  },
+  video_upload_error: {
+    ja: '動画アップロードエラー',
+    en: 'video upload error',
+    ko: '동영상 업로드 오류',
+    zh: '视频上传错误',
+    vi: 'lỗi tải video lên',
+  },
+  interview_link_not_received: {
+    ja: '面接リンクが届かない',
+    en: 'interview link not received',
+    ko: '면접 링크 미수신',
+    zh: '未收到面试链接',
+    vi: 'không nhận được link phỏng vấn',
+  },
+  site_error: {
+    ja: 'サイト障害',
+    en: 'site error',
+    ko: '사이트 오류',
+    zh: '网站错误',
+    vi: 'lỗi trang web',
+  },
+  residence_card_rejected: {
+    ja: '在留カード不採用',
+    en: 'residence card rejected',
+    ko: '재류카드 불합격',
+    zh: '在留卡被拒',
+    vi: 'thẻ cư trú bị từ chối',
+  },
+  why_rejected: {
+    ja: '不採用の理由',
+    en: 'reason for rejection',
+    ko: '불합격 사유',
+    zh: '拒绝原因',
+    vi: 'lý do bị từ chối',
   },
 };
 

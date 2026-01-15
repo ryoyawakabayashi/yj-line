@@ -29,19 +29,34 @@ const FOLLOWUP_QUESTION = {
   vi: 'Bạn đã ứng tuyển chưa?',
 };
 
+/**
+ * プリセットデータ（ファネルフローからの引き継ぎ用）
+ */
+export interface DiagnosisPresetData {
+  prefecture?: string;
+  region?: string;
+  industry?: string;
+  workingDays?: string;
+  urgency?: 'immediate' | 'soon' | 'flexible';
+}
+
 export async function startDiagnosisMode(
   userId: string,
   replyToken: string,
-  lang: string
+  lang: string,
+  presetData?: DiagnosisPresetData
 ): Promise<void> {
   console.log('=== AI診断モード開始 ===');
+  if (presetData) {
+    console.log('📋 プリセットデータ:', presetData);
+  }
 
   // ローディングアニメーション表示（非同期で即座に実行、待たない）
   showLoadingAnimation(userId, 3).catch(() => {});
 
   // 既存の回答を取得
   const existingAnswers = await getExistingAnswers(userId);
-  
+
   // 初期状態
   let currentQuestion = 1;
   let answers: Partial<DiagnosisAnswers> = {};
@@ -62,6 +77,33 @@ export async function startDiagnosisMode(
     // Q1がスキップされていなくても、Q2はスキップ対象にマーク
     if (currentQuestion <= 2) {
       currentQuestion = 3;
+    }
+  }
+
+  // プリセットデータがあれば適用
+  if (presetData) {
+    // 緊急度がプリセットされていればQ3をスキップ
+    if (presetData.urgency) {
+      const urgencyMap: Record<string, string> = {
+        immediate: 'immediate',
+        soon: 'within_2weeks',
+        flexible: 'not_urgent',
+      };
+      answers.urgency = urgencyMap[presetData.urgency] as any;
+      console.log(`✅ 緊急度(${presetData.urgency})プリセット済みなのでQ3をスキップ`);
+      if (currentQuestion <= 3) {
+        currentQuestion = 4;
+      }
+    }
+
+    // 都道府県がプリセットされていればQ4をスキップ
+    if (presetData.prefecture) {
+      answers.prefecture = presetData.prefecture;
+      answers.region = presetData.region || getRegionByPrefecture(presetData.prefecture);
+      console.log(`✅ 都道府県(${presetData.prefecture})プリセット済みなのでQ4をスキップ`);
+      if (currentQuestion <= 4) {
+        currentQuestion = 5;
+      }
     }
   }
 
@@ -406,6 +448,12 @@ async function finishDiagnosis(
       url: await processUrl(item.url, userId, 'diagnosis'),
     }))
   );
+
+  // デバッグ: 診断結果URLをログ出力
+  console.log('📤 診断結果URL:', trackedLinkItems.map(item => ({
+    label: item.label,
+    url: item.url
+  })));
 
   const titleText: Record<string, string> = {
     ja: '診断が完了しました！\nあなたにぴったりのお仕事はこちら👇',
