@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Script from 'next/script';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 declare global {
   interface Window {
@@ -180,8 +181,22 @@ function LiffRedirectContent() {
         strategy="afterInteractive"
         onLoad={handleLiffLoad}
       />
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <div style={styles.card}>
-        <div style={styles.spinner} />
+        <div style={styles.logoContainer}>
+          <Image
+            src="/yolo-logo.svg"
+            alt="YOLO JAPAN"
+            width={64}
+            height={64}
+            style={{ animation: 'spin 1.5s linear infinite' }}
+          />
+        </div>
         <p style={styles.loadingText}>
           {status === 'redirecting' ? '開いています...' : ''}
         </p>
@@ -193,8 +208,22 @@ function LiffRedirectContent() {
 function LoadingFallback() {
   return (
     <div style={styles.container}>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <div style={styles.card}>
-        <div style={styles.spinner} />
+        <div style={styles.logoContainer}>
+          <Image
+            src="/yolo-logo.svg"
+            alt="YOLO JAPAN"
+            width={64}
+            height={64}
+            style={{ animation: 'spin 1.5s linear infinite' }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -253,14 +282,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '15px',
     fontWeight: '500',
   },
-  spinner: {
-    width: '32px',
-    height: '32px',
-    border: '2px solid #e5e5e5',
-    borderTop: '2px solid #333',
-    borderRadius: '50%',
+  logoContainer: {
+    width: '64px',
+    height: '64px',
     margin: '0 auto 16px',
-    animation: 'spin 0.7s linear infinite',
   },
   errorIcon: {
     width: '48px',
