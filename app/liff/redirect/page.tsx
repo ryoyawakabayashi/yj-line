@@ -190,11 +190,11 @@ function LiffRedirectContent() {
       <div style={styles.card}>
         <div style={styles.logoContainer}>
           <Image
-            src="/yolo-logo.svg"
+            src="/yolo-logo.png"
             alt="YOLO JAPAN"
             width={64}
             height={64}
-            style={{ animation: 'spin 1.5s linear infinite' }}
+            style={{ animation: 'spin 2.5s linear infinite' }}
           />
         </div>
         <p style={styles.loadingText}>
@@ -217,11 +217,11 @@ function LoadingFallback() {
       <div style={styles.card}>
         <div style={styles.logoContainer}>
           <Image
-            src="/yolo-logo.svg"
+            src="/yolo-logo.png"
             alt="YOLO JAPAN"
             width={64}
             height={64}
-            style={{ animation: 'spin 1.5s linear infinite' }}
+            style={{ animation: 'spin 2.5s linear infinite' }}
           />
         </div>
       </div>
