@@ -2,7 +2,7 @@
 // Support Handler for Customer Support AI
 // =====================================================
 
-import { replyMessage, showLoadingAnimation, getUserProfile, pushMessage } from '../line/client';
+import { replyMessage, showLoadingAnimation, getUserProfile } from '../line/client';
 import {
   getConversationState,
   saveConversationState,
@@ -13,8 +13,8 @@ import {
   createSupportTicket,
   updateTicket,
   saveMessage,
-  toggleHumanTakeover,
 } from '../database/support-queries';
+import { logFAQUsage } from '../database/faq-queries';
 import {
   createSupportMenuFlex,
   createSupportCompleteFlex,
@@ -23,6 +23,8 @@ import {
   generateSummaryPrompt,
   getSupportMessage,
   classifyTicketCategory,
+  searchFAQAsync,
+  FAQSearchResult,
 } from '../support/faq';
 import {
   classifyMessage,
@@ -184,6 +186,263 @@ function isNegativeResponse(message: string): boolean {
     '아니오', '아니', '否', '不是', 'Không',
   ];
   return negatives.some((n) => message.toLowerCase() === n.toLowerCase());
+}
+
+// =====================================================
+// FAQ候補分岐ロジック
+// =====================================================
+
+/**
+ * FAQ候補分岐の閾値設定
+ */
+const FAQ_SCORE_THRESHOLDS = {
+  HIGH: 0.85,    // 即回答
+  MEDIUM: 0.60,  // 確認必要
+  LOW: 0.40,     // カテゴリ選択へ
+};
+
+/**
+ * FAQ候補からクイックリプライを生成
+ */
+function generateFAQCandidateQuickReplies(
+  candidates: FAQSearchResult[],
+  lang: string
+): Array<{ type: 'action'; action: { type: 'message'; label: string; text: string } }> {
+  const items = candidates.slice(0, 4).map((candidate) => {
+    // 質問文を短縮してラベルに
+    let label = candidate.question;
+    if (label.length > 20) {
+      label = label.substring(0, 17) + '...';
+    }
+    return {
+      type: 'action' as const,
+      action: {
+        type: 'message' as const,
+        label,
+        text: `FAQ:${candidate.id}`, // 特殊フォーマットで選択を識別
+      },
+    };
+  });
+
+  // 「その他」を追加
+  const otherLabels: Record<string, string> = {
+    ja: 'その他',
+    en: 'Other',
+    ko: '기타',
+    zh: '其他',
+    vi: 'Khác',
+    th: 'อื่นๆ',
+    id: 'Lainnya',
+    pt: 'Outro',
+    es: 'Otro',
+    ne: 'अन्य',
+    my: 'အခြား',
+  };
+  items.push({
+    type: 'action' as const,
+    action: {
+      type: 'message' as const,
+      label: otherLabels[lang] || otherLabels.ja,
+      text: 'FAQ:__other__',
+    },
+  });
+
+  return items;
+}
+
+/**
+ * FAQ候補分岐のメッセージ定義
+ */
+const FAQ_BRANCH_MESSAGES = {
+  // 1件の候補で確認する場合
+  confirm: {
+    ja: 'こちらについてのお問い合わせでよろしいですか？\n「{question}」',
+    en: 'Is this what you\'re asking about?\n"{question}"',
+    ko: '이것에 대해 문의하시는 건가요?\n"{question}"',
+    zh: '您是在询问这个问题吗？\n"{question}"',
+    vi: 'Đây có phải điều bạn đang hỏi không?\n"{question}"',
+    th: 'คุณกำลังถามเรื่องนี้ใช่ไหม?\n"{question}"',
+    id: 'Apakah ini yang Anda tanyakan?\n"{question}"',
+    pt: 'É sobre isso que você está perguntando?\n"{question}"',
+    es: '¿Es esto lo que está preguntando?\n"{question}"',
+    ne: 'के तपाईं यसबारे सोध्दै हुनुहुन्छ?\n"{question}"',
+    my: 'ဒီအကြောင်းကို မေးနေတာလား?\n"{question}"',
+  },
+  // 複数候補から選択
+  select: {
+    ja: 'どちらについてお聞きですか？',
+    en: 'Which one are you asking about?',
+    ko: '어떤 것에 대해 문의하시나요?',
+    zh: '您想询问哪个？',
+    vi: 'Bạn đang hỏi về điều nào?',
+    th: 'คุณต้องการถามเรื่องใด?',
+    id: 'Yang mana yang Anda tanyakan?',
+    pt: 'Sobre qual você está perguntando?',
+    es: '¿Sobre cuál está preguntando?',
+    ne: 'तपाईं कुनबारे सोध्दै हुनुहुन्छ?',
+    my: 'ဘယ်တစ်ခုကို မေးနေတာလဲ?',
+  },
+  // 候補が多すぎる/スコアが低い場合
+  tooMany: {
+    ja: 'もう少し詳しく教えていただけますか？以下からお選びいただくか、具体的な内容をお聞かせください。',
+    en: 'Could you tell me more details? Please select from below or describe your specific issue.',
+    ko: '좀 더 자세히 알려주시겠어요? 아래에서 선택하시거나 구체적인 내용을 말씀해 주세요.',
+    zh: '能告诉我更多细节吗？请从以下选项中选择或描述您的具体问题。',
+    vi: 'Bạn có thể cho tôi biết thêm chi tiết không? Vui lòng chọn từ bên dưới hoặc mô tả vấn đề cụ thể của bạn.',
+    th: 'ช่วยบอกรายละเอียดเพิ่มเติมได้ไหม? กรุณาเลือกจากด้านล่างหรืออธิบายปัญหาเฉพาะของคุณ',
+    id: 'Bisakah Anda memberi tahu saya lebih detail? Silakan pilih dari bawah atau jelaskan masalah spesifik Anda.',
+    pt: 'Você pode me contar mais detalhes? Por favor, selecione abaixo ou descreva seu problema específico.',
+    es: '¿Puede darme más detalles? Por favor seleccione de abajo o describa su problema específico.',
+    ne: 'के तपाईं मलाई थप विवरण दिन सक्नुहुन्छ? कृपया तलबाट छान्नुहोस् वा तपाईंको विशेष समस्या वर्णन गर्नुहोस्।',
+    my: 'အသေးစိတ်ပိုပြောပြနိုင်မလား? အောက်ပါမှ ရွေးချယ်ပါ သို့မဟုတ် သင့်ပြဿနာကို ဖော်ပြပါ။',
+  },
+};
+
+/**
+ * FAQ候補に基づく分岐処理
+ * @returns 処理されたかどうか、および処理結果
+ */
+async function handleFAQCandidateBranching(
+  userId: string,
+  replyToken: string,
+  userMessage: string,
+  service: ServiceType | undefined,
+  lang: string,
+  supportState: SupportModeState,
+  currentState: ConversationState
+): Promise<{ handled: boolean; action?: 'replied' | 'escalate' | 'category' }> {
+  // FAQ検索（スコア付き）
+  const faqResults = await searchFAQAsync(userMessage, service, lang);
+  const conversationHistory = supportState.conversationHistory || [];
+
+  console.log(`🔍 FAQ検索結果: ${faqResults.length}件, 最高スコア: ${faqResults[0]?.score || 0}`);
+
+  // === 候補0件 → カテゴリ選択へ（即エスカレーションしない） ===
+  if (faqResults.length === 0) {
+    console.log(`📂 FAQ候補0件、カテゴリ選択へ`);
+    return { handled: false, action: 'category' };
+  }
+
+  const topScore = faqResults[0].score;
+
+  // === 候補1件 & 高スコア → 即回答 ===
+  if (faqResults.length === 1 && topScore >= FAQ_SCORE_THRESHOLDS.HIGH) {
+    const faq = faqResults[0];
+    let response = faq.answer;
+    response = await processUrlsInText(response, userId, getServiceUrlType(service));
+
+    conversationHistory.push({ role: 'assistant', content: response });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: response,
+    });
+
+    // FAQ利用ログを記録
+    logFAQUsage({
+      faqId: faq.id,
+      userId,
+      service,
+      userMessage,
+      confidence: topScore,
+    }).catch(() => {});
+
+    console.log(`✅ FAQ即回答（1件、スコア=${topScore}）: ${faq.faqKey}`);
+    return { handled: true, action: 'replied' };
+  }
+
+  // === 候補1件 & 中〜低スコア → 確認 ===
+  if (faqResults.length === 1 && topScore >= FAQ_SCORE_THRESHOLDS.LOW) {
+    const faq = faqResults[0];
+    const confirmTemplate = FAQ_BRANCH_MESSAGES.confirm[lang as keyof typeof FAQ_BRANCH_MESSAGES.confirm]
+      || FAQ_BRANCH_MESSAGES.confirm.ja;
+    const confirmMessage = confirmTemplate.replace('{question}', faq.question);
+
+    // pendingQuickReplyを設定
+    supportState.pendingQuickReply = {
+      type: 'faq_confirm',
+      choices: [
+        { label: FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja, faqId: faq.id },
+        { label: FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja, faqId: '__escalate__' },
+      ],
+      confirmFaq: {
+        faqId: faq.id,
+        response: faq.answer,
+      },
+    };
+
+    conversationHistory.push({ role: 'assistant', content: confirmMessage });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: confirmMessage,
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja,
+              text: FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja,
+            },
+          },
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja,
+              text: FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja,
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`🤔 FAQ確認（1件、スコア=${topScore}）: ${faq.faqKey}`);
+    return { handled: true, action: 'replied' };
+  }
+
+  // === 候補2〜4件 → クイックリプライで候補選択 ===
+  if (faqResults.length >= 2 && faqResults.length <= 4 && topScore >= FAQ_SCORE_THRESHOLDS.LOW) {
+    const selectMessage = FAQ_BRANCH_MESSAGES.select[lang as keyof typeof FAQ_BRANCH_MESSAGES.select]
+      || FAQ_BRANCH_MESSAGES.select.ja;
+
+    const quickReplies = generateFAQCandidateQuickReplies(faqResults, lang);
+
+    // pendingQuickReplyを設定（faq_candidatesタイプ）
+    supportState.pendingQuickReply = {
+      type: 'faq_candidates',
+      choices: faqResults.map((faq) => ({
+        label: faq.question.length > 20 ? faq.question.substring(0, 17) + '...' : faq.question,
+        faqId: faq.id,
+        response: faq.answer,
+      })),
+    };
+
+    conversationHistory.push({ role: 'assistant', content: selectMessage });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: selectMessage,
+      quickReply: { items: quickReplies },
+    });
+
+    console.log(`📋 FAQ候補選択（${faqResults.length}件）: ${faqResults.map(f => f.faqKey).join(', ')}`);
+    return { handled: true, action: 'replied' };
+  }
+
+  // === 候補5件以上 or スコア低い → カテゴリ選択へ ===
+  console.log(`🔄 FAQ候補多数（${faqResults.length}件）またはスコア低（${topScore}）、カテゴリ選択へ`);
+  return { handled: false, action: 'category' };
 }
 
 /**
@@ -514,6 +773,15 @@ export async function handleSupportMessage(
           text: faqResponse,
         });
 
+        // FAQ利用ログを記録（非同期、エラーは無視）
+        logFAQUsage({
+          faqId: pendingQR.confirmFaq.faqId,
+          userId,
+          service: supportState.service,
+          userMessage,
+          confidence: 1.0, // 確認後の選択は確実
+        }).catch(() => {});
+
         console.log(`✅ FAQ確認→はい: ${pendingQR.confirmFaq.faqId}`);
         return true;
       }
@@ -600,6 +868,15 @@ export async function handleSupportMessage(
             text: faqResponse,
           });
 
+          // FAQ利用ログを記録（非同期、エラーは無視）
+          logFAQUsage({
+            faqId: selectedFaqId,
+            userId,
+            service: supportState.service,
+            userMessage,
+            confidence: 1.0, // 候補選択は確実
+          }).catch(() => {});
+
           console.log(`✅ FAQ候補選択: ${selectedFaqId}`);
           return true;
         }
@@ -631,6 +908,15 @@ export async function handleSupportMessage(
             text: faqResponse,
           });
 
+          // FAQ利用ログを記録（非同期、エラーは無視）
+          logFAQUsage({
+            faqId: selectedChoice.faqId,
+            userId,
+            service: supportState.service,
+            userMessage,
+            confidence: 1.0, // クイックリプライ選択は確実
+          }).catch(() => {});
+
           console.log(`✅ クイックリプライ選択: ${selectedChoice.faqId}`);
           return true;
         }
@@ -640,8 +926,56 @@ export async function handleSupportMessage(
     }
   }
 
-  // 4. AIでFAQを分類
-  console.log(`🔍 メッセージ分類中: ${userMessage}`);
+  // 4. DB FAQ候補分岐ロジック（新方式）
+  const faqBranchResult = await handleFAQCandidateBranching(
+    userId,
+    replyToken,
+    userMessage,
+    supportState.service,
+    lang,
+    supportState,
+    currentState
+  );
+
+  if (faqBranchResult.handled) {
+    // FAQ分岐で処理完了
+    return true;
+  }
+
+  // ※ FAQ候補0件でもカテゴリ選択に進むため、ここには到達しない
+  // （ユーザーが明示的に「その他」を選んだ場合のみエスカレーション）
+
+  // FAQ候補多数/スコア低 → カテゴリ選択を表示
+  if (faqBranchResult.action === 'category') {
+    const { getCategoriesForService, generateCategoryQuickReplies } = await import('../support/categories');
+    const categories = getCategoriesForService(supportState.service);
+    const quickReplies = generateCategoryQuickReplies(categories, lang);
+
+    const helpMessages: Record<string, string> = {
+      ja: 'お手伝いできることを探しています。以下からお選びください。',
+      en: 'Let me help you find what you need. Please select from below.',
+      ko: '도움이 필요한 내용을 찾고 있습니다. 아래에서 선택해 주세요.',
+      zh: '正在寻找可以帮助您的内容。请从以下选项中选择。',
+      vi: 'Tôi đang tìm cách giúp bạn. Vui lòng chọn từ các tùy chọn bên dưới.',
+    };
+    const helpMessage = helpMessages[lang] || helpMessages.ja;
+
+    conversationHistory.push({ role: 'assistant', content: helpMessage });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: helpMessage,
+      quickReply: quickReplies ? { items: quickReplies } : undefined,
+    });
+
+    return true;
+  }
+
+  // 5. AI分類へフォールバック（DB FAQで対応できなかった場合）
+  console.log(`🔍 メッセージ分類中（フォールバック）: ${userMessage}`);
   const classification = await classifyMessage(
     userMessage,
     supportState.service,
@@ -666,6 +1000,17 @@ export async function handleSupportMessage(
       type: 'text',
       text: trackedResponse,
     });
+
+    // FAQ利用ログを記録（非同期、エラーは無視）
+    if (classification.faqId) {
+      logFAQUsage({
+        faqId: classification.faqId,
+        userId,
+        service: supportState.service,
+        userMessage,
+        confidence,
+      }).catch(() => {});
+    }
 
     console.log(`✅ FAQ即回答（confidence=${confidence}）: ${classification.faqId}`);
     return true;
@@ -902,8 +1247,8 @@ ${conversationHistory.map((m) => `${m.role === 'user' ? 'ユーザー' : 'AI'}: 
       console.error('⚠️ チケット更新失敗:', error);
     }
 
-    // 有人対応モードをON
-    await toggleHumanTakeover(ticketId, true, undefined);
+    // ※ 有人対応モードはSlackから「対応する」を押した時にONにする
+    // （エスカレーション時点ではAIが引き続き対応）
 
     // 会話履歴をメッセージとして保存
     for (const msg of conversationHistory) {
@@ -922,24 +1267,12 @@ ${conversationHistory.map((m) => `${m.role === 'user' ? 'ユーザー' : 'AI'}: 
       reason,
     });
 
-    console.log(`✅ エスカレーション完了: ${ticketId}`);
-
-    // ユーザーに有人対応開始を通知
-    const escalationMessages: Record<string, string> = {
-      ja: 'オペレーターに接続しました。少々お待ちください。',
-      en: 'Connected to an operator. Please wait a moment.',
-      ko: '상담원에게 연결되었습니다. 잠시만 기다려주세요.',
-      zh: '已连接到客服人员。请稍等。',
-      vi: 'Đã kết nối với nhân viên hỗ trợ. Vui lòng đợi.',
-    };
-    await pushMessage(userId, [{
-      type: 'text',
-      text: escalationMessages[lang] || escalationMessages.ja,
-    }]);
+    console.log(`✅ エスカレーション通知送信: ${ticketId}`);
   }
 
-  // 会話状態をクリア
-  await clearConversationState(userId);
+  // ※ 会話状態はクリアしない（AIが引き続き対応するため）
+  // オペレーターがダッシュボードから「有人対応開始」を押した時点で
+  // 有人モードに切り替わり、AIは停止する
 }
 
 /**

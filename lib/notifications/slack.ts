@@ -22,25 +22,18 @@ export interface SlackNotification {
 
 // サービス名を日本語で表示
 const SERVICE_NAMES: Record<string, string> = {
-  YOLO_JAPAN: '🏢 YOLO JAPAN（求人）',
-  YOLO_DISCOVER: '🎯 YOLO DISCOVER（体験）',
-  YOLO_HOME: '🏠 YOLO HOME（住居）',
+  YOLO_JAPAN: 'YOLO JAPAN（求人）',
+  YOLO_DISCOVER: 'YOLO DISCOVER（体験）',
+  YOLO_HOME: 'YOLO HOME（住居）',
 };
 
 // 言語コードを日本語で表示
 const LANG_NAMES: Record<string, string> = {
-  ja: '🇯🇵 日本語',
-  en: '🇺🇸 英語',
-  ko: '🇰🇷 韓国語',
-  zh: '🇨🇳 中国語',
-  vi: '🇻🇳 ベトナム語',
-};
-
-const PRIORITY_EMOJI: Record<string, string> = {
-  urgent: '🚨',
-  high: '🔴',
-  normal: '🟡',
-  low: '🟢',
+  ja: '日本語',
+  en: '英語',
+  ko: '韓国語',
+  zh: '中国語',
+  vi: 'ベトナム語',
 };
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -62,14 +55,13 @@ export async function sendSlackNotification(
   }
 
   const priority = data.priority || 'normal';
-  const emoji = PRIORITY_EMOJI[priority];
   const color = PRIORITY_COLOR[priority];
 
   // 本番ダッシュボードURLを使用
   const dashboardUrl = data.dashboardUrl || `${DASHBOARD_BASE_URL}/dashboard/support/${data.ticketId}`;
 
   // サービス名を日本語で表示
-  const serviceName = data.service ? (SERVICE_NAMES[data.service] || data.service) : '❓ 未選択';
+  const serviceName = data.service ? (SERVICE_NAMES[data.service] || data.service) : '未選択';
 
   // 言語を日本語で表示
   const langName = data.userLang ? (LANG_NAMES[data.userLang] || data.userLang) : '不明';
@@ -80,8 +72,8 @@ export async function sendSlackNotification(
         type: 'header',
         text: {
           type: 'plain_text',
-          text: `${emoji} LINE問い合わせ - 対応が必要です`,
-          emoji: true,
+          text: 'LINE問い合わせ - 対応が必要です',
+          emoji: false,
         },
       },
       {
@@ -89,19 +81,19 @@ export async function sendSlackNotification(
         fields: [
           {
             type: 'mrkdwn',
-            text: `*👤 ユーザー:*\n${data.userDisplayName || 'Unknown'}`,
+            text: `*ユーザー:*\n${data.userDisplayName || 'Unknown'}`,
           },
           {
             type: 'mrkdwn',
-            text: `*🏷️ 担当サービス:*\n${serviceName}`,
+            text: `*担当サービス:*\n${serviceName}`,
           },
           {
             type: 'mrkdwn',
-            text: `*🌐 使用言語:*\n${langName}`,
+            text: `*使用言語:*\n${langName}`,
           },
           {
             type: 'mrkdwn',
-            text: `*⚡ 優先度:*\n${priority.toUpperCase()}`,
+            text: `*優先度:*\n${priority.toUpperCase()}`,
           },
         ],
       },
@@ -112,7 +104,7 @@ export async function sendSlackNotification(
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*📝 問い合わせ内容（日本語要約）:*\n${data.summary || '要約なし'}`,
+          text: `*問い合わせ内容（日本語要約）:*\n${data.summary || '要約なし'}`,
         },
       },
       ...(data.originalMessage ? [{
@@ -120,7 +112,7 @@ export async function sendSlackNotification(
         elements: [
           {
             type: 'mrkdwn' as const,
-            text: `💬 _元メッセージ: "${data.originalMessage.slice(0, 100)}${data.originalMessage.length > 100 ? '...' : ''}"_`,
+            text: `_元メッセージ: "${data.originalMessage.slice(0, 100)}${data.originalMessage.length > 100 ? '...' : ''}"_`,
           },
         ],
       }] : []),
@@ -128,23 +120,15 @@ export async function sendSlackNotification(
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*🔍 理由:*\n${data.reason}`,
+          text: `*理由:*\n${data.reason}`,
         },
       },
       {
-        type: 'actions',
-        elements: [
-          {
-            type: 'button',
-            text: {
-              type: 'plain_text',
-              text: '💬 対応する',
-              emoji: true,
-            },
-            url: dashboardUrl,
-            style: 'primary',
-          },
-        ],
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*対応する:* <${dashboardUrl}|チャット画面へ>`,
+        },
       },
     ],
     attachments: [
@@ -224,7 +208,7 @@ export async function notifyHumanTakeoverStart(
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `👤 *${operatorName}* が有人対応を開始しました\nユーザー: ${userDisplayName || 'Unknown'}`,
+          text: `*${operatorName}* が有人対応を開始しました\nユーザー: ${userDisplayName || 'Unknown'}`,
         },
         accessory: {
           type: 'button',
@@ -268,7 +252,7 @@ export async function notifyTicketResolved(
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `✅ チケット \`${ticketId.slice(0, 8)}\` が *${resolvedBy}* により解決されました`,
+          text: `チケット \`${ticketId.slice(0, 8)}\` が *${resolvedBy}* により解決されました`,
         },
       },
     ],
@@ -334,8 +318,8 @@ export async function notifyYoloDiscoverEnterpriseTrouble(
         type: 'header',
         text: {
           type: 'plain_text',
-          text: '🚨 YOLO DISCOVER 企業トラブル - 緊急対応',
-          emoji: true,
+          text: 'YOLO DISCOVER 企業トラブル - 緊急対応',
+          emoji: false,
         },
       },
       {
@@ -343,19 +327,19 @@ export async function notifyYoloDiscoverEnterpriseTrouble(
         fields: [
           {
             type: 'mrkdwn',
-            text: `*👤 ユーザー:*\n${data.userDisplayName || 'Unknown'}`,
+            text: `*ユーザー:*\n${data.userDisplayName || 'Unknown'}`,
           },
           {
             type: 'mrkdwn',
-            text: `*🌐 使用言語:*\n${langName}`,
+            text: `*使用言語:*\n${langName}`,
           },
           {
             type: 'mrkdwn',
-            text: `*🏷️ カテゴリー:*\n${data.category}`,
+            text: `*カテゴリー:*\n${data.category}`,
           },
           {
             type: 'mrkdwn',
-            text: `*⏰ 受信時刻:*\n${new Date(data.timestamp).toLocaleString('ja-JP')}`,
+            text: `*受信時刻:*\n${new Date(data.timestamp).toLocaleString('ja-JP')}`,
           },
         ],
       },
@@ -366,7 +350,7 @@ export async function notifyYoloDiscoverEnterpriseTrouble(
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*💬 ユーザーメッセージ:*\n\`\`\`${data.message.slice(0, 500)}${data.message.length > 500 ? '...' : ''}\`\`\``,
+          text: `*ユーザーメッセージ:*\n\`\`\`${data.message.slice(0, 500)}${data.message.length > 500 ? '...' : ''}\`\`\``,
         },
       },
       {
@@ -374,7 +358,7 @@ export async function notifyYoloDiscoverEnterpriseTrouble(
         elements: [
           {
             type: 'mrkdwn',
-            text: `📋 パターンID: \`${data.patternId}\` | UserID: \`${data.userId.slice(0, 10)}...\``,
+            text: `パターンID: \`${data.patternId}\` | UserID: \`${data.userId.slice(0, 10)}...\``,
           },
         ],
       },

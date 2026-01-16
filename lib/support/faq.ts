@@ -3,6 +3,12 @@
 // =====================================================
 
 import { ServiceType, KnownIssue } from '@/types/support';
+import {
+  getFAQsByService,
+  getAllFAQs,
+  searchFAQsByKeyword,
+  FAQ,
+} from '@/lib/database/faq-queries';
 
 // UTMパラメータ（統一）
 const UTM = '?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry';
@@ -245,6 +251,134 @@ export function generateSupportSystemPrompt(params: {
 }
 
 /**
+ * サポートAIのシステムプロンプト生成（DB版 - 非同期）
+ * DBからFAQを取得し、失敗した場合はハードコードにフォールバック
+ */
+export async function generateSupportSystemPromptAsync(params: {
+  ticketType: 'feedback' | 'bug';
+  service?: ServiceType;
+  lang: string;
+  knownIssues?: KnownIssue[];
+}): Promise<string> {
+  const { ticketType, service, lang, knownIssues } = params;
+
+  const basePrompt = `あなたはYOLOサービスのカスタマーサポートAIです。
+ユーザーからのお問い合わせに対応してください。
+
+## 【最重要】解決策を提示すること
+あなたの目的は**ユーザーの問題を解決すること**です。
+確認質問ばかりせず、FAQに該当する回答があれば**すぐに解決策を提示**してください。
+
+## 【絶対禁止事項】
+1. **URLを自分で作成・推測・生成することは絶対禁止**
+2. **FAQに記載されていないURLは絶対に案内しない**
+3. **確認質問を2回以上連続で行うことは禁止** - 1回確認したら次は解決策を出す
+
+## 回答の優先順位（この順番で対応）
+1. **FAQに該当する回答がある** → 即座にFAQの回答（URLを含む）をそのまま提示
+2. **FAQに近い内容がある** → FAQの回答を参考に解決策を提示
+3. **曖昧で複数の解釈がある** → 1回だけ確認質問し、次は必ず解決策を出す
+4. **FAQに該当がない** → 「担当者に確認します」と伝えて[ESCALATE]タグを付ける
+
+## 確認質問のルール
+- **1回だけ**確認質問をしたら、次は必ず解決策を提示する
+- ユーザーが「うん」「はい」と答えたら、**即座にFAQの回答を提示**する
+- 同じような確認質問を繰り返さない
+
+## よくある問い合わせ → 即答パターン（URLを必ず含めること）
+
+**「企業と連絡取れない」「面接の連絡がない」「相手から連絡がこない」の場合：**
+→ 以下のように回答（URLを必ず含める）：
+「まだ連絡がない時は、自分で会社に連絡をお願いしています。会社のメールアドレスまたは電話番号は、面接の予約をした時の確認メールか、マイページの「面接日程」から調べることができます。
+マイページ：https://www.yolo-japan.com/ja/recruit/mypage/interview/ からメッセージ機能を使うこともできます。」
+
+**「退会したい」「解約したい」の場合：**
+→ 「https://www.yolo-japan.com/ja/withdraw/ からアカウントを消すことができます。」
+
+**「パスワード忘れた」の場合：**
+→ 「https://www.yolo-japan.com/ja/recruit/login から「パスワードを忘れた」をクリックしてリセットできます。」
+
+## 基本ルール
+1. ユーザーの言語（${lang}）に合わせて応答する
+2. 応答は簡潔に、解決策を明確に
+3. **FAQの回答にURLがある場合は、必ずそのURLも含めて回答すること**
+4. 丁寧で親切な対応を心がける
+
+## URLの取り扱い【超重要】
+- **FAQの回答にURLが含まれている場合、そのURLを必ず出力すること**
+- URLを省略しない。ユーザーが行動できるようにURLを提示する
+- FAQセクションに記載されていないURLは絶対に案内しない
+- URLを変更・短縮・推測することは禁止
+
+## エスカレーション判定
+以下の場合のみ、応答の最後に「[ESCALATE]」タグを付けてください：
+
+1. **FAQを確認しても該当する回答がない場合**
+2. **ユーザーが「人と話したい」「オペレーター」と要求した場合**
+3. **解決策を提示したが、ユーザーが「それでもできない」と言った場合**
+4. **感情的に不満を訴えている場合（怒り、失望など）**
+
+例：
+- 「申し訳ございませんが、この件については担当者に確認が必要です。[ESCALATE]」`;
+
+  // DBからFAQを取得
+  let faqSection = '\n## FAQ\n';
+  let usedFallback = false;
+
+  try {
+    if (service) {
+      const dbFaqs = await getFAQsByService(service, lang);
+      if (dbFaqs.length > 0) {
+        faqSection += `### ${service}に関するFAQ\n`;
+        dbFaqs.forEach((faq) => {
+          faqSection += `Q: ${faq.question}\nA: ${faq.answer}\n\n`;
+        });
+      } else {
+        usedFallback = true;
+      }
+    } else {
+      const dbFaqs = await getAllFAQs(lang);
+      if (dbFaqs.length > 0) {
+        dbFaqs.forEach((faq) => {
+          faqSection += `Q: ${faq.question}\nA: ${faq.answer}\n\n`;
+        });
+      } else {
+        usedFallback = true;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ DB FAQ取得失敗、フォールバック使用:', error);
+    usedFallback = true;
+  }
+
+  // フォールバック: ハードコードFAQ使用
+  if (usedFallback) {
+    if (service && SERVICE_FAQ[service]) {
+      faqSection += `### ${service}に関するFAQ\n`;
+      SERVICE_FAQ[service].forEach((qa) => {
+        faqSection += qa + '\n\n';
+      });
+    }
+    faqSection += '### 共通FAQ\n';
+    COMMON_FAQ.forEach((qa) => {
+      faqSection += qa + '\n\n';
+    });
+  }
+
+  // 既知の問題を追加
+  let knownIssuesSection = '';
+  if (knownIssues && knownIssues.length > 0) {
+    knownIssuesSection = '\n## 現在調査中の既知の問題\n';
+    knownIssues.forEach((issue) => {
+      knownIssuesSection += `- **${issue.title}**: ${issue.description || '調査中'}\n`;
+    });
+    knownIssuesSection += '\n上記に該当する場合は、既知の問題であることを伝え、調査中であることを案内してください。\n';
+  }
+
+  return basePrompt + faqSection + knownIssuesSection;
+}
+
+/**
  * サポート完了時の要約プロンプト
  */
 export function generateSummaryPrompt(conversation: Array<{ role: string; content: string }>): string {
@@ -298,6 +432,119 @@ export function searchFAQ(keyword: string, service?: ServiceType): string[] {
 
   return results;
 }
+
+/**
+ * FAQ検索結果の型（スコア付き）
+ */
+export interface FAQSearchResult {
+  id: string;
+  question: string;
+  answer: string;
+  faqKey: string;
+  score: number; // 0.0 - 1.0 の類似度スコア
+}
+
+/**
+ * FAQ検索（DB版 - 非同期）
+ * DBからFAQを検索し、失敗した場合はハードコードにフォールバック
+ * スコア（類似度）付きで結果を返す
+ */
+export async function searchFAQAsync(
+  keyword: string,
+  service?: ServiceType,
+  lang: string = 'ja'
+): Promise<FAQSearchResult[]> {
+  try {
+    const dbFaqs = await searchFAQsByKeyword(keyword, service, lang);
+    if (dbFaqs.length > 0) {
+      // キーワードマッチングのスコア計算
+      return dbFaqs.map((faq) => ({
+        id: faq.id,
+        question: faq.question,
+        answer: faq.answer,
+        faqKey: faq.faqKey,
+        score: calculateMatchScore(keyword, faq),
+      })).sort((a, b) => b.score - a.score); // スコア降順でソート
+    }
+  } catch (error) {
+    console.warn('⚠️ DB FAQ検索失敗、フォールバック使用:', error);
+  }
+
+  // フォールバック: ハードコードFAQ
+  const results = searchFAQ(keyword, service);
+  return results.map((qa, index) => {
+    const match = qa.match(/Q:\s*(.*?)\nA:\s*([\s\S]*)/);
+    const question = match ? match[1].trim() : qa;
+    const answer = match ? match[2].trim() : qa;
+    return {
+      id: `fallback-${index}`,
+      question,
+      answer,
+      faqKey: `fallback-${index}`,
+      score: calculateFallbackScore(keyword, question, answer),
+    };
+  }).sort((a, b) => b.score - a.score);
+}
+
+/**
+ * DB FAQのマッチスコアを計算
+ * キーワードとFAQの類似度を0.0-1.0で返す
+ */
+function calculateMatchScore(keyword: string, faq: FAQ): number {
+  const lowerKeyword = keyword.toLowerCase();
+  const lowerQuestion = faq.question.toLowerCase();
+  const lowerAnswer = faq.answer.toLowerCase();
+  const lowerKeywords = faq.keywords.map(k => k.toLowerCase());
+
+  let score = 0;
+
+  // キーワード配列に完全一致がある場合（最高スコア）
+  if (lowerKeywords.includes(lowerKeyword)) {
+    score = 1.0;
+  }
+  // キーワード配列に部分一致がある場合
+  else if (lowerKeywords.some(k => k.includes(lowerKeyword) || lowerKeyword.includes(k))) {
+    score = 0.9;
+  }
+  // 質問文に完全一致がある場合
+  else if (lowerQuestion.includes(lowerKeyword)) {
+    // キーワードの長さと質問文の長さの比率でスコア調整
+    const ratio = lowerKeyword.length / lowerQuestion.length;
+    score = 0.7 + (ratio * 0.2); // 0.7 - 0.9
+  }
+  // 回答文に含まれる場合
+  else if (lowerAnswer.includes(lowerKeyword)) {
+    const ratio = lowerKeyword.length / lowerAnswer.length;
+    score = 0.5 + (ratio * 0.2); // 0.5 - 0.7
+  }
+
+  return Math.min(score, 1.0);
+}
+
+/**
+ * フォールバックFAQのマッチスコアを計算
+ */
+function calculateFallbackScore(keyword: string, question: string, answer: string): number {
+  const lowerKeyword = keyword.toLowerCase();
+  const lowerQuestion = question.toLowerCase();
+  const lowerAnswer = answer.toLowerCase();
+
+  if (lowerQuestion.includes(lowerKeyword)) {
+    const ratio = lowerKeyword.length / lowerQuestion.length;
+    return 0.7 + (ratio * 0.2);
+  }
+  if (lowerAnswer.includes(lowerKeyword)) {
+    const ratio = lowerKeyword.length / lowerAnswer.length;
+    return 0.5 + (ratio * 0.2);
+  }
+
+  return 0.3; // 最低スコア
+}
+
+/**
+ * FAQ型を取得（DB版）
+ */
+export type { FAQ };
 
 /**
  * 言語別の定型文

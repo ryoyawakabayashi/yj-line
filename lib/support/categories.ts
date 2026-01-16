@@ -157,11 +157,15 @@ export const YOLO_JAPAN_CATEGORIES: Category[] = [
       },
       {
         id: 'visa_support',
-        keywords: ['ビザ', 'visa', '就労', 'サポート', 'support', '特定技能'],
+        keywords: [
+          'ビザ', 'visa', '就労', 'サポート', 'support', '特定技能',
+          '在留資格', 'スポンサー', 'sponsorship', 'ワーホリ', 'ワーキングホリデー',
+          '留学生', '技人国', '特定活動', '資格外活動',
+        ],
         labels: LABELS.visa_support,
         action: {
           type: 'url',
-          url: 'TBD', // 後で追加
+          url: 'https://www.yolo-japan.com/ja/recruit/feature/category/jobs_that_match_with_your_residence_status',
         },
       },
     ],

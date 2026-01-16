@@ -194,11 +194,8 @@ async function executeAction(
         await replyMessage(replyToken, { type: 'text', text: urlMessages });
         return { handled: true, action: 'url', data: { url: action.url } };
       }
-      // URL未設定の場合はエスカレーション
-      return {
-        handled: true,
-        action: 'escalate',
-      };
+      // URL未設定の場合はカテゴリ選択へ（エスカレーションしない）
+      return { handled: false };
 
     case 'escalate':
       // エスカレーション（呼び出し元で処理）
