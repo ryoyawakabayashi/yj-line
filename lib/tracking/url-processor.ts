@@ -1,5 +1,5 @@
 // =====================================================
-// URL Processor - 全URLをトラッキングURL化
+// URL Processor - 全URLをトラッキングURL化 + LIFF外部ブラウザ対応
 // =====================================================
 
 import { generateTrackingUrl } from './token';
@@ -13,6 +13,18 @@ const TRACKABLE_DOMAINS = [
   'yolojapan.co.jp',
   'www.yolojapan.co.jp',
 ];
+
+/**
+ * LIFF URL（LINE内でLIFFとして起動するためのURL）
+ * エンドポイント直開きではなく、liff.line.me 経由で開く必要がある
+ */
+const LIFF_ID = '2006973060-cAgpaZ0y';
+const LIFF_URL_BASE = `https://liff.line.me/${LIFF_ID}`;
+
+/**
+ * LIFFリダイレクトを有効にするかどうか
+ */
+const ENABLE_LIFF_REDIRECT = process.env.ENABLE_LIFF_REDIRECT !== 'false';
 
 /**
  * URLソース種別
@@ -67,12 +79,20 @@ export async function processUrlsInText(
 
       if (isTrackable) {
         // トラッキングURLを生成
-        const trackingUrl = await generateTrackingUrl(userId, originalUrl, sourceType);
+        let trackingUrl = await generateTrackingUrl(userId, originalUrl, sourceType);
+
+        // LIFF URL経由にする（外部ブラウザで開く）
+        // liff.line.me 経由で開くとクエリパラメータが消えるため、ハッシュを使用
+        if (ENABLE_LIFF_REDIRECT) {
+          trackingUrl = `${LIFF_URL_BASE}#url=${encodeURIComponent(trackingUrl)}`;
+        }
+
         // デバッグ: URL処理ログ
         console.log('🔄 URL処理:', {
           original: originalUrl,
           tracked: trackingUrl,
-          sourceType
+          sourceType,
+          liffRedirect: ENABLE_LIFF_REDIRECT
         });
         // テキスト内のURLを置換
         processedText = processedText.split(originalUrl).join(trackingUrl);
@@ -105,7 +125,15 @@ export async function processUrl(
     );
 
     if (isTrackable) {
-      return await generateTrackingUrl(userId, url, sourceType);
+      let trackingUrl = await generateTrackingUrl(userId, url, sourceType);
+
+      // LIFF URL経由にする（外部ブラウザで開く）
+      // liff.line.me 経由で開くとクエリパラメータが消えるため、ハッシュを使用
+      if (ENABLE_LIFF_REDIRECT) {
+        trackingUrl = `${LIFF_URL_BASE}#url=${encodeURIComponent(trackingUrl)}`;
+      }
+
+      return trackingUrl;
     }
   } catch (error) {
     console.warn(`⚠️ URL処理スキップ: ${url}`, error);

@@ -263,7 +263,8 @@ function extractData(message: string): ExtractedData {
  * 抽象的なメッセージかどうかを判定
  */
 export function isAbstractMessage(message: string): boolean {
-  const abstractPatterns = [
+  // 完全一致パターン
+  const exactPatterns = [
     /^(助けて|たすけて|help|ヘルプ)$/i,
     /^(困って|困った|こまって)$/i,
     /^(わからない|分からない|わかんない)$/i,
@@ -272,8 +273,25 @@ export function isAbstractMessage(message: string): boolean {
     /^(教えて|おしえて)$/i,
   ];
 
+  // 部分一致パターン（一般的な問い合わせ）
+  const partialPatterns = [
+    /どんな.*(サポート|ヘルプ|手伝い|できる|機能)/i,
+    /何.*(できる|サポート|手伝|対応)/i,
+    /(サポート|ヘルプ).*(内容|種類|どんな|何)/i,
+    /what.*(can|do|support|help)/i,
+    /how.*(help|support|assist)/i,
+    /(できること|対応できること)/i,
+  ];
+
   const trimmedMessage = message.trim();
-  return abstractPatterns.some((pattern) => pattern.test(trimmedMessage));
+
+  // 完全一致チェック
+  if (exactPatterns.some((pattern) => pattern.test(trimmedMessage))) {
+    return true;
+  }
+
+  // 部分一致チェック
+  return partialPatterns.some((pattern) => pattern.test(trimmedMessage));
 }
 
 /**

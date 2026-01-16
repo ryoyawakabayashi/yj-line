@@ -544,7 +544,71 @@ export async function handleSupportMessage(
       supportState.pendingQuickReply = undefined;
     }
 
-    // 3b. 曖昧パターンタイプ（複数選択肢から選択）
+    // 3b. FAQ候補選択タイプ（複数FAQ候補から選択）
+    if (pendingQR.type === 'faq_candidates') {
+      // FAQ:xxxx 形式のメッセージを処理
+      const faqMatch = userMessage.match(/^FAQ:(.+)$/);
+      if (faqMatch) {
+        const selectedFaqId = faqMatch[1];
+
+        // 「その他」が選ばれた場合はカテゴリ選択へ
+        if (selectedFaqId === '__other__') {
+          supportState.pendingQuickReply = undefined;
+          supportState.conversationHistory = conversationHistory;
+          currentState.supportState = supportState;
+
+          // カテゴリ選択を表示
+          const { getCategoriesForService, generateCategoryQuickReplies } = await import('../support/categories');
+          const categories = getCategoriesForService(supportState.service);
+          const quickReplies = generateCategoryQuickReplies(categories, lang);
+
+          const helpMessages: Record<string, string> = {
+            ja: '他にどのようなことでお困りですか？',
+            en: 'What else can I help you with?',
+            ko: '다른 무엇을 도와드릴까요?',
+            zh: '还有什么可以帮您的？',
+            vi: 'Tôi có thể giúp gì khác cho bạn?',
+          };
+          const helpMessage = helpMessages[lang] || helpMessages.ja;
+
+          conversationHistory.push({ role: 'assistant', content: helpMessage });
+          await saveConversationState(userId, currentState);
+
+          await replyMessage(replyToken, {
+            type: 'text',
+            text: helpMessage,
+            quickReply: quickReplies ? { items: quickReplies } : undefined,
+          });
+
+          console.log(`🔄 FAQ候補→その他選択、カテゴリ選択へ`);
+          return true;
+        }
+
+        // 選択された候補を探す
+        const selectedCandidate = pendingQR.choices.find(c => c.faqId === selectedFaqId);
+        if (selectedCandidate && selectedCandidate.response) {
+          let faqResponse = selectedCandidate.response;
+          faqResponse = await processUrlsInText(faqResponse, userId, getServiceUrlType(supportState.service));
+          conversationHistory.push({ role: 'assistant', content: faqResponse });
+          supportState.pendingQuickReply = undefined;
+          supportState.conversationHistory = conversationHistory;
+          currentState.supportState = supportState;
+          await saveConversationState(userId, currentState);
+
+          await replyMessage(replyToken, {
+            type: 'text',
+            text: faqResponse,
+          });
+
+          console.log(`✅ FAQ候補選択: ${selectedFaqId}`);
+          return true;
+        }
+      }
+      // 選択肢に該当しない場合は通常のフローへ
+      supportState.pendingQuickReply = undefined;
+    }
+
+    // 3c. 曖昧パターンタイプ（複数選択肢から選択）
     if (pendingQR.type === 'ambiguous' || !pendingQR.type) {
       const choices = pendingQR.choices;
       const selectedChoice = choices.find((c: { label: string; faqId: string }) =>
@@ -607,8 +671,70 @@ export async function handleSupportMessage(
     return true;
   }
 
-  // 5b. 中間信頼度（0.60-0.85）→ 確認クイックリプライ
+  // 5b. 中間信頼度（0.60-0.85）→ 確認クイックリプライ or 候補選択
   if (confidence >= 0.60 && confidence < 0.85 && classification.faqId && classification.response) {
+    // 複数候補がある場合は候補選択を表示
+    if (classification.candidates && classification.candidates.length > 1) {
+      const candidateSelectMessages: Record<string, string> = {
+        ja: 'どちらについてお聞きですか？',
+        en: 'Which one are you asking about?',
+        ko: '어떤 것에 대해 문의하시나요?',
+        zh: '您想询问哪个？',
+        vi: 'Bạn đang hỏi về điều nào?',
+      };
+      const selectMessage = candidateSelectMessages[lang] || candidateSelectMessages.ja;
+
+      // 候補をクイックリプライで表示
+      const candidateItems = classification.candidates.slice(0, 4).map(c => {
+        const topicNames = FAQ_TOPIC_NAMES[c.faqId];
+        const label = topicNames?.[lang] || topicNames?.ja || c.faqId;
+        return {
+          type: 'action' as const,
+          action: {
+            type: 'message' as const,
+            label: label.length > 20 ? label.substring(0, 17) + '...' : label,
+            text: `FAQ:${c.faqId}`, // 特殊フォーマットで選択を識別
+          },
+        };
+      });
+
+      // 「その他」を追加
+      const otherLabel = { ja: 'その他', en: 'Other', ko: '기타', zh: '其他', vi: 'Khác' };
+      candidateItems.push({
+        type: 'action' as const,
+        action: {
+          type: 'message' as const,
+          label: otherLabel[lang as keyof typeof otherLabel] || otherLabel.ja,
+          text: 'FAQ:__other__',
+        },
+      });
+
+      // pendingQuickReplyを設定（faq_candidatesタイプ）
+      supportState.pendingQuickReply = {
+        type: 'faq_candidates',
+        choices: classification.candidates.map(c => ({
+          label: FAQ_TOPIC_NAMES[c.faqId]?.[lang] || FAQ_TOPIC_NAMES[c.faqId]?.ja || c.faqId,
+          faqId: c.faqId,
+          response: c.response,
+        })),
+      };
+
+      conversationHistory.push({ role: 'assistant', content: selectMessage });
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: selectMessage,
+        quickReply: { items: candidateItems },
+      });
+
+      console.log(`🤔 FAQ候補選択中（${classification.candidates.length}件）: ${classification.candidates.map(c => c.faqId).join(', ')}`);
+      return true;
+    }
+
+    // 単一候補の場合は従来通りYes/No確認
     const faqId = classification.faqId;
     const topicNames = FAQ_TOPIC_NAMES[faqId];
     const topicName = topicNames?.[lang] || topicNames?.ja || faqId;
@@ -664,23 +790,33 @@ export async function handleSupportMessage(
     return true;
   }
 
-  // 5c. 低信頼度（<0.60）→ エスカレーション
-  console.log(`🚨 低信頼度（confidence=${confidence}）、エスカレーション: ${userMessage}`);
+  // 5c. 低信頼度（<0.60）→ カテゴリ選択を促す（エスカレーションしない）
+  console.log(`🔄 低信頼度（confidence=${confidence}）、カテゴリ選択を促す: ${userMessage}`);
 
-  const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
-  conversationHistory.push({ role: 'assistant', content: escalationResponse });
+  // トップレベルカテゴリーを表示して絞り込みを促す
+  const { getCategoriesForService, generateCategoryQuickReplies } = await import('../support/categories');
+  const categories = getCategoriesForService(supportState.service);
+  const quickReplies = generateCategoryQuickReplies(categories, lang);
 
+  const helpMessages: Record<string, string> = {
+    ja: 'お手伝いできることを探しています。以下からお選びください。',
+    en: 'Let me help you find what you need. Please select from below.',
+    ko: '도움이 필요한 내용을 찾고 있습니다. 아래에서 선택해 주세요.',
+    zh: '正在寻找可以帮助您的内容。请从以下选项中选择。',
+    vi: 'Tôi đang tìm cách giúp bạn. Vui lòng chọn từ các tùy chọn bên dưới.',
+  };
+  const helpMessage = helpMessages[lang] || helpMessages.ja;
+
+  conversationHistory.push({ role: 'assistant', content: helpMessage });
   supportState.conversationHistory = conversationHistory;
   currentState.supportState = supportState;
   await saveConversationState(userId, currentState);
 
   await replyMessage(replyToken, {
     type: 'text',
-    text: escalationResponse,
+    text: helpMessage,
+    quickReply: quickReplies ? { items: quickReplies } : undefined,
   });
-
-  // エスカレーション処理
-  await handleEscalation(userId, supportState, lang, `FAQに該当なし（confidence=${confidence}）`);
 
   return true;
 }

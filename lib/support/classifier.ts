@@ -1664,11 +1664,18 @@ https://wom.yolo-japan.com/ja/mypage/active-projects/${UTM}`,
 /**
  * 分類結果
  */
+export interface FAQCandidate {
+  faqId: string;
+  confidence: number;
+  response: string;
+}
+
 export interface ClassificationResult {
   matched: boolean;
   faqId: string | null;
   confidence: number;
   response: string | null;
+  candidates?: FAQCandidate[]; // 複数候補（中間信頼度時に使用）
 }
 
 /**
@@ -1680,7 +1687,10 @@ export async function classifyMessage(
   lang: string
 ): Promise<ClassificationResult> {
   // サービスに応じたFAQリストを取得
-  const faqList = service === 'YOLO_DISCOVER' ? YOLO_DISCOVER_FAQ : YOLO_JAPAN_FAQ;
+  // TODO: YOLO_HOME_FAQ を追加したらここに分岐を追加
+  const faqList = service === 'YOLO_DISCOVER'
+    ? YOLO_DISCOVER_FAQ
+    : YOLO_JAPAN_FAQ; // YOLO_JAPAN と YOLO_HOME は同じFAQを使用（暫定）
 
   // FAQ IDとキーワードのリストを作成
   const faqOptions = faqList.map(faq => ({
@@ -1689,7 +1699,7 @@ export async function classifyMessage(
   }));
 
   const prompt = `あなたはカスタマーサポートの分類器です。
-ユーザーのメッセージを見て、最も適切なFAQ項目を選んでください。
+ユーザーのメッセージを見て、適切なFAQ項目を最大3件まで選んでください。
 
 ## ユーザーのメッセージ
 「${message}」
@@ -1699,16 +1709,22 @@ ${faqOptions.map((faq, i) => `${i + 1}. ID: ${faq.id} - キーワード: ${faq.k
 
 ## 回答形式
 JSONのみで回答してください（説明不要）：
-- 該当するFAQがある場合: {"matched": true, "faq_id": "該当するID", "confidence": 0.8}
-- 該当するFAQがない場合: {"matched": false, "faq_id": null, "confidence": 0.0}
+{
+  "candidates": [
+    {"faq_id": "該当ID1", "confidence": 0.9},
+    {"faq_id": "該当ID2", "confidence": 0.6}
+  ]
+}
 
-confidenceは0.0〜1.0で、0.7以上なら確信あり。`;
+- candidates: 関連度順に最大3件（confidenceが0.4以上のもののみ）
+- 該当なしの場合: {"candidates": []}
+- confidenceは0.0〜1.0で、0.7以上なら確信あり、0.4〜0.7は可能性あり`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 100,
+      max_tokens: 200,
       temperature: 0.1,
     });
 
@@ -1721,22 +1737,40 @@ confidenceは0.0〜1.0で、0.7以上なら確信あり。`;
     }
 
     const result = JSON.parse(jsonMatch[0]);
+    const rawCandidates = result.candidates || [];
 
-    if (result.matched && result.faq_id && result.confidence >= 0.6) {
-      // 該当するFAQを探す
-      const faq = faqList.find(f => f.id === result.faq_id);
+    if (rawCandidates.length === 0) {
+      return { matched: false, faqId: null, confidence: 0, response: null };
+    }
+
+    // 候補をFAQと紐付け
+    const candidates: FAQCandidate[] = [];
+    for (const c of rawCandidates) {
+      const faq = faqList.find(f => f.id === c.faq_id);
       if (faq) {
         const response = faq.responses[lang as keyof typeof faq.responses] || faq.responses.ja;
-        return {
-          matched: true,
-          faqId: result.faq_id,
-          confidence: result.confidence,
+        candidates.push({
+          faqId: c.faq_id,
+          confidence: c.confidence || 0,
           response,
-        };
+        });
       }
     }
 
-    return { matched: false, faqId: null, confidence: result.confidence || 0, response: null };
+    if (candidates.length === 0) {
+      return { matched: false, faqId: null, confidence: 0, response: null };
+    }
+
+    // 最も信頼度の高い候補
+    const topCandidate = candidates[0];
+
+    return {
+      matched: topCandidate.confidence >= 0.7,
+      faqId: topCandidate.faqId,
+      confidence: topCandidate.confidence,
+      response: topCandidate.response,
+      candidates: candidates.length > 1 ? candidates : undefined, // 複数候補がある場合のみ
+    };
   } catch (error) {
     console.error('❌ 分類エラー:', error);
     return { matched: false, faqId: null, confidence: 0, response: null };
@@ -2245,7 +2279,10 @@ export function getFAQResponseById(
   service: 'YOLO_JAPAN' | 'YOLO_DISCOVER' | 'YOLO_HOME' | undefined,
   lang: string
 ): string | null {
-  const faqList = service === 'YOLO_DISCOVER' ? YOLO_DISCOVER_FAQ : YOLO_JAPAN_FAQ;
+  // TODO: YOLO_HOME_FAQ を追加したらここに分岐を追加
+  const faqList = service === 'YOLO_DISCOVER'
+    ? YOLO_DISCOVER_FAQ
+    : YOLO_JAPAN_FAQ; // YOLO_JAPAN と YOLO_HOME は同じFAQを使用（暫定）
   const faq = faqList.find(f => f.id === faqId);
 
   if (faq) {
