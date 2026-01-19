@@ -3,6 +3,14 @@ import { ConversationState, FollowupStep } from '@/types/conversation';
 import { getConversationState, saveConversationState, getUserLang } from '../database/queries';
 import { replyMessage, replyWithQuickReply } from '../line/client';
 
+// LIFF経由で外部ブラウザを開くためのURL生成
+const LIFF_ID = '2006973060-cAgpaZ0y';
+const LIFF_URL_BASE = `https://liff.line.me/${LIFF_ID}`;
+
+function createExternalBrowserUrl(targetUrl: string): string {
+  return `${LIFF_URL_BASE}#url=${encodeURIComponent(targetUrl)}`;
+}
+
 // 多言語メッセージ
 const FOLLOWUP_MESSAGES = {
   ask_applied: {
@@ -251,13 +259,14 @@ async function handleCountAnswer(
     await replyMessage(replyToken, { type: 'text', text: encourageMessage });
     await finishFollowup(userId, '', lang, state);
   } else {
+    const targetUrl = `https://www.yolo-japan.com/${lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en'}/recruit?utm_source=line&utm_medium=followup`;
     await replyWithQuickReply(replyToken, encourageMessage, [
       {
         type: 'action',
         action: {
           type: 'uri',
           label: getLabel('search_more', lang),
-          uri: `https://www.yolo-japan.com/${lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en'}/recruit?utm_source=line&utm_medium=followup`,
+          uri: createExternalBrowserUrl(targetUrl),
         },
       },
       {
@@ -297,6 +306,7 @@ async function handleTroubleAnswer(
   await saveConversationState(userId, state);
 
   const troubleMessage = getMessage(troubleKey, lang);
+  const targetUrl = `https://www.yolo-japan.com/${lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en'}/recruit?utm_source=line&utm_medium=followup`;
 
   await replyWithQuickReply(replyToken, troubleMessage, [
     {
@@ -304,7 +314,7 @@ async function handleTroubleAnswer(
       action: {
         type: 'uri',
         label: getLabel('search_more', lang),
-        uri: `https://www.yolo-japan.com/${lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en'}/recruit?utm_source=line&utm_medium=followup`,
+        uri: createExternalBrowserUrl(targetUrl),
       },
     },
     {

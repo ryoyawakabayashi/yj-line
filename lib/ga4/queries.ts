@@ -1,5 +1,5 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
-import { GA4_CONFIG, LINE_SOURCES, LINE_BOT_FUNNEL_SOURCES, DIAGNOSIS_FUNNEL_SOURCE, SOURCE_LABELS, GA4_KEY_EVENTS, getAllKeyEvents, FUNNEL_SOURCES, type FunnelType } from './config';
+import { GA4_CONFIG, LINE_SOURCES, LINE_BOT_FUNNEL_SOURCES, DIAGNOSIS_FUNNEL_SOURCES, DIAGNOSIS_SOURCES, SOURCE_LABELS, GA4_KEY_EVENTS, getAllKeyEvents, FUNNEL_SOURCES, type FunnelType } from './config';
 import type { GA4ConversionBySource, GA4DailyConversion } from '@/types/dashboard';
 
 // Initialize GA4 client
@@ -184,9 +184,48 @@ export async function getConversionsBySource(days: number = 30): Promise<GA4Conv
       }
     });
 
-    return Object.entries(sourceMap)
-      .map(([source, data]) => ({
-        source: SOURCE_LABELS[source] || source,
+    // ラベル単位で統合（同じラベルを持つソースをまとめる）
+    const labelMap: Record<
+      string,
+      {
+        yjRegistrations: number;
+        yjApplications: number;
+        ydRegistrations: number;
+        ydApplications: number;
+        sessions: number;
+        engagementRate: number;
+        avgDuration: number;
+        count: number;
+      }
+    > = {};
+
+    Object.entries(sourceMap).forEach(([sourceKey, data]) => {
+      const label = SOURCE_LABELS[sourceKey] || sourceKey;
+      if (!labelMap[label]) {
+        labelMap[label] = {
+          yjRegistrations: 0,
+          yjApplications: 0,
+          ydRegistrations: 0,
+          ydApplications: 0,
+          sessions: 0,
+          engagementRate: 0,
+          avgDuration: 0,
+          count: 0,
+        };
+      }
+      labelMap[label].yjRegistrations += data.yjRegistrations;
+      labelMap[label].yjApplications += data.yjApplications;
+      labelMap[label].ydRegistrations += data.ydRegistrations;
+      labelMap[label].ydApplications += data.ydApplications;
+      labelMap[label].sessions += data.sessions;
+      labelMap[label].engagementRate += data.engagementRate;
+      labelMap[label].avgDuration += data.avgDuration;
+      labelMap[label].count += data.count;
+    });
+
+    return Object.entries(labelMap)
+      .map(([label, data]) => ({
+        source: label,
         yjRegistrations: data.yjRegistrations,
         yjApplications: data.yjApplications,
         ydRegistrations: data.ydRegistrations,
@@ -990,7 +1029,7 @@ function buildSingleSourceFilter(source: string) {
 }
 
 /**
- * Get unique users by date range filtered by diagnosis source only (line / chatbot)
+ * Get unique users by date range filtered by diagnosis sources (line / chatbot + line / bot)
  * 診断結果のURLクリックしたユニークユーザー数 = 診断→サイト遷移のファネル用
  * (歩留まり表ではセッション数ではなくユニークユーザー数を使用)
  */
@@ -1009,7 +1048,7 @@ export async function getDiagnosisFunnelSessionsByDateRange(startDate: string, e
           name: 'activeUsers',
         },
       ],
-      dimensionFilter: buildSingleSourceFilter(DIAGNOSIS_FUNNEL_SOURCE),
+      dimensionFilter: buildSourceFilter(DIAGNOSIS_FUNNEL_SOURCES),
     });
 
     if (!response.rows || response.rows.length === 0) {
@@ -1024,7 +1063,7 @@ export async function getDiagnosisFunnelSessionsByDateRange(startDate: string, e
 }
 
 /**
- * Get both sessions and unique users by date range filtered by diagnosis source (line / chatbot)
+ * Get both sessions and unique users by date range filtered by diagnosis sources (line / chatbot + line / bot)
  * セッション数とユニークユーザー数の両方を取得
  */
 export async function getDiagnosisFunnelMetricsByDateRange(
@@ -1048,7 +1087,7 @@ export async function getDiagnosisFunnelMetricsByDateRange(
           name: 'activeUsers',
         },
       ],
-      dimensionFilter: buildSingleSourceFilter(DIAGNOSIS_FUNNEL_SOURCE),
+      dimensionFilter: buildSourceFilter(DIAGNOSIS_FUNNEL_SOURCES),
     });
 
     if (!response.rows || response.rows.length === 0) {
@@ -1080,8 +1119,11 @@ export async function getFunnelMetricsByType(
   yjApplications: number;
 }> {
   try {
-    const source = FUNNEL_SOURCES[funnelType];
+    const sources = FUNNEL_SOURCES[funnelType];
     const allKeyEvents = getAllKeyEvents();
+
+    // ソースフィルターを構築（配列形式に対応）
+    const sourceFilter = buildSourceFilter(sources);
 
     // 並列でメトリクスとCV数を取得
     const [metricsResponse, conversionsResponse] = await Promise.all([
@@ -1093,7 +1135,7 @@ export async function getFunnelMetricsByType(
           { name: 'sessions' },
           { name: 'activeUsers' },
         ],
-        dimensionFilter: buildSingleSourceFilter(source),
+        dimensionFilter: sourceFilter,
       }),
       // CV数
       analyticsDataClient.runReport({
@@ -1104,7 +1146,7 @@ export async function getFunnelMetricsByType(
         dimensionFilter: {
           andGroup: {
             expressions: [
-              buildSingleSourceFilter(source),
+              sourceFilter,
               {
                 orGroup: {
                   expressions: allKeyEvents.map((eventName) => ({
@@ -1198,7 +1240,7 @@ export async function getAllFunnelMetricsByDateRange(
 }
 
 /**
- * Get YJ/YD conversions by date range filtered by diagnosis source only (line / chatbot)
+ * Get YJ/YD conversions by date range filtered by diagnosis sources (line / chatbot + line / bot)
  * 診断結果のURLからのCV
  */
 export async function getDiagnosisFunnelConversionsByDateRange(
@@ -1234,7 +1276,7 @@ export async function getDiagnosisFunnelConversionsByDateRange(
       dimensionFilter: {
         andGroup: {
           expressions: [
-            buildSingleSourceFilter(DIAGNOSIS_FUNNEL_SOURCE),
+            buildSourceFilter(DIAGNOSIS_FUNNEL_SOURCES),
             {
               orGroup: {
                 expressions: allKeyEvents.map((eventName) => ({

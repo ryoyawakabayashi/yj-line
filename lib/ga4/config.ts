@@ -53,17 +53,24 @@ export const LINE_SOURCES = [
   'line / menu',
   'line / feature',  // 特集タップ用
   'step.lme.jp / referral',
-  'line / chatbot',
+  'line / chatbot',  // AI診断（旧パラメータ ～2025年1月中旬）
+  'line / bot',      // AI診断（新パラメータ 2025年1月中旬～）
   'instagram / line',
+] as const;
+
+// AI診断のソース（新旧両方）- 統合表示用
+export const DIAGNOSIS_SOURCES = [
+  'line / chatbot',  // 旧パラメータ
+  'line / bot',      // 新パラメータ
 ] as const;
 
 // 5種類のコンバージョンファネルソース定義
 export const FUNNEL_SOURCES = {
-  diagnosis: 'line / chatbot',       // AI診断
-  menu: 'line / menu',               // メニュータップ
-  feature: 'line / feature',         // 特集タップ
-  message: 'line / message',         // メッセージ配信
-  autochat: 'line / autochat',       // AIトーク
+  diagnosis: DIAGNOSIS_SOURCES,      // AI診断（新旧両方）
+  menu: ['line / menu'],             // メニュータップ
+  feature: ['line / feature'],       // 特集タップ
+  message: ['line / message'],       // メッセージ配信
+  autochat: ['line / autochat'],     // AIトーク
 } as const;
 
 export type FunnelType = keyof typeof FUNNEL_SOURCES;
@@ -78,16 +85,17 @@ export const FUNNEL_LABELS: Record<FunnelType, string> = {
 };
 
 // LINE Bot funnel sources (for accurate funnel calculation)
-// These are the main sources from LINE Bot: menu, chatbot (diagnosis result), message
+// These are the main sources from LINE Bot: menu, chatbot/bot (diagnosis result), message
 export const LINE_BOT_FUNNEL_SOURCES = [
   'line / message',
   'line / menu',
   'line / chatbot',
+  'line / bot',
 ] as const;
 
-// Diagnosis funnel source (chatbot only - for diagnosis → session → CV funnel)
-// 診断結果のURLクリック = line / chatbot のみ
-export const DIAGNOSIS_FUNNEL_SOURCE = 'line / chatbot' as const;
+// Diagnosis funnel sources (chatbot + bot - for diagnosis → session → CV funnel)
+// 診断結果のURLクリック = line / chatbot または line / bot
+export const DIAGNOSIS_FUNNEL_SOURCES = DIAGNOSIS_SOURCES;
 
 // Key events for tracking - separated by YJ (YOLO JAPAN) and YD (YOLO DIRECT)
 export const GA4_KEY_EVENTS = {
@@ -116,6 +124,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   'line / menu': 'リッチメニュー',
   'line / feature': '特集',
   'step.lme.jp / referral': 'STEP 経由',
-  'line / chatbot': 'チャットボット',
+  'line / chatbot': 'AI診断',  // 旧パラメータ
+  'line / bot': 'AI診断',      // 新パラメータ（同じラベルで統合表示）
   'instagram / line': 'Instagram 経由',
 };

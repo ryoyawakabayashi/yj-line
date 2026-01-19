@@ -320,35 +320,35 @@ https://www.yolo-japan.com/ja/recruit/mypage/${UTM}
 
 【まだ登録していない方】
 まずYOLO JAPANに会員登録をお願いします：
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       en: `【If registered】
 Login to My Page and click "Apply" on the job you're interested in:
 https://www.yolo-japan.com/ja/recruit/mypage/${UTM}
 
 【If not registered】
 Please register first:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       ko: `【등록된 경우】
 마이페이지에 로그인하고 관심 있는 구인의 "지원하기" 버튼을 클릭하세요:
 https://www.yolo-japan.com/ja/recruit/mypage/${UTM}
 
 【아직 등록하지 않은 경우】
 먼저 회원 등록을 해주세요:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       zh: `【已注册】
 登录我的页面，点击感兴趣职位的"申请"按钮：
 https://www.yolo-japan.com/ja/recruit/mypage/${UTM}
 
 【未注册】
 请先注册：
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       vi: `【Đã đăng ký】
 Đăng nhập Trang cá nhân và nhấp "Ứng tuyển" cho công việc bạn quan tâm:
 https://www.yolo-japan.com/ja/recruit/mypage/${UTM}
 
 【Chưa đăng ký】
 Vui lòng đăng ký trước:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
     },
   },
   {
@@ -377,7 +377,7 @@ https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
 ・サイトから探す → 自分で検索できます
 
 まだ登録していない方は、まず会員登録をお願いします：
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       en: `I cannot search for specific jobs from this message.
 
 Please use "Find Jobs" in the menu:
@@ -385,7 +385,7 @@ Please use "Find Jobs" in the menu:
 ・Search on Site → Search by yourself
 
 If you haven't registered yet, please sign up first:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       ko: `이 메시지에서는 특정 일자리를 검색할 수 없습니다.
 
 메뉴의 "일자리 찾기"를 이용해 주세요:
@@ -393,7 +393,7 @@ https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
 ・사이트에서 검색 → 직접 검색할 수 있습니다
 
 아직 등록하지 않으셨다면 먼저 회원가입을 해주세요:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       zh: `无法从此消息中搜索特定工作。
 
 请使用菜单中的"找工作"：
@@ -401,7 +401,7 @@ https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
 ・网站搜索 → 自己搜索
 
 如果您还没有注册，请先注册：
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
       vi: `Tôi không thể tìm kiếm công việc cụ thể từ tin nhắn này.
 
 Vui lòng sử dụng "Tìm việc" trong menu:
@@ -409,7 +409,7 @@ Vui lòng sử dụng "Tìm việc" trong menu:
 ・Tìm trên trang web → Tự tìm kiếm
 
 Nếu bạn chưa đăng ký, vui lòng đăng ký trước:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}`,
+https://www.yolo-japan.com/ja/${UTM}`,
     },
   },
   {
@@ -483,38 +483,48 @@ Không mất phí khi ứng tuyển công việc hoặc liên lạc với công 
   },
   {
     id: 'how_to_register',
-    keywords: ['登録方法', '会員登録', 'アカウント作成', 'how to register', 'create account', '등록 방법', '如何注册', 'cách đăng ký'],
+    keywords: ['登録方法', '会員登録', 'アカウント作成', '新規登録', '登録したい', 'sign up', 'how to register', 'create account', 'register', '등록 방법', '등록하고 싶', '가입', '如何注册', '想注册', '注册', 'cách đăng ký', 'muốn đăng ký'],
     responses: {
-      ja: `YOLO JAPANへの登録方法：
+      ja: `YOLO JAPANへの新規登録はこちらからできます：
+https://www.yolo-japan.com/ja/${UTM}
 
-こちらから会員登録できます：
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+登録に必要なもの：
+・メールアドレス（またはGoogleアカウント）
+・在留カード（外国籍の方）
 
-必要な情報を入力して、メール認証を完了すると登録完了です。`,
-      en: `How to register for YOLO JAPAN:
+登録後、求人への応募が可能になります。`,
+      en: `You can register for YOLO JAPAN here:
+https://www.yolo-japan.com/ja/${UTM}
 
-You can register here:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+What you need:
+・Email address (or Google account)
+・Residence card (for non-Japanese)
 
-Enter the required information and complete email verification to finish registration.`,
-      ko: `YOLO JAPAN 등록 방법:
+After registration, you can apply for jobs.`,
+      ko: `YOLO JAPAN 신규 등록은 여기에서 가능합니다:
+https://www.yolo-japan.com/ja/${UTM}
 
-여기에서 회원 등록할 수 있습니다:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+등록에 필요한 것:
+・이메일 주소(또는 Google 계정)
+・재류카드(외국 국적인 경우)
 
-필요한 정보를 입력하고 이메일 인증을 완료하면 등록이 완료됩니다.`,
-      zh: `YOLO JAPAN注册方法：
+등록 후 구인에 지원할 수 있습니다.`,
+      zh: `YOLO JAPAN新用户注册请点击这里：
+https://www.yolo-japan.com/ja/${UTM}
 
-您可以在此注册：
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+注册所需：
+・电子邮件地址（或Google账户）
+・在留卡（外国籍人员）
 
-输入所需信息并完成邮箱验证即可完成注册。`,
-      vi: `Cách đăng ký YOLO JAPAN:
+注册后即可申请工作。`,
+      vi: `Đăng ký YOLO JAPAN tại đây:
+https://www.yolo-japan.com/ja/${UTM}
 
-Bạn có thể đăng ký tại đây:
-https://www.yolo-japan.com/ja/recruit/regist/input${UTM}
+Những gì bạn cần:
+・Địa chỉ email (hoặc tài khoản Google)
+・Thẻ cư trú (đối với người nước ngoài)
 
-Nhập thông tin cần thiết và hoàn thành xác minh email để hoàn tất đăng ký.`,
+Sau khi đăng ký, bạn có thể ứng tuyển việc làm.`,
     },
   },
   {
@@ -1748,7 +1758,9 @@ JSONのみで回答してください（説明不要）：
     for (const c of rawCandidates) {
       const faq = faqList.find(f => f.id === c.faq_id);
       if (faq) {
-        const response = faq.responses[lang as keyof typeof faq.responses] || faq.responses.ja;
+        const rawResponse = faq.responses[lang as keyof typeof faq.responses] || faq.responses.ja;
+        // URLの言語コードをユーザーの言語に置換
+        const response = replaceUrlLangCode(rawResponse, lang);
         candidates.push({
           faqId: c.faq_id,
           confidence: c.confidence || 0,
@@ -2274,6 +2286,20 @@ export function detectAmbiguousPattern(
 /**
  * FAQ IDから定型文を取得
  */
+/**
+ * URLの言語コードを実際の言語に置換
+ * /ja/ → ユーザーの言語コードに変換
+ */
+function replaceUrlLangCode(response: string, lang: string): string {
+  const validLangs = ['ja', 'en', 'ko', 'zh', 'vi'];
+  const targetLang = validLangs.includes(lang) ? lang : 'ja';
+
+  // yolo-japan.com と wom.yolo-japan.com のURL内の /ja/ を言語コードに置換
+  return response
+    .replace(/https:\/\/www\.yolo-japan\.com\/ja\//g, `https://www.yolo-japan.com/${targetLang}/`)
+    .replace(/https:\/\/wom\.yolo-japan\.com\/ja\//g, `https://wom.yolo-japan.com/${targetLang}/`);
+}
+
 export function getFAQResponseById(
   faqId: string,
   service: 'YOLO_JAPAN' | 'YOLO_DISCOVER' | 'YOLO_HOME' | undefined,
@@ -2286,7 +2312,9 @@ export function getFAQResponseById(
   const faq = faqList.find(f => f.id === faqId);
 
   if (faq) {
-    return faq.responses[lang as keyof typeof faq.responses] || faq.responses.ja;
+    const response = faq.responses[lang as keyof typeof faq.responses] || faq.responses.ja;
+    // URLの言語コードをユーザーの言語に置換
+    return replaceUrlLangCode(response, lang);
   }
 
   return null;

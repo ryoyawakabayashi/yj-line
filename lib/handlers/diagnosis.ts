@@ -456,21 +456,12 @@ async function finishDiagnosis(
   })));
 
   const titleText: Record<string, string> = {
-    ja: '診断が完了しました！\nあなたにぴったりのお仕事はこちら👇',
-    en: 'Diagnosis completed!\nJobs that match you👇',
-    ko: '진단이 완료되었습니다!\n당신에게 맞는 일자리는 아래👇',
-    zh: '诊断已完成！\n适合您的工作如下👇',
-    vi: 'Hoàn tất chẩn đoán!\nCông việc phù hợp với bạn👇',
+    ja: '診断が完了しました！\nあなたにぴったりのお仕事はこちら',
+    en: 'Diagnosis completed!\nJobs that match you',
+    ko: '진단이 완료되었습니다!\n당신에게 맞는 일자리는 아래',
+    zh: '诊断已完成！\n适合您的工作如下',
+    vi: 'Hoàn tất chẩn đoán!\nCông việc phù hợp với bạn',
   };
-
-  let text = (titleText[lang] || titleText.ja) + '\n\n';
-
-  trackedLinkItems.forEach((item) => {
-    if (item.description) {
-      text += `${item.description}\n`;
-    }
-    text += `${item.label}\n${item.url}\n\n`;
-  });
 
   // フォローアップモードに移行
   state.mode = 'followup';
@@ -483,16 +474,18 @@ async function finishDiagnosis(
   const followupQuestion = FOLLOWUP_QUESTION[lang as keyof typeof FOLLOWUP_QUESTION] || FOLLOWUP_QUESTION.ja;
   const yesLabel = FOLLOWUP_LABELS.yes[lang as keyof typeof FOLLOWUP_LABELS.yes] || FOLLOWUP_LABELS.yes.ja;
   const noLabel = FOLLOWUP_LABELS.no[lang as keyof typeof FOLLOWUP_LABELS.no] || FOLLOWUP_LABELS.no.ja;
-  const notYetLabel = FOLLOWUP_LABELS.not_yet[lang as keyof typeof FOLLOWUP_LABELS.not_yet] || FOLLOWUP_LABELS.not_yet.ja;
 
   console.log('📤 診断結果 + フォローアップ質問を送信中...');
   console.log('followupQuestion:', followupQuestion);
 
+  // Flex Messageで診断結果を表示（URLプレビューを避けるため）
+  const diagnosisResultFlex = createDiagnosisResultFlex(
+    titleText[lang] || titleText.ja,
+    trackedLinkItems
+  );
+
   const messages = [
-    {
-      type: 'text' as const,
-      text: text.trim(),
-    },
+    diagnosisResultFlex,
     {
       type: 'text' as const,
       text: followupQuestion,
@@ -506,10 +499,6 @@ async function finishDiagnosis(
             type: 'action' as const,
             action: { type: 'message' as const, label: noLabel, text: 'FOLLOWUP_NO' },
           },
-          {
-            type: 'action' as const,
-            action: { type: 'message' as const, label: notYetLabel, text: 'FOLLOWUP_NOT_YET' },
-          },
         ],
       },
     },
@@ -517,6 +506,86 @@ async function finishDiagnosis(
 
   const success = await replyMessage(replyToken, messages);
   console.log('📤 replyMessage結果:', success ? '✅成功' : '❌失敗');
+}
+
+/**
+ * 診断結果用Flex Messageを作成
+ * URLプレビュー（OGP）を回避するためにFlex Messageを使用
+ */
+function createDiagnosisResultFlex(
+  title: string,
+  linkItems: Array<{ label: string; url: string; description?: string }>
+): any {
+  const buttons = linkItems.map((item) => ({
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      ...(item.description
+        ? [
+            {
+              type: 'text',
+              text: item.description,
+              size: 'xs',
+              color: '#666666',
+              wrap: true,
+            },
+          ]
+        : []),
+      {
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: item.label.length > 20 ? item.label.substring(0, 17) + '...' : item.label,
+          uri: item.url,
+        },
+        style: 'primary',
+        color: '#d10a1c',
+        height: 'sm',
+        margin: item.description ? 'sm' : 'none',
+      },
+    ],
+    margin: 'lg',
+  }));
+
+  return {
+    type: 'flex',
+    altText: title,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '✨',
+            size: 'xxl',
+            align: 'center',
+          },
+          {
+            type: 'text',
+            text: title,
+            weight: 'bold',
+            size: 'lg',
+            color: '#1DB446',
+            align: 'center',
+            wrap: true,
+            margin: 'md',
+          },
+        ],
+        paddingAll: '20px',
+        backgroundColor: '#FFFFFF',
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: buttons,
+        paddingAll: '20px',
+        spacing: 'md',
+      },
+    },
+  };
 }
 
 async function saveAllAnswersToSheet(userId: string, state: ConversationState): Promise<void> {

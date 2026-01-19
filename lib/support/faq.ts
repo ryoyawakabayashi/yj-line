@@ -58,7 +58,8 @@ export const SERVICE_FAQ: Record<ServiceType, string[]> = {
   ],
   YOLO_JAPAN: [
     // === アカウント・プロフィール ===
-    `Q: 求人に応募するには？\nA: 【登録済みの方】\nマイページ https://www.yolo-japan.com/ja/recruit/mypage/${UTM} にログインし、気になる求人の「応募する」ボタンから応募できます。\n\n【まだ登録していない方】\nまずYOLO JAPANに会員登録をお願いします。登録は https://www.yolo-japan.com/ja/recruit/regist/input${UTM} からできます。`,
+    `Q: 新規登録したい・会員登録の方法\nA: YOLO JAPANへの会員登録は https://www.yolo-japan.com/ja/${UTM} からできます。\n\n登録に必要なもの：\n・メールアドレス（またはGoogleアカウント）\n・在留カード（外国籍の方）\n\n登録後、求人への応募が可能になります。`,
+    `Q: 求人に応募するには？\nA: 【登録済みの方】\nマイページ https://www.yolo-japan.com/ja/recruit/mypage/${UTM} にログインし、気になる求人の「応募する」ボタンから応募できます。\n\n【まだ登録していない方】\nまずYOLO JAPANに会員登録をお願いします。登録は https://www.yolo-japan.com/ja/${UTM} からできます。`,
     `Q: 海外から応募できますか？\nA: 海外から応募することはできません。\n\na. 日本に住んでいて、仕事ができる在留カードがあっている人\nb. 日本永住者の人、永住ビザを持つ人。\nc. 日本国籍の人\n\nだけ応募できます。\n\nYOLO JAPANの仕事は、誰でも見ることができます。日本に来るときのために、登録してみてください！`,
     `Q: パスワードを忘れました\nA: https://www.yolo-japan.com/ja/recruit/login${UTM} から「パスワードを忘れた」をクリックしてリセットできます。`,
     `Q: 在留カードの更新サポートはありますか？\nA: 恐れ入りますが、現在在留カードの更新や支援は行っておりません。在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html に相談してください。`,

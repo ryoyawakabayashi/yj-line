@@ -191,9 +191,10 @@ export function SummaryCards({
 
   // コンバージョンファネル: アクティブ → 友だち追加 → セッション → 登録 → 応募
   // 経由別の場合は funnelMetrics から値を取得
+  // 統合の場合は全LINE経由のセッション数（stats.sessions）を使用
   const sessionsValue = isSpecificFunnel && funnelMetrics
     ? funnelMetrics.sessions
-    : (stats.siteTransitionSessions || 0);
+    : (stats.sessions || 0);
   const registrationsValue = isSpecificFunnel && funnelMetrics
     ? funnelMetrics.yjRegistrations
     : (stats.yjRegistrations || 0);
@@ -239,8 +240,8 @@ export function SummaryCards({
       value: funnelLoading ? '...' : sessionsValue.toLocaleString(),
       icon: CursorArrowRaysIcon,
       tag: isSpecificFunnel ? funnelLabel : 'ファネル',
-      subtitle: isSpecificFunnel ? `${funnelLabel}経由` : `${stats.siteTransitionUsers || 0}人`,
-      helper: isSpecificFunnel ? `${funnelLabel}経由のセッション` : '診断経由のクリック数',
+      subtitle: isSpecificFunnel ? `${funnelLabel}経由` : undefined,
+      helper: isSpecificFunnel ? `${funnelLabel}経由のセッション` : '全LINE経由のセッション',
       border: 'border-blue-200',
       iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
     },

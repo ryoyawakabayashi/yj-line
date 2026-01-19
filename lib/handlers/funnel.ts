@@ -190,6 +190,19 @@ async function executeAction(
       // URLを送信
       if (action.url && action.url !== 'TBD') {
         const trackedUrl = await processUrl(action.url, userId, getUrlSourceType(service));
+
+        // ビザサポートの場合は特別なメッセージ + Flexメッセージを送信
+        if (category.id === 'visa_support') {
+          const textMessage = getVisaSupportTextMessage(lang);
+          const flexMessage = createVisaSupportFlexMessage(trackedUrl, lang);
+          await replyMessage(replyToken, [
+            { type: 'text', text: textMessage },
+            flexMessage as any,
+          ]);
+          return { handled: true, action: 'url', data: { url: action.url } };
+        }
+
+        // 通常のURL送信
         const urlMessages = getUrlMessage(category, lang, trackedUrl);
         await replyMessage(replyToken, { type: 'text', text: urlMessages });
         return { handled: true, action: 'url', data: { url: action.url } };
@@ -307,6 +320,89 @@ function getUrlMessage(category: Category, lang: string, url: string): string {
   };
   const prefix = prefixes[lang] || prefixes.ja;
   return `${prefix}\n${url}`;
+}
+
+/**
+ * ビザサポート用のテキストメッセージを取得
+ */
+function getVisaSupportTextMessage(lang: string): string {
+  const messages: Record<string, string> = {
+    ja: 'ビザサポート求人については、こちらをご覧ください。',
+    en: 'For visa support jobs, please check below.',
+    ko: '비자 지원 일자리에 대해서는 아래를 확인해 주세요.',
+    zh: '关于签证支持工作，请查看以下内容。',
+    vi: 'Về việc hỗ trợ visa, vui lòng xem bên dưới.',
+    th: 'สำหรับงานที่สนับสนุนวีซ่า โปรดดูด้านล่าง',
+    id: 'Untuk pekerjaan dukungan visa, silakan lihat di bawah ini.',
+    pt: 'Para empregos com suporte de visto, por favor verifique abaixo.',
+    es: 'Para trabajos con soporte de visa, por favor consulte a continuación.',
+    ne: 'भिसा समर्थन कामको लागि, कृपया तल हेर्नुहोस्।',
+    my: 'ဗီဇာ ပံ့ပိုးမှုရှိသော အလုပ်များအတွက် အောက်တွင် ကြည့်ပါ။',
+  };
+  return messages[lang] || messages.ja;
+}
+
+/**
+ * ビザサポート用のFlexメッセージボタンラベルを取得
+ */
+function getVisaSupportButtonLabel(lang: string): string {
+  const labels: Record<string, string> = {
+    ja: '詳細を見る',
+    en: 'View Details',
+    ko: '자세히 보기',
+    zh: '查看详情',
+    vi: 'Xem chi tiết',
+    th: 'ดูรายละเอียด',
+    id: 'Lihat Detail',
+    pt: 'Ver Detalhes',
+    es: 'Ver Detalles',
+    ne: 'विवरण हेर्नुहोस्',
+    my: 'အသေးစိတ်ကြည့်ပါ',
+  };
+  return labels[lang] || labels.ja;
+}
+
+/**
+ * ビザサポート用のFlexメッセージを生成
+ */
+function createVisaSupportFlexMessage(url: string, lang: string): object {
+  const buttonLabel = getVisaSupportButtonLabel(lang);
+  // Vercelにデプロイされた画像URL
+  const imageUrl = 'https://line-bot-next-ryoyawakabayashis-projects.vercel.app/images/visa-support.png';
+
+  return {
+    type: 'flex',
+    altText: buttonLabel,
+    contents: {
+      type: 'bubble',
+      hero: {
+        type: 'image',
+        url: imageUrl,
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover',
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            height: 'sm',
+            action: {
+              type: 'uri',
+              label: buttonLabel,
+              uri: url,
+            },
+            color: '#06C755',
+          },
+        ],
+        flex: 0,
+      },
+    },
+  };
 }
 
 /**
