@@ -289,7 +289,7 @@ YOLO :DISCOVERなら、これらが無料で体験できます！
 ※店舗への交通費は実費
 
 👇 今すぐチェック
-https://wom.yolo-japan.com/ja/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+https://wom.yolo-japan.com/ja/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
     en: `【Upgrade ${greetingEn} Life in Japan】
 YOLO :DISCOVER
 
@@ -310,7 +310,7 @@ With YOLO :DISCOVER, you can experience all of these for FREE!
 ※Transportation costs at your own expense
 
 👇 Check now
-https://wom.yolo-japan.com/en/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+https://wom.yolo-japan.com/en/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
     ko: `【${greetingKo} 일본 생활을 업그레이드】
 YOLO :DISCOVER
 
@@ -331,7 +331,7 @@ YOLO :DISCOVER로 이 모든 것을 무료로 체험할 수 있습니다!
 ※교통비는 본인 부담
 
 👇 지금 확인
-https://wom.yolo-japan.com/ko/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+https://wom.yolo-japan.com/ko/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
     zh: `【升级${greetingZh}日本生活】
 YOLO :DISCOVER
 
@@ -352,7 +352,7 @@ YOLO :DISCOVER是一项可以免费体验日本美食、旅游、生活方式等
 ※交通费自理
 
 👇 立即查看
-https://wom.yolo-japan.com/zh-TW/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+https://wom.yolo-japan.com/zh-TW/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
     vi: `【Nâng Cấp Cuộc Sống Nhật Bản${greetingVi ? ' ' + greetingVi : ''}】
 YOLO :DISCOVER
 
@@ -373,7 +373,7 @@ Với YOLO :DISCOVER, bạn có thể trải nghiệm tất cả MIỄN PHÍ!
 ※Chi phí di chuyển tự túc
 
 👇 Kiểm tra ngay
-https://wom.yolo-japan.com/vi/projects/?utm_source=line&utm_medium=chatbot&utm_campaign=yolo_discover`,
+https://wom.yolo-japan.com/vi/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
   };
 
   await replyMessage(replyToken, {

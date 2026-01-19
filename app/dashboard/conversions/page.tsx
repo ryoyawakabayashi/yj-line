@@ -49,12 +49,30 @@ interface TrackingDetail {
   convertedAt: string | null;
 }
 
+interface ApplicationLog {
+  id: string;
+  userId: string;
+  token: string;
+  urlType: string | null;
+  utmCampaign: string | null;
+  appliedAt: string;
+}
+
+interface ClicksByType {
+  urlType: string;
+  issued: number;
+  clicked: number;
+  clickRate: number;
+}
+
 export default function ConversionsPage() {
   const [stats, setStats] = useState<ConversionStats | null>(null);
   const [users, setUsers] = useState<ConvertedUser[]>([]);
   const [details, setDetails] = useState<TrackingDetail[]>([]);
+  const [applications, setApplications] = useState<ApplicationLog[]>([]);
+  const [clicksByType, setClicksByType] = useState<ClicksByType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'details'>('users');
+  const [activeTab, setActiveTab] = useState<'applications' | 'users' | 'clicks' | 'details'>('applications');
   const [period, setPeriod] = useState<PeriodType>('all');
 
   useEffect(() => {
@@ -69,6 +87,8 @@ export default function ConversionsPage() {
       setStats(data.stats);
       setUsers(data.users || []);
       setDetails(data.details || []);
+      setApplications(data.applications || []);
+      setClicksByType(data.clicksByType || []);
     } catch (error) {
       console.error('Failed to fetch conversion data:', error);
     } finally {
@@ -175,6 +195,16 @@ export default function ConversionsPage() {
         <div className="border-b border-slate-200">
           <nav className="flex gap-4 px-6">
             <button
+              onClick={() => setActiveTab('applications')}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition ${
+                activeTab === 'applications'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              応募履歴 ({applications.length})
+            </button>
+            <button
               onClick={() => setActiveTab('users')}
               className={`py-4 px-2 border-b-2 font-medium text-sm transition ${
                 activeTab === 'users'
@@ -182,7 +212,17 @@ export default function ConversionsPage() {
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              応募完了ユーザー ({users.length})
+              応募者一覧 ({users.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('clicks')}
+              className={`py-4 px-2 border-b-2 font-medium text-sm transition ${
+                activeTab === 'clicks'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              クリック分析 ({clicksByType.length})
             </button>
             <button
               onClick={() => setActiveTab('details')}
@@ -199,7 +239,54 @@ export default function ConversionsPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          {activeTab === 'users' ? (
+          {activeTab === 'applications' ? (
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    応募日時
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    ユーザーID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    経由
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    UTMキャンペーン
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {applications.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                      応募履歴はまだありません
+                    </td>
+                  </tr>
+                ) : (
+                  applications.map((app) => (
+                    <tr key={app.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 text-sm text-slate-900 font-medium">
+                        {formatDate(app.appliedAt)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-slate-700">
+                        {app.userId.slice(0, 16)}...
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                          {app.urlType || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 font-mono">
+                        {app.utmCampaign || '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : activeTab === 'users' ? (
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
@@ -253,6 +340,63 @@ export default function ConversionsPage() {
                             {type}
                           </span>
                         ))}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : activeTab === 'clicks' ? (
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    種別 (url_type)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    発行数
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    クリック数
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    クリック率
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {clicksByType.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                      クリックデータはまだありません
+                    </td>
+                  </tr>
+                ) : (
+                  clicksByType.map((item) => (
+                    <tr key={item.urlType} className="hover:bg-slate-50">
+                      <td className="px-6 py-4">
+                        <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                          {item.urlType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700 font-medium">
+                        {item.issued.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700 font-medium">
+                        {item.clicked.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded-full"
+                              style={{ width: `${Math.min(item.clickRate, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-slate-700">
+                            {item.clickRate}%
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))

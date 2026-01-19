@@ -80,7 +80,7 @@ export function buildYoloSearchUrl(answers: DiagnosisAnswers, lang: string): str
   const queryString = params.toString();
   const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
-  const utmCampaign = `yolo_bot_chatbot_${lang}`;
+  const utmCampaign = `line_chatbot_diagnosis_${lang}`;
   return addUtmParams(finalUrl, utmCampaign);
 }
 
@@ -277,7 +277,7 @@ function getN1OneLevelDownDescription(lang: string): string {
 
 export function buildYoloSiteUrl(lang: string): string {
   const langPath = lang === 'ja' ? 'ja' : lang === 'en' ? 'en' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh-TW' : 'vi';
-  return addUtmParams(`${YOLO_SITE_BASE}/${langPath}/recruit/job`, 'site_mode');
+  return addUtmParams(`${YOLO_SITE_BASE}/${langPath}/recruit/job`, `line_chatbot_site_mode`);
 }
 
 export function buildYoloFeatureUrl(lang: string): string {
@@ -286,7 +286,7 @@ export function buildYoloFeatureUrl(lang: string): string {
   const url = new URL(`${YOLO_SITE_BASE}/${langPath}/recruit/feature/theme`);
   url.searchParams.append('utm_source', 'line');
   url.searchParams.append('utm_medium', 'feature');
-  url.searchParams.append('utm_campaign', 'features');
+  url.searchParams.append('utm_campaign', 'line_feature_features');
   return url.toString();
 }
 
@@ -299,6 +299,6 @@ export function buildYoloAutochatUrl(lang: string): string {
   const url = new URL(`${YOLO_SITE_BASE}/${langPath}/recruit/job`);
   url.searchParams.append('utm_source', 'line');
   url.searchParams.append('utm_medium', 'autochat');
-  url.searchParams.append('utm_campaign', 'ai_chat');
+  url.searchParams.append('utm_campaign', 'line_autochat_ai_chat');
   return url.toString();
 }

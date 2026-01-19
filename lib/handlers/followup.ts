@@ -2,6 +2,7 @@ import { LineEvent } from '@/types/line';
 import { ConversationState, FollowupStep } from '@/types/conversation';
 import { getConversationState, saveConversationState, getUserLang } from '../database/queries';
 import { replyMessage, replyWithQuickReply } from '../line/client';
+import { generateTrackingUrl } from '../tracking/token';
 
 // LIFF経由で外部ブラウザを開くためのURL生成
 const LIFF_ID = '2006973060-cAgpaZ0y';
@@ -14,11 +15,11 @@ function createExternalBrowserUrl(targetUrl: string): string {
 // 多言語メッセージ
 const FOLLOWUP_MESSAGES = {
   ask_applied: {
-    ja: '応募（おうぼ）できましたか？',
-    en: 'Did you apply for any jobs?',
-    ko: '지원하셨나요?',
-    zh: '您申请了吗？',
-    vi: 'Bạn đã ứng tuyển chưa?',
+    ja: '求人ページ閲覧後にお答えください😌\n応募はできましたか？',
+    en: 'Please answer after viewing the job page 😌\nDid you apply?',
+    ko: '구인 페이지를 본 후 답해주세요 😌\n지원하셨나요?',
+    zh: '请在查看招聘页面后回答 😌\n您申请了吗？',
+    vi: 'Vui lòng trả lời sau khi xem trang việc làm 😌\nBạn đã ứng tuyển chưa?',
   },
   ask_count: {
     ja: '何件（なんけん）応募（おうぼ）しましたか？',
@@ -33,6 +34,13 @@ const FOLLOWUP_MESSAGES = {
     ko: '어려운 점이 있으신가요?',
     zh: '有什么困难吗？',
     vi: 'Bạn có gặp khó khăn gì không?',
+  },
+  ask_next_action: {
+    ja: 'もう一度お仕事を探してみませんか？😊',
+    en: 'Would you like to search for jobs again? 😊',
+    ko: '다시 일자리를 찾아보시겠어요? 😊',
+    zh: '要不要再找工作? 😊',
+    vi: 'Bạn có muốn tìm việc lại không? 😊',
   },
   encourage_1: {
     ja: '1件（けん）応募（おうぼ）ですね！\n\n複数（ふくすう）の仕事（しごと）に応募すると、採用（さいよう）されやすくなります。\n平均（へいきん）5件（けん）応募で採用率（さいようりつ）が大（おお）きくアップします✨\n\nもっと応募してみませんか？',
@@ -97,6 +105,9 @@ const QUICK_REPLY_LABELS = {
   yes: { ja: 'はい', en: 'Yes', ko: '네', zh: '是的', vi: 'Có' },
   no: { ja: 'いいえ', en: 'No', ko: '아니오', zh: '没有', vi: 'Không' },
   not_yet: { ja: 'まだ見ていない', en: 'Not yet', ko: '아직', zh: '还没', vi: 'Chưa' },
+  search_ai: { ja: 'もう一度AIで探す', en: 'Search with AI again', ko: 'AI로 다시 검색', zh: '用AI再次搜索', vi: 'Tìm lại bằng AI' },
+  search_site: { ja: 'サイトで探す', en: 'Search on site', ko: '사이트에서 검색', zh: '在网站上搜索', vi: 'Tìm trên web' },
+  skip: { ja: '今はやめとく', en: 'Skip for now', ko: '나중에', zh: '暂时不需要', vi: 'Để sau' },
   count_1: { ja: '1件', en: '1 job', ko: '1개', zh: '1份', vi: '1' },
   count_2_3: { ja: '2〜3件', en: '2-3 jobs', ko: '2-3개', zh: '2-3份', vi: '2-3' },
   count_4_plus: { ja: '4件以上', en: '4+ jobs', ko: '4개 이상', zh: '4份以上', vi: '4+' },
@@ -131,6 +142,7 @@ export async function startFollowup(
   };
   await saveConversationState(userId, state);
 
+  // はい / いいえ の2択
   await replyWithQuickReply(replyToken, getMessage('ask_applied', lang), [
     {
       type: 'action',
@@ -139,10 +151,6 @@ export async function startFollowup(
     {
       type: 'action',
       action: { type: 'message', label: getLabel('no', lang), text: 'FOLLOWUP_NO' },
-    },
-    {
-      type: 'action',
-      action: { type: 'message', label: getLabel('not_yet', lang), text: 'FOLLOWUP_NOT_YET' },
     },
   ]);
 }
@@ -181,6 +189,7 @@ async function handleAppliedAnswer(
   state: ConversationState
 ): Promise<void> {
   if (text === 'FOLLOWUP_YES') {
+    // 応募した → 件数を聞く
     state.followupAnswers = { ...state.followupAnswers, hasApplied: 'yes' };
     state.followupStep = 'ask_count';
     await saveConversationState(userId, state);
@@ -199,32 +208,73 @@ async function handleAppliedAnswer(
         action: { type: 'message', label: getLabel('count_4_plus', lang), text: 'FOLLOWUP_COUNT_4+' },
       },
     ]);
-  } else if (text === 'FOLLOWUP_NO' || text === 'FOLLOWUP_NOT_YET') {
-    state.followupAnswers = {
-      ...state.followupAnswers,
-      hasApplied: text === 'FOLLOWUP_NO' ? 'no' : 'not_yet',
-    };
-    state.followupStep = 'ask_trouble';
+  } else if (text === 'FOLLOWUP_NO') {
+    // いいえ → 3択を表示（もう一度AIで探す / サイトで探す / 今はやめとく）
+    state.followupAnswers = { ...state.followupAnswers, hasApplied: 'no' };
+    state.followupStep = 'ask_trouble'; // ask_troubleステップを再利用
     await saveConversationState(userId, state);
 
-    await replyWithQuickReply(replyToken, getMessage('ask_trouble', lang), [
+    // サイトで探す用のトラッキングURL生成
+    const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
+    const baseUrl = `https://www.yolo-japan.com/${langPath}/`;
+    const siteTrackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_site');
+
+    await replyWithQuickReply(replyToken, getMessage('ask_next_action', lang), [
       {
         type: 'action',
-        action: { type: 'message', label: getLabel('no_match', lang), text: 'FOLLOWUP_TROUBLE_NO_MATCH' },
+        action: { type: 'message', label: getLabel('search_ai', lang), text: 'FOLLOWUP_SEARCH_AI' },
       },
       {
         type: 'action',
-        action: { type: 'message', label: getLabel('language', lang), text: 'FOLLOWUP_TROUBLE_LANGUAGE' },
+        action: {
+          type: 'uri',
+          label: getLabel('search_site', lang),
+          uri: createExternalBrowserUrl(siteTrackingUrl),
+        },
       },
       {
         type: 'action',
-        action: { type: 'message', label: getLabel('how_to', lang), text: 'FOLLOWUP_TROUBLE_HOW_TO' },
-      },
-      {
-        type: 'action',
-        action: { type: 'message', label: getLabel('not_yet', lang), text: 'FOLLOWUP_TROUBLE_NOT_YET' },
+        action: { type: 'message', label: getLabel('skip', lang), text: 'FOLLOWUP_SKIP' },
       },
     ]);
+  }
+}
+
+// 「いいえ」後の3択ハンドラー
+async function handleNextActionAnswer(
+  userId: string,
+  replyToken: string,
+  text: string,
+  lang: string,
+  state: ConversationState
+): Promise<void> {
+  if (text === 'FOLLOWUP_SEARCH_AI') {
+    // もう一度AIで探す
+    state.followupAnswers = { ...state.followupAnswers, action: 'search_ai' };
+    state.mode = 'ai_chat';
+    state.followupStep = undefined;
+    await saveConversationState(userId, state);
+
+    // トラッキング記録
+    await generateTrackingUrl(userId, '', 'followup_search_ai');
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: lang === 'ja'
+        ? 'もう一度お仕事を探しましょう！\n「仕事探して」と送ってください😊'
+        : lang === 'en'
+        ? "Let's search for jobs again!\nPlease send \"Find job\" 😊"
+        : lang === 'ko'
+        ? '다시 일자리를 찾아봐요!\n"일자리 찾기"를 보내주세요 😊'
+        : lang === 'zh'
+        ? '让我们再找工作吧！\n请发送"找工作" 😊'
+        : 'Hãy tìm việc lại nhé!\nVui lòng gửi "Tìm việc" 😊',
+    });
+  } else if (text === 'FOLLOWUP_SKIP') {
+    // 今はやめとく
+    state.followupAnswers = { ...state.followupAnswers, action: 'skip' };
+    await generateTrackingUrl(userId, '', 'followup_skip');
+    await finishFollowup(userId, replyToken, lang, state);
   }
 }
 
@@ -259,14 +309,18 @@ async function handleCountAnswer(
     await replyMessage(replyToken, { type: 'text', text: encourageMessage });
     await finishFollowup(userId, '', lang, state);
   } else {
-    const targetUrl = `https://www.yolo-japan.com/${lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en'}/recruit?utm_source=line&utm_medium=followup`;
+    // ユニークIDを付与したトラッキングURL生成
+    const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
+    const baseUrl = `https://www.yolo-japan.com/${langPath}/`;
+    const trackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_encourage');
+
     await replyWithQuickReply(replyToken, encourageMessage, [
       {
         type: 'action',
         action: {
           type: 'uri',
           label: getLabel('search_more', lang),
-          uri: createExternalBrowserUrl(targetUrl),
+          uri: createExternalBrowserUrl(trackingUrl),
         },
       },
       {
@@ -284,6 +338,13 @@ async function handleTroubleAnswer(
   lang: string,
   state: ConversationState
 ): Promise<void> {
+  // 新フロー: いいえ後の3択を処理
+  if (text === 'FOLLOWUP_SEARCH_AI' || text === 'FOLLOWUP_SKIP') {
+    await handleNextActionAnswer(userId, replyToken, text, lang, state);
+    return;
+  }
+
+  // 旧フロー互換: trouble選択の処理
   let troubleKey: keyof typeof FOLLOWUP_MESSAGES = 'trouble_not_yet';
   let trouble: 'no_match' | 'language' | 'how_to' | 'not_yet' = 'not_yet';
 
@@ -306,7 +367,11 @@ async function handleTroubleAnswer(
   await saveConversationState(userId, state);
 
   const troubleMessage = getMessage(troubleKey, lang);
-  const targetUrl = `https://www.yolo-japan.com/${lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en'}/recruit?utm_source=line&utm_medium=followup`;
+
+  // ユニークIDを付与したトラッキングURL生成
+  const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
+  const baseUrl = `https://www.yolo-japan.com/${langPath}/`;
+  const trackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_trouble');
 
   await replyWithQuickReply(replyToken, troubleMessage, [
     {
@@ -314,7 +379,7 @@ async function handleTroubleAnswer(
       action: {
         type: 'uri',
         label: getLabel('search_more', lang),
-        uri: createExternalBrowserUrl(targetUrl),
+        uri: createExternalBrowserUrl(trackingUrl),
       },
     },
     {

@@ -91,12 +91,11 @@ export async function generateTrackingUrl(
   }
 
   // URLにユニークなUTMパラメータを付与
-  // utm_content にユーザートークンを設定（GA4/YOLO JAPANでCV追跡用）
+  // utm_campaign = ソース_メディア_キャンペーン_ユーザートークン（GA4でCV追跡用）
   const url = new URL(baseUrl);
   url.searchParams.set('utm_source', 'line');
   url.searchParams.set('utm_medium', 'bot');
-  url.searchParams.set('utm_campaign', urlType);
-  url.searchParams.set('utm_content', token); // ユニークなユーザートークン
+  url.searchParams.set('utm_campaign', `line_bot_${urlType}_${token}`); // source_medium_campaign_token 形式
 
   // デバッグ: 生成されたURLの詳細をログ出力
   console.log('🔗 トラッキングURL生成:', {
@@ -105,8 +104,7 @@ export async function generateTrackingUrl(
     urlType,
     utm_source: 'line',
     utm_medium: 'bot',
-    utm_campaign: urlType,
-    utm_content: token,
+    utm_campaign: `line_bot_${urlType}_${token}`,
     finalUrl: url.toString()
   });
 
@@ -127,15 +125,42 @@ export async function recordClick(token: string): Promise<boolean> {
 }
 
 /**
- * コンバージョン記録
+ * コンバージョン記録（応募履歴として毎回記録）
  */
-export async function recordConversion(token: string): Promise<boolean> {
-  const { error } = await supabase
+export async function recordConversion(token: string, utmCampaign?: string): Promise<boolean> {
+  // トークンからユーザー情報を取得
+  const { data: tokenData, error: selectError } = await supabase
+    .from('tracking_tokens')
+    .select('user_id, url_type')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (selectError || !tokenData) {
+    console.error('❌ recordConversion: トークンが見つかりません', { token, error: selectError });
+    return false;
+  }
+
+  // application_logsに応募履歴を追加（毎回新規レコード）
+  const { error: insertError } = await supabase.from('application_logs').insert({
+    user_id: tokenData.user_id,
+    token,
+    url_type: tokenData.url_type,
+    utm_campaign: utmCampaign,
+  });
+
+  if (insertError) {
+    console.error('❌ application_logs INSERT error:', insertError);
+    return false;
+  }
+
+  // tracking_tokensのconverted_atも更新（最終応募日時）
+  await supabase
     .from('tracking_tokens')
     .update({ converted_at: new Date().toISOString() })
     .eq('token', token);
 
-  return !error;
+  console.log('✅ 応募記録成功:', { token, userId: tokenData.user_id, urlType: tokenData.url_type });
+  return true;
 }
 
 /**

@@ -8,6 +8,7 @@ export interface FollowupAnswers {
   hasApplied?: 'yes' | 'no' | 'not_yet';
   applicationCount?: '1' | '2-3' | '4+';
   trouble?: 'no_match' | 'language' | 'how_to' | 'not_yet';
+  action?: 'search_ai' | 'search_site' | 'skip';
 }
 
 export interface ConversationState {
