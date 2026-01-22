@@ -73,6 +73,7 @@ export interface SupportModeState {
   pendingConfirmation?: PendingConfirmation;
   pendingQuickReply?: PendingQuickReply;
   currentCategoryId?: string;  // ファネルフロー用: 現在選択中のカテゴリーID
+  pendingMessage?: string;     // サービス選択待ち時に保存するメッセージ
 }
 
 /**

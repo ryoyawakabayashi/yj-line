@@ -1240,6 +1240,603 @@ export async function getAllFunnelMetricsByDateRange(
 }
 
 /**
+ * デバッグ用: line_bot_*のセッション（CVフィルタなし）を確認
+ * sessionCampaignとfirstUserCampaignName両方で試す
+ */
+export async function getLineBotSessionsDebug(
+  startDate: string,
+  endDate: string
+): Promise<{
+  sessionCampaign: Array<{ campaign: string; sessions: number; eventCount: number }>;
+  firstUserCampaign: Array<{ campaign: string; sessions: number; eventCount: number }>;
+}> {
+  const result = {
+    sessionCampaign: [] as Array<{ campaign: string; sessions: number; eventCount: number }>,
+    firstUserCampaign: [] as Array<{ campaign: string; sessions: number; eventCount: number }>,
+  };
+
+  try {
+    // sessionCampaignで試す
+    const [response1] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionCampaign' }],
+      metrics: [{ name: 'sessions' }, { name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'sessionCampaign',
+          stringFilter: {
+            matchType: 'BEGINS_WITH',
+            value: 'line_bot_',
+          },
+        },
+      },
+      limit: 100,
+    });
+
+    if (response1.rows) {
+      result.sessionCampaign = response1.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        sessions: Number(row.metricValues?.[0]?.value || 0),
+        eventCount: Number(row.metricValues?.[1]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching sessionCampaign:', error);
+  }
+
+  try {
+    // firstUserCampaignNameで試す
+    const [response2] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'firstUserCampaignName' }],
+      metrics: [{ name: 'sessions' }, { name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'firstUserCampaignName',
+          stringFilter: {
+            matchType: 'BEGINS_WITH',
+            value: 'line_bot_',
+          },
+        },
+      },
+      limit: 100,
+    });
+
+    if (response2.rows) {
+      result.firstUserCampaign = response2.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        sessions: Number(row.metricValues?.[0]?.value || 0),
+        eventCount: Number(row.metricValues?.[1]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching firstUserCampaignName:', error);
+  }
+
+  // キーイベントと組み合わせて取得（firstUserCampaignName）
+  try {
+    const allKeyEvents = getAllKeyEvents();
+    const [response3] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'firstUserCampaignName' }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'firstUserCampaignName',
+                stringFilter: {
+                  matchType: 'BEGINS_WITH',
+                  value: 'line_bot_',
+                },
+              },
+            },
+            {
+              orGroup: {
+                expressions: allKeyEvents.map((eventName) => ({
+                  filter: {
+                    fieldName: 'eventName',
+                    stringFilter: {
+                      matchType: 'EXACT' as const,
+                      value: eventName,
+                    },
+                  },
+                })),
+              },
+            },
+          ],
+        },
+      },
+      limit: 100,
+    });
+
+    if (response3.rows) {
+      (result as any).keyEvents = response3.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        eventName: row.dimensionValues?.[1]?.value || '',
+        eventCount: Number(row.metricValues?.[0]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching key events:', error);
+  }
+
+  // キーイベントのみでフィルタして全キャンペーンを取得（line_bot_フィルタなし）
+  try {
+    const allKeyEvents = getAllKeyEvents();
+    const [response4] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionCampaign' }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        orGroup: {
+          expressions: allKeyEvents.map((eventName) => ({
+            filter: {
+              fieldName: 'eventName',
+              stringFilter: {
+                matchType: 'EXACT' as const,
+                value: eventName,
+              },
+            },
+          })),
+        },
+      },
+      limit: 50,
+    });
+
+    if (response4.rows) {
+      (result as any).allKeyEventCampaigns = response4.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        eventName: row.dimensionValues?.[1]?.value || '',
+        eventCount: Number(row.metricValues?.[0]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching all key event campaigns:', error);
+  }
+
+  // sessionManualAdCampaign でキーイベントを取得
+  try {
+    const allKeyEvents = getAllKeyEvents();
+    const [response5] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionManualAdCampaign' }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'sessionManualAdCampaign',
+                stringFilter: {
+                  matchType: 'BEGINS_WITH',
+                  value: 'line_bot_',
+                },
+              },
+            },
+            {
+              orGroup: {
+                expressions: allKeyEvents.map((eventName) => ({
+                  filter: {
+                    fieldName: 'eventName',
+                    stringFilter: {
+                      matchType: 'EXACT' as const,
+                      value: eventName,
+                    },
+                  },
+                })),
+              },
+            },
+          ],
+        },
+      },
+      limit: 100,
+    });
+
+    if (response5.rows) {
+      (result as any).sessionManualAdCampaignKeyEvents = response5.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        eventName: row.dimensionValues?.[1]?.value || '',
+        eventCount: Number(row.metricValues?.[0]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching sessionManualAdCampaign key events:', error);
+  }
+
+  // firstUserCampaignName でcomplete_workイベントの状況を確認
+  try {
+    const [response6] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [
+        { name: 'firstUserCampaignName' },
+        { name: 'eventName' },
+      ],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'firstUserCampaignName',
+                stringFilter: {
+                  matchType: 'BEGINS_WITH',
+                  value: 'line_bot_',
+                },
+              },
+            },
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: {
+                  matchType: 'EXACT',
+                  value: 'complete_work',
+                },
+              },
+            },
+          ],
+        },
+      },
+      limit: 100,
+    });
+
+    if (response6.rows) {
+      (result as any).completeWorkByFirstUserCampaign = response6.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        eventName: row.dimensionValues?.[1]?.value || '',
+        eventCount: Number(row.metricValues?.[0]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching complete_work by firstUserCampaignName:', error);
+  }
+
+  // sessionManualAdCampaign (utm_campaignそのもの) でline_bot_*を確認
+  try {
+    const [response7] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionManualAdCampaign' }],
+      metrics: [{ name: 'sessions' }, { name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'sessionManualAdCampaign',
+          stringFilter: {
+            matchType: 'BEGINS_WITH',
+            value: 'line_bot_',
+          },
+        },
+      },
+      limit: 100,
+    });
+
+    if (response7.rows) {
+      (result as any).sessionManualAdCampaign = response7.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        sessions: Number(row.metricValues?.[0]?.value || 0),
+        eventCount: Number(row.metricValues?.[1]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching sessionManualAdCampaign:', error);
+  }
+
+  // complete_workイベントがあるキャンペーン全部（line_bot_フィルタなし）
+  try {
+    const [response8] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionManualAdCampaign' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          stringFilter: {
+            matchType: 'EXACT',
+            value: 'complete_work',
+          },
+        },
+      },
+      orderBys: [
+        {
+          metric: { metricName: 'eventCount' },
+          desc: true,
+        },
+      ],
+      limit: 30,
+    });
+
+    if (response8.rows) {
+      (result as any).allCompleteWorkCampaigns = response8.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        eventCount: Number(row.metricValues?.[0]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching all complete_work campaigns:', error);
+  }
+
+  // sessionCampaignName でline_bot_* + complete_work を取得（ChatGPT推奨）
+  try {
+    const [response9] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [
+        { name: 'sessionCampaignName' },
+        { name: 'eventName' },
+      ],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'sessionCampaignName',
+                stringFilter: {
+                  matchType: 'BEGINS_WITH',
+                  value: 'line_bot_',
+                },
+              },
+            },
+            {
+              filter: {
+                fieldName: 'eventName',
+                stringFilter: {
+                  matchType: 'EXACT',
+                  value: 'complete_work',
+                },
+              },
+            },
+          ],
+        },
+      },
+      limit: 100,
+    });
+
+    if (response9.rows) {
+      (result as any).sessionCampaignNameCompleteWork = response9.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        eventName: row.dimensionValues?.[1]?.value || '',
+        eventCount: Number(row.metricValues?.[0]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching sessionCampaignName complete_work:', error);
+  }
+
+  // sessionCampaignName だけでline_bot_*のセッションを確認
+  try {
+    const [response10] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionCampaignName' }],
+      metrics: [{ name: 'sessions' }, { name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'sessionCampaignName',
+          stringFilter: {
+            matchType: 'BEGINS_WITH',
+            value: 'line_bot_',
+          },
+        },
+      },
+      limit: 100,
+    });
+
+    if (response10.rows) {
+      (result as any).sessionCampaignNameSessions = response10.rows.map((row) => ({
+        campaign: row.dimensionValues?.[0]?.value || '',
+        sessions: Number(row.metricValues?.[0]?.value || 0),
+        eventCount: Number(row.metricValues?.[1]?.value || 0),
+      }));
+    }
+  } catch (error) {
+    console.error('Error fetching sessionCampaignName sessions:', error);
+  }
+
+  return result;
+}
+
+/**
+ * LINE Bot経由のCV（complete_work等のキーイベント）を取得
+ * sessionCampaignName ディメンションを使用（GA4 Explorer の「セッションのキャンペーン」に対応）
+ */
+export async function getLineBotConversionsWithKeyEvents(
+  startDate: string,
+  endDate: string
+): Promise<Array<{
+  token: string;
+  urlType: string;
+  eventName: string;
+  eventCount: number;
+  date: string;
+  campaign: string;
+}>> {
+  const allKeyEvents = getAllKeyEvents();
+  const results: Array<{
+    token: string;
+    urlType: string;
+    eventName: string;
+    eventCount: number;
+    date: string;
+    campaign: string;
+  }> = [];
+
+  try {
+    const [response] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [
+        { name: 'date' },
+        { name: 'sessionCampaignName' },
+        { name: 'eventName' },
+      ],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'sessionCampaignName',
+                stringFilter: {
+                  matchType: 'BEGINS_WITH',
+                  value: 'line_bot_',
+                },
+              },
+            },
+            {
+              orGroup: {
+                expressions: allKeyEvents.map((eventName) => ({
+                  filter: {
+                    fieldName: 'eventName',
+                    stringFilter: {
+                      matchType: 'EXACT' as const,
+                      value: eventName,
+                    },
+                  },
+                })),
+              },
+            },
+          ],
+        },
+      },
+      limit: 500,
+    });
+
+    if (response.rows) {
+      response.rows.forEach((row) => {
+        if (row.dimensionValues && row.metricValues) {
+          const date = row.dimensionValues[0]?.value || '';
+          const campaign = row.dimensionValues[1]?.value || '';
+          const eventName = row.dimensionValues[2]?.value || '';
+          const eventCount = Number(row.metricValues[0]?.value || 0);
+
+          // line_bot_{urlType}_{token} 形式のみ抽出
+          const match = campaign.match(/^line_bot_(.+)_([a-f0-9]{8})$/);
+          if (match) {
+            results.push({
+              token: match[2],
+              urlType: match[1],
+              eventName,
+              eventCount,
+              date: formatDate(date),
+              campaign,
+            });
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching LINE Bot conversions with key events:', error);
+  }
+
+  return results;
+}
+
+/**
+ * LINE Bot経由のセッション（utm_campaign = line_bot_*_token形式）を取得
+ * firstUserCampaignNameディメンションを使用してセッション情報を取得
+ * CVの記録はGA4ではなく、tracking_tokensテーブルのconverted_atで確認
+ */
+export async function getLineBotConversionsByToken(
+  startDate: string,
+  endDate: string
+): Promise<Array<{
+  token: string;
+  urlType: string;
+  eventName: string;
+  eventCount: number;
+  date: string;
+}>> {
+  try {
+    // firstUserCampaignNameがline_bot_で始まるセッションを取得
+    const [response] = await analyticsDataClient.runReport({
+      property: `properties/${GA4_CONFIG.propertyId}`,
+      dateRanges: [
+        {
+          startDate,
+          endDate,
+        },
+      ],
+      dimensions: [
+        { name: 'date' },
+        { name: 'firstUserCampaignName' },
+      ],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'activeUsers' },
+      ],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'firstUserCampaignName',
+          stringFilter: {
+            matchType: 'BEGINS_WITH',
+            value: 'line_bot_',
+          },
+        },
+      },
+      orderBys: [
+        {
+          dimension: {
+            dimensionName: 'date',
+          },
+          desc: true,
+        },
+      ],
+      limit: 500,
+    });
+
+    if (!response.rows || response.rows.length === 0) {
+      return [];
+    }
+
+    const results: Array<{
+      token: string;
+      urlType: string;
+      eventName: string;
+      eventCount: number;
+      date: string;
+    }> = [];
+
+    response.rows.forEach((row) => {
+      if (row.dimensionValues && row.metricValues) {
+        const date = row.dimensionValues[0]?.value || '';
+        const campaign = row.dimensionValues[1]?.value || '';
+        const sessions = Number(row.metricValues[0]?.value || 0);
+
+        // line_bot_{urlType}_{token} 形式からトークンを抽出
+        // 例: line_bot_diagnosis_6a907590 → token=6a907590, urlType=diagnosis
+        const match = campaign.match(/^line_bot_(.+)_([a-f0-9]{8})$/);
+        if (match) {
+          const urlType = match[1];
+          const token = match[2];
+
+          results.push({
+            token,
+            urlType,
+            eventName: 'session', // セッションとして記録
+            eventCount: sessions,
+            date: formatDate(date),
+          });
+        }
+      }
+    });
+
+    return results;
+  } catch (error) {
+    console.error('Error fetching LINE Bot sessions by token:', error);
+    return [];
+  }
+}
+
+/**
  * Get YJ/YD conversions by date range filtered by diagnosis sources (line / chatbot + line / bot)
  * 診断結果のURLからのCV
  */

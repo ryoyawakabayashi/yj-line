@@ -22,11 +22,11 @@ const FOLLOWUP_LABELS = {
 };
 
 const FOLLOWUP_QUESTION = {
-  ja: '応募（おうぼ）できましたか？',
-  en: 'Did you apply for any jobs?',
-  ko: '지원하셨나요?',
-  zh: '您申请了吗？',
-  vi: 'Bạn đã ứng tuyển chưa?',
+  ja: '求人ページ閲覧後にお答えください😌\n応募はできましたか？',
+  en: 'Please answer after viewing the job page 😌\nDid you apply?',
+  ko: '구인 페이지를 본 후 답해주세요 😌\n지원하셨나요?',
+  zh: '请在查看招聘页面后回答 😌\n您申请了吗？',
+  vi: 'Vui lòng trả lời sau khi xem trang việc làm 😌\nBạn đã ứng tuyển chưa?',
 };
 
 /**

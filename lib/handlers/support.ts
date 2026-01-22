@@ -25,6 +25,7 @@ import {
   classifyTicketCategory,
   searchFAQAsync,
   FAQSearchResult,
+  detectConfirmationPattern,
 } from '../support/faq';
 import {
   classifyMessage,
@@ -145,6 +146,49 @@ export async function handleSupportPostback(
     supportState.service = service;
     supportState.ticketType = 'feedback'; // お問い合わせとして処理
     supportState.step = 'describe_issue';
+
+    // pendingMessage がある場合は、サービス選択後にそのメッセージを再処理
+    const pendingMessage = supportState.pendingMessage;
+    if (pendingMessage) {
+      supportState.pendingMessage = undefined;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      // 保存したメッセージで確認パターン検出を再試行
+      const confirmResult = detectConfirmationPattern(pendingMessage, service, lang);
+      if (confirmResult && !confirmResult.needsServiceSelection) {
+        // パターンにマッチした場合は確認質問を表示
+        supportState.pendingConfirmation = {
+          type: confirmResult.pattern.type,
+          question: confirmResult.question,
+          faqAnswer: confirmResult.faqAnswer,
+        };
+        currentState.supportState = supportState;
+        await saveConversationState(userId, currentState);
+
+        await replyMessage(replyToken, {
+          type: 'text',
+          text: confirmResult.question,
+          quickReply: {
+            items: [
+              {
+                type: 'action',
+                action: { type: 'message', label: FAQ_CONFIRM_YES[lang] || 'はい', text: FAQ_CONFIRM_YES[lang] || 'はい' },
+              },
+              {
+                type: 'action',
+                action: { type: 'message', label: FAQ_CONFIRM_NO[lang] || 'いいえ', text: FAQ_CONFIRM_NO[lang] || 'いいえ' },
+              },
+            ],
+          },
+        });
+        return true;
+      }
+
+      // マッチしない場合は通常のFAQ検索へ
+      // （この場合は詳細入力画面を表示）
+    }
+
     currentState.supportState = supportState;
     await saveConversationState(userId, currentState);
 
@@ -553,6 +597,112 @@ export async function handleSupportMessage(
       type: 'text',
       text: greetingResponse,
     });
+    return true;
+  }
+
+  // 1.3. 確認パターン検出（スコアリング方式）
+  // サービス固有の問い合わせパターンを検出し、サービス未選択なら選択を促す
+  const confirmResult = detectConfirmationPattern(userMessage, supportState.service, lang);
+
+  if (confirmResult) {
+    // サービス未選択でサービス固有パターンにマッチした場合
+    if (confirmResult.needsServiceSelection) {
+      const serviceSelectMessages: Record<string, string> = {
+        ja: 'お問い合わせありがとうございます。まずサービスを選択してください。',
+        en: 'Thank you for your inquiry. Please select a service first.',
+        ko: '문의해 주셔서 감사합니다. 먼저 서비스를 선택해 주세요.',
+        zh: '感谢您的咨询。请先选择服务。',
+        vi: 'Cảm ơn bạn đã liên hệ. Vui lòng chọn dịch vụ trước.',
+      };
+      const selectMessage = serviceSelectMessages[lang] || serviceSelectMessages.ja;
+
+      // 問い合わせ内容を保存しておく
+      supportState.pendingMessage = userMessage;
+      conversationHistory.push({ role: 'assistant', content: selectMessage });
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      // サービス選択クイックリプライを表示
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: selectMessage,
+        quickReply: {
+          items: [
+            {
+              type: 'action',
+              action: {
+                type: 'postback',
+                label: 'YOLO JAPAN',
+                data: 'action=support&step=service&service=YOLO_JAPAN',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'postback',
+                label: 'YOLO DISCOVER',
+                data: 'action=support&step=service&service=YOLO_DISCOVER',
+              },
+            },
+            {
+              type: 'action',
+              action: {
+                type: 'postback',
+                label: 'YOLO HOME',
+                data: 'action=support&step=service&service=YOLO_HOME',
+              },
+            },
+          ],
+        },
+      });
+
+      console.log(`📋 サービス選択促し: pattern=${confirmResult.pattern.type}, suggestedService=${confirmResult.suggestedService}`);
+      return true;
+    }
+
+    // サービスが選択済みでパターンにマッチした場合
+    // → 確認待ち状態を設定
+    supportState.pendingConfirmation = {
+      type: confirmResult.pattern.type,
+      question: confirmResult.question,
+      faqAnswer: confirmResult.faqAnswer,
+    };
+    conversationHistory.push({ role: 'assistant', content: confirmResult.question });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    // クイックリプライ付きで確認質問を送信
+    const yesLabel = { ja: 'はい', en: 'Yes', ko: '예', zh: '是', vi: 'Có' };
+    const noLabel = { ja: 'いいえ', en: 'No', ko: '아니오', zh: '否', vi: 'Không' };
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: confirmResult.question,
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: yesLabel[lang as keyof typeof yesLabel] || yesLabel.ja,
+              text: yesLabel[lang as keyof typeof yesLabel] || yesLabel.ja,
+            },
+          },
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: noLabel[lang as keyof typeof noLabel] || noLabel.ja,
+              text: noLabel[lang as keyof typeof noLabel] || noLabel.ja,
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`🤔 確認パターン検出: pattern=${confirmResult.pattern.type}, service=${supportState.service}`);
     return true;
   }
 

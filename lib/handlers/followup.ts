@@ -3,6 +3,7 @@ import { ConversationState, FollowupStep } from '@/types/conversation';
 import { getConversationState, saveConversationState, getUserLang } from '../database/queries';
 import { replyMessage, replyWithQuickReply } from '../line/client';
 import { generateTrackingUrl } from '../tracking/token';
+import { startDiagnosisMode } from './diagnosis';
 
 // LIFF経由で外部ブラウザを開くためのURL生成
 const LIFF_ID = '2006973060-cAgpaZ0y';
@@ -116,6 +117,8 @@ const QUICK_REPLY_LABELS = {
   how_to: { ja: '応募方法がわからない', en: "Don't know how", ko: '방법 모름', zh: '不知道怎么申请', vi: 'Không biết cách' },
   search_more: { ja: 'サイトで探す', en: 'Search site', ko: '사이트 검색', zh: '搜索网站', vi: 'Tìm trên web' },
   done: { ja: '大丈夫です', en: "I'm good", ko: '괜찮아요', zh: '没事了', vi: 'Tôi ổn' },
+  visa_support: { ja: 'ビザサポートの仕事', en: 'Visa support jobs', ko: '비자 지원 일자리', zh: '签证支持工作', vi: 'Việc hỗ trợ visa' },
+  dormitory: { ja: '社宅ありの仕事', en: 'Jobs with housing', ko: '기숙사 제공 일자리', zh: '提供住房的工作', vi: 'Việc có nhà ở' },
 };
 
 function getLabel(key: keyof typeof QUICK_REPLY_LABELS, lang: string): string {
@@ -249,27 +252,16 @@ async function handleNextActionAnswer(
   state: ConversationState
 ): Promise<void> {
   if (text === 'FOLLOWUP_SEARCH_AI') {
-    // もう一度AIで探す
+    // もう一度AIで探す → AI診断を開始
     state.followupAnswers = { ...state.followupAnswers, action: 'search_ai' };
-    state.mode = 'ai_chat';
     state.followupStep = undefined;
     await saveConversationState(userId, state);
 
     // トラッキング記録
     await generateTrackingUrl(userId, '', 'followup_search_ai');
 
-    await replyMessage(replyToken, {
-      type: 'text',
-      text: lang === 'ja'
-        ? 'もう一度お仕事を探しましょう！\n「仕事探して」と送ってください😊'
-        : lang === 'en'
-        ? "Let's search for jobs again!\nPlease send \"Find job\" 😊"
-        : lang === 'ko'
-        ? '다시 일자리를 찾아봐요!\n"일자리 찾기"를 보내주세요 😊'
-        : lang === 'zh'
-        ? '让我们再找工作吧！\n请发送"找工作" 😊'
-        : 'Hãy tìm việc lại nhé!\nVui lòng gửi "Tìm việc" 😊',
-    });
+    // AI診断を直接開始
+    await startDiagnosisMode(userId, replyToken, lang);
   } else if (text === 'FOLLOWUP_SKIP') {
     // 今はやめとく
     state.followupAnswers = { ...state.followupAnswers, action: 'skip' };
@@ -306,7 +298,36 @@ async function handleCountAnswer(
   const encourageMessage = getMessage(encourageKey, lang);
 
   if (count === '4+') {
-    await replyMessage(replyToken, { type: 'text', text: encourageMessage });
+    // 4件以上応募 → ビザサポート・社宅あり特集への誘導
+    const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
+    const visaSupportUrl = `https://www.yolo-japan.com/${langPath}/recruit/feature/visa_support`;
+    const dormitoryUrl = `https://www.yolo-japan.com/${langPath}/recruit/feature/dormitory_or_company_housing_available`;
+
+    const visaTrackingUrl = await generateTrackingUrl(userId, visaSupportUrl, 'followup_visa');
+    const dormitoryTrackingUrl = await generateTrackingUrl(userId, dormitoryUrl, 'followup_dormitory');
+
+    await replyWithQuickReply(replyToken, encourageMessage, [
+      {
+        type: 'action',
+        action: {
+          type: 'uri',
+          label: getLabel('visa_support', lang),
+          uri: createExternalBrowserUrl(visaTrackingUrl),
+        },
+      },
+      {
+        type: 'action',
+        action: {
+          type: 'uri',
+          label: getLabel('dormitory', lang),
+          uri: createExternalBrowserUrl(dormitoryTrackingUrl),
+        },
+      },
+      {
+        type: 'action',
+        action: { type: 'message', label: getLabel('done', lang), text: 'FOLLOWUP_DONE' },
+      },
+    ]);
     await finishFollowup(userId, '', lang, state);
   } else {
     // ユニークIDを付与したトラッキングURL生成

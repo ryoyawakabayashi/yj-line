@@ -1,10 +1,13 @@
 // =====================================================
 // コンバージョンデータ取得API（ダッシュボード用）
 // 期間フィルター: ?period=today|yesterday|week|2weeks|month|all
+// GA4で検知されたキーイベント（complete_work等）のあるユーザーのみ表示
 // =====================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/database/supabase';
+import { getUserProfile } from '@/lib/line/client';
+import { getLineBotConversionsWithKeyEvents } from '@/lib/ga4/queries';
 
 function getDateRange(period: string): { start: Date; end: Date } {
   const now = new Date();
@@ -79,115 +82,56 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // 応募完了ユーザー取得（application_logsから・期間フィルター付き）
+    // 応募完了ユーザー（GA4から取得後に設定するため、ここでは空で初期化）
     let users: Array<{
       userId: string;
       firstConversion: string;
       lastConversion: string;
       conversionCount: number;
       urlTypes: string[];
+      displayName: string | null;
+      pictureUrl: string | null;
     }> = [];
-    try {
-      // 期間内の応募履歴を取得
-      const { data: logsData } = await supabase
-        .from('application_logs')
-        .select('user_id, applied_at, url_type')
-        .gte('applied_at', start.toISOString())
-        .lt('applied_at', end.toISOString())
-        .order('applied_at', { ascending: false });
 
-      if (logsData && logsData.length > 0) {
-        // ユーザーごとに集約
-        const userMap = new Map<string, {
-          firstConversion: string;
-          lastConversion: string;
-          conversionCount: number;
-          urlTypes: Set<string>;
-        }>();
+    // GA4から検知されたキーイベント（complete_work等）を取得
+    const startDateStr = start.toISOString().split('T')[0];
+    const endDateStr = end.toISOString().split('T')[0];
+    const ga4Conversions = await getLineBotConversionsWithKeyEvents(startDateStr, endDateStr);
 
-        for (const row of logsData) {
-          const existing = userMap.get(row.user_id);
-          if (existing) {
-            existing.conversionCount++;
-            if (row.applied_at < existing.firstConversion) {
-              existing.firstConversion = row.applied_at;
-            }
-            if (row.applied_at > existing.lastConversion) {
-              existing.lastConversion = row.applied_at;
-            }
-            if (row.url_type) existing.urlTypes.add(row.url_type);
-          } else {
-            userMap.set(row.user_id, {
-              firstConversion: row.applied_at,
-              lastConversion: row.applied_at,
-              conversionCount: 1,
-              urlTypes: new Set(row.url_type ? [row.url_type] : []),
-            });
-          }
-        }
+    // GA4で検知されたトークンのセット
+    const ga4Tokens = ga4Conversions.map((cv) => cv.token);
 
-        users = Array.from(userMap.entries()).map(([userId, data]) => ({
-          userId,
-          firstConversion: data.firstConversion,
-          lastConversion: data.lastConversion,
-          conversionCount: data.conversionCount,
-          urlTypes: Array.from(data.urlTypes),
-        }));
-      }
-    } catch {
-      // テーブルが存在しない場合は空配列（フォールバック: tracking_tokensを使用）
-      try {
-        const { data: fallbackData } = await supabase
-          .from('tracking_tokens')
-          .select('user_id, converted_at, url_type')
-          .not('converted_at', 'is', null)
-          .gte('converted_at', start.toISOString())
-          .lt('converted_at', end.toISOString())
-          .order('converted_at', { ascending: false });
+    // GA4検知データからトークン→ユーザーIDを取得
+    const { data: tokenData } = await supabase
+      .from('tracking_tokens')
+      .select('token, user_id')
+      .in('token', ga4Tokens.length > 0 ? ga4Tokens : ['__none__']);
 
-        if (fallbackData) {
-          const userMap = new Map<string, {
-            firstConversion: string;
-            lastConversion: string;
-            conversionCount: number;
-            urlTypes: Set<string>;
-          }>();
+    const tokenUserMap = new Map(tokenData?.map((t) => [t.token, t.user_id]) || []);
 
-          for (const row of fallbackData) {
-            const existing = userMap.get(row.user_id);
-            if (existing) {
-              existing.conversionCount++;
-              if (row.converted_at < existing.firstConversion) {
-                existing.firstConversion = row.converted_at;
-              }
-              if (row.converted_at > existing.lastConversion) {
-                existing.lastConversion = row.converted_at;
-              }
-              if (row.url_type) existing.urlTypes.add(row.url_type);
-            } else {
-              userMap.set(row.user_id, {
-                firstConversion: row.converted_at,
-                lastConversion: row.converted_at,
-                conversionCount: 1,
-                urlTypes: new Set(row.url_type ? [row.url_type] : []),
-              });
-            }
-          }
+    // ユニークなユーザーIDを取得してプロフィールを一括取得
+    const uniqueUserIds = [...new Set(tokenData?.map((t) => t.user_id) || [])];
+    const profileMap = new Map<string, { displayName: string | null; pictureUrl: string | null }>();
 
-          users = Array.from(userMap.entries()).map(([userId, data]) => ({
+    // プロフィールを並列取得（最大10件ずつ）
+    for (let i = 0; i < uniqueUserIds.length; i += 10) {
+      const batch = uniqueUserIds.slice(i, i + 10);
+      const profiles = await Promise.all(
+        batch.map(async (userId) => {
+          const profile = await getUserProfile(userId);
+          return {
             userId,
-            firstConversion: data.firstConversion,
-            lastConversion: data.lastConversion,
-            conversionCount: data.conversionCount,
-            urlTypes: Array.from(data.urlTypes),
-          }));
-        }
-      } catch {
-        // どちらのテーブルもない場合は空配列
+            displayName: profile?.displayName || null,
+            pictureUrl: profile?.pictureUrl || null,
+          };
+        })
+      );
+      for (const p of profiles) {
+        profileMap.set(p.userId, { displayName: p.displayName, pictureUrl: p.pictureUrl });
       }
     }
 
-    // 応募履歴詳細（誰が・いつ・何経由で応募）
+    // GA4検知データから直接applicationsを生成（eventCount分のレコード）
     let applications: Array<{
       id: string;
       userId: string;
@@ -195,29 +139,80 @@ export async function GET(request: NextRequest) {
       urlType: string | null;
       utmCampaign: string | null;
       appliedAt: string;
+      displayName: string | null;
+      pictureUrl: string | null;
+      eventName: string | null;
     }> = [];
-    try {
-      const { data: appData } = await supabase
-        .from('application_logs')
-        .select('*')
-        .gte('applied_at', start.toISOString())
-        .lt('applied_at', end.toISOString())
-        .order('applied_at', { ascending: false })
-        .limit(100);
 
-      if (appData) {
-        applications = appData.map((row) => ({
-          id: row.id,
-          userId: row.user_id,
-          token: row.token,
-          urlType: row.url_type,
-          utmCampaign: row.utm_campaign,
-          appliedAt: row.applied_at,
-        }));
+    for (const cv of ga4Conversions) {
+      const userId = tokenUserMap.get(cv.token);
+      if (!userId) continue;
+
+      const profile = profileMap.get(userId);
+      // eventCount分のレコードを生成
+      for (let i = 0; i < cv.eventCount; i++) {
+        applications.push({
+          id: `${cv.token}-${cv.date}-${i}`,
+          userId,
+          token: cv.token,
+          urlType: cv.urlType,
+          utmCampaign: cv.campaign,
+          appliedAt: `${cv.date}T12:00:00Z`,
+          displayName: profile?.displayName || null,
+          pictureUrl: profile?.pictureUrl || null,
+          eventName: cv.eventName,
+        });
       }
-    } catch {
-      // テーブルが存在しない場合は空配列
     }
+
+    // 日付順にソート（新しい順）
+    applications.sort((a, b) => b.appliedAt.localeCompare(a.appliedAt));
+
+    // GA4データからusersを生成（ユーザーごとに集約）
+    const userAggMap = new Map<string, {
+      firstConversion: string;
+      lastConversion: string;
+      conversionCount: number;
+      urlTypes: Set<string>;
+    }>();
+
+    for (const cv of ga4Conversions) {
+      const userId = tokenUserMap.get(cv.token);
+      if (!userId) continue;
+
+      const date = `${cv.date}T12:00:00Z`;
+      const existing = userAggMap.get(userId);
+      if (existing) {
+        existing.conversionCount += cv.eventCount;
+        if (date < existing.firstConversion) {
+          existing.firstConversion = date;
+        }
+        if (date > existing.lastConversion) {
+          existing.lastConversion = date;
+        }
+        existing.urlTypes.add(cv.urlType);
+      } else {
+        userAggMap.set(userId, {
+          firstConversion: date,
+          lastConversion: date,
+          conversionCount: cv.eventCount,
+          urlTypes: new Set([cv.urlType]),
+        });
+      }
+    }
+
+    users = Array.from(userAggMap.entries()).map(([userId, data]) => {
+      const profile = profileMap.get(userId);
+      return {
+        userId,
+        firstConversion: data.firstConversion,
+        lastConversion: data.lastConversion,
+        conversionCount: data.conversionCount,
+        urlTypes: Array.from(data.urlTypes),
+        displayName: profile?.displayName || null,
+        pictureUrl: profile?.pictureUrl || null,
+      };
+    });
 
     // トラッキング詳細取得（期間フィルター付き）
     let details: Array<{

@@ -37,6 +37,8 @@ interface ConvertedUser {
   lastConversion: string;
   conversionCount: number;
   urlTypes: string[];
+  displayName: string | null;
+  pictureUrl: string | null;
 }
 
 interface TrackingDetail {
@@ -56,6 +58,9 @@ interface ApplicationLog {
   urlType: string | null;
   utmCampaign: string | null;
   appliedAt: string;
+  displayName: string | null;
+  pictureUrl: string | null;
+  eventName: string | null;
 }
 
 interface ClicksByType {
@@ -130,7 +135,7 @@ export default function ConversionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">応募者追跡</h1>
           <p className="text-sm text-slate-500 mt-1">
-            LINE Bot経由でサイト遷移→応募完了したユーザー
+            GA4で検知されたキーイベント（complete_work等）を持つユーザー
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -247,13 +252,13 @@ export default function ConversionsPage() {
                     応募日時
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
-                    ユーザーID
+                    ユーザー
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
+                    イベント
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                     経由
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
-                    UTMキャンペーン
                   </th>
                 </tr>
               </thead>
@@ -261,7 +266,7 @@ export default function ConversionsPage() {
                 {applications.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
-                      応募履歴はまだありません
+                      GA4で検知された応募履歴はまだありません
                     </td>
                   </tr>
                 ) : (
@@ -270,16 +275,38 @@ export default function ConversionsPage() {
                       <td className="px-6 py-4 text-sm text-slate-900 font-medium">
                         {formatDate(app.appliedAt)}
                       </td>
-                      <td className="px-6 py-4 text-sm font-mono text-slate-700">
-                        {app.userId.slice(0, 16)}...
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {app.pictureUrl ? (
+                            <img
+                              src={app.pictureUrl}
+                              alt={app.displayName || 'User'}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                              <span className="text-slate-500 text-sm">?</span>
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {app.displayName || '名前未取得'}
+                            </div>
+                            <div className="text-xs text-slate-500 font-mono">
+                              {app.userId.slice(0, 12)}...
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs font-medium">
+                          {app.eventName || '-'}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
                           {app.urlType || '-'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 font-mono">
-                        {app.utmCampaign || '-'}
                       </td>
                     </tr>
                   ))
@@ -291,7 +318,7 @@ export default function ConversionsPage() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
-                    ユーザーID
+                    ユーザー
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">
                     初回応募
@@ -311,14 +338,34 @@ export default function ConversionsPage() {
                 {users.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                      応募完了ユーザーはまだいません
+                      GA4で検知された応募者はまだいません
                     </td>
                   </tr>
                 ) : (
                   users.map((user) => (
                     <tr key={user.userId} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-mono text-slate-700">
-                        {user.userId.slice(0, 16)}...
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {user.pictureUrl ? (
+                            <img
+                              src={user.pictureUrl}
+                              alt={user.displayName || 'User'}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                              <span className="text-slate-500 text-sm">?</span>
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {user.displayName || '名前未取得'}
+                            </div>
+                            <div className="text-xs text-slate-500 font-mono">
+                              {user.userId.slice(0, 12)}...
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {formatDate(user.firstConversion)}

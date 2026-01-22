@@ -804,7 +804,20 @@ export const CONFIRMATION_PATTERNS: ConfirmationPattern[] = [
 ];
 
 /**
- * ユーザーの入力から確認パターンを検出
+ * 確認パターン検出の戻り値型
+ */
+export interface ConfirmationPatternResult {
+  pattern: ConfirmationPattern;
+  question: string;
+  faqAnswer?: string;
+  needsServiceSelection?: boolean;
+  suggestedService?: ServiceType;
+}
+
+/**
+ * ユーザーの入力から確認パターンを検出（スコアリング方式）
+ * より具体的なキーワードを優先し、サービス未選択時は選択を促す
+ *
  * @param userMessage ユーザーのメッセージ
  * @param service 選択されているサービス
  * @param lang 言語
@@ -814,42 +827,78 @@ export function detectConfirmationPattern(
   userMessage: string,
   service: 'YOLO_JAPAN' | 'YOLO_DISCOVER' | 'YOLO_HOME' | undefined,
   lang: string
-): { pattern: ConfirmationPattern; question: string; faqAnswer?: string } | null {
+): ConfirmationPatternResult | null {
   const lowerMessage = userMessage.toLowerCase();
 
-  for (const pattern of CONFIRMATION_PATTERNS) {
-    // サービスフィルタ
-    if (pattern.service !== 'all' && pattern.service !== service) {
-      continue;
-    }
+  // 全パターンをスキャンしてスコア計算
+  const matches: Array<{
+    pattern: ConfirmationPattern;
+    score: number;
+    matchedKeywords: string[];
+  }> = [];
 
-    // キーワードマッチ
-    const matched = pattern.keywords.some((keyword) =>
+  for (const pattern of CONFIRMATION_PATTERNS) {
+    // マッチしたキーワードを収集
+    const matchedKeywords = pattern.keywords.filter((keyword) =>
       lowerMessage.includes(keyword.toLowerCase())
     );
 
-    if (matched) {
-      const question = pattern.questions[lang] || pattern.questions['ja'];
+    if (matchedKeywords.length > 0) {
+      let score = 0;
 
-      // FAQ回答を検索
-      let faqAnswer: string | undefined;
-      if (pattern.faqKey && service) {
-        const faqs = SERVICE_FAQ[service] || [];
-        const matchedFaq = faqs.find((faq) =>
-          faq.toLowerCase().includes(pattern.faqKey!.toLowerCase())
-        );
-        if (matchedFaq) {
-          // Q: を除いた回答部分を抽出
-          const answerMatch = matchedFaq.match(/A:\s*([\s\S]+)/);
-          faqAnswer = answerMatch ? answerMatch[1].trim() : matchedFaq;
-        }
+      // 1. マッチしたキーワードの長さの合計（具体的なほど高スコア）
+      score += matchedKeywords.reduce((sum, kw) => sum + kw.length, 0);
+
+      // 2. サービスが一致すればボーナス
+      if (pattern.service === service) {
+        score += 50;
+      } else if (pattern.service === 'all') {
+        score += 10; // 汎用は低めのボーナス
+      } else if (service === undefined) {
+        score += 20; // サービス未選択時でも特定サービス用パターンを考慮
       }
 
-      return { pattern, question, faqAnswer };
+      // 3. 複数キーワードマッチでボーナス
+      score += matchedKeywords.length * 5;
+
+      matches.push({ pattern, score, matchedKeywords });
     }
   }
 
-  return null;
+  if (matches.length === 0) return null;
+
+  // スコア降順でソート → 最高スコアを採用
+  matches.sort((a, b) => b.score - a.score);
+  const best = matches[0];
+
+  const question = best.pattern.questions[lang] || best.pattern.questions['ja'];
+
+  // サービス固有パターンにマッチしたがサービス未選択の場合
+  if (best.pattern.service !== 'all' && !service) {
+    return {
+      pattern: best.pattern,
+      question,
+      needsServiceSelection: true,
+      suggestedService: best.pattern.service as ServiceType,
+    };
+  }
+
+  // FAQ回答を検索（サービスが選択されている場合）
+  let faqAnswer: string | undefined;
+  const targetService = service || (best.pattern.service !== 'all' ? best.pattern.service as ServiceType : undefined);
+  if (best.pattern.faqKey && targetService) {
+    const faqs = SERVICE_FAQ[targetService] || [];
+    const matchedFaq = faqs.find((faq) =>
+      faq.toLowerCase().includes(best.pattern.faqKey!.toLowerCase())
+    );
+    if (matchedFaq) {
+      // Q: を除いた回答部分を抽出
+      const answerMatch = matchedFaq.match(/A:\s*([\s\S]+)/);
+      faqAnswer = answerMatch ? answerMatch[1].trim() : matchedFaq;
+    }
+  }
+
+  return { pattern: best.pattern, question, faqAnswer };
 }
 
 /**
