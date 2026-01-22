@@ -671,7 +671,7 @@ export const CONFIRMATION_PATTERNS: ConfirmationPattern[] = [
   },
   {
     type: 'forgot_password',
-    keywords: ['パスワード忘れ', 'パスワードわからない', 'ログインできない', 'forgot password', 'cant login'],
+    keywords: ['パスワード忘れ', 'パスワードを忘れ', 'パスワードわからない', 'ログインできない', 'forgot password', 'cant login'],
     questions: {
       ja: 'YOLO JAPANのパスワードをリセットしたいということでよろしいでしょうか？',
       en: 'Would you like to reset your YOLO JAPAN password?',

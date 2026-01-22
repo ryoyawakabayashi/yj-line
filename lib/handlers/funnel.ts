@@ -21,7 +21,7 @@ import {
   hasEnoughDataForDiagnosis,
 } from '../support/intent-detector';
 import { getFAQResponseById } from '../support/classifier';
-import { processUrl } from '../tracking/url-processor';
+import { processUrl, processUrlsInText } from '../tracking/url-processor';
 
 /**
  * ファネルフローの結果
@@ -180,7 +180,9 @@ async function executeAction(
       if (action.faqId) {
         const faqResponse = getFAQResponseById(action.faqId, service, lang);
         if (faqResponse) {
-          await replyMessage(replyToken, { type: 'text', text: faqResponse });
+          // FAQ回答内のURLをトラッキングURL化
+          const processedResponse = await processUrlsInText(faqResponse, userId, getUrlSourceType(service));
+          await replyMessage(replyToken, { type: 'text', text: processedResponse });
           return { handled: true, action: 'faq', data: { faqId: action.faqId } };
         }
       }

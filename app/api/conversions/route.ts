@@ -101,6 +101,28 @@ export async function GET(request: NextRequest) {
     // GA4で検知されたトークンのセット
     const ga4Tokens = ga4Conversions.map((cv) => cv.token);
 
+    // GA4で検知されたトークンのconverted_atを更新（未設定のもののみ）
+    if (ga4Tokens.length > 0) {
+      // トークンごとに最も早い日付を取得
+      const tokenDateMap = new Map<string, string>();
+      for (const cv of ga4Conversions) {
+        const existing = tokenDateMap.get(cv.token);
+        const cvDate = `${cv.date}T12:00:00Z`;
+        if (!existing || cvDate < existing) {
+          tokenDateMap.set(cv.token, cvDate);
+        }
+      }
+
+      // 一括更新（converted_atがnullのもののみ）
+      for (const [token, convertedAt] of tokenDateMap) {
+        await supabase
+          .from('tracking_tokens')
+          .update({ converted_at: convertedAt })
+          .eq('token', token)
+          .is('converted_at', null);
+      }
+    }
+
     // GA4検知データからトークン→ユーザーIDを取得
     const { data: tokenData } = await supabase
       .from('tracking_tokens')
