@@ -147,55 +147,30 @@ export async function handleSupportPostback(
     supportState.ticketType = 'feedback'; // お問い合わせとして処理
     supportState.step = 'describe_issue';
 
-    // pendingMessage がある場合は、サービス選択後にそのメッセージを再処理
-    const pendingMessage = supportState.pendingMessage;
-    if (pendingMessage) {
-      supportState.pendingMessage = undefined;
-      currentState.supportState = supportState;
-      await saveConversationState(userId, currentState);
-
-      // 保存したメッセージで確認パターン検出を再試行
-      const confirmResult = detectConfirmationPattern(pendingMessage, service, lang);
-      if (confirmResult && !confirmResult.needsServiceSelection) {
-        // パターンにマッチした場合は確認質問を表示
-        supportState.pendingConfirmation = {
-          type: confirmResult.pattern.type,
-          question: confirmResult.question,
-          faqAnswer: confirmResult.faqAnswer,
-        };
-        currentState.supportState = supportState;
-        await saveConversationState(userId, currentState);
-
-        await replyMessage(replyToken, {
-          type: 'text',
-          text: confirmResult.question,
-          quickReply: {
-            items: [
-              {
-                type: 'action',
-                action: { type: 'message', label: FAQ_CONFIRM_YES[lang] || 'はい', text: FAQ_CONFIRM_YES[lang] || 'はい' },
-              },
-              {
-                type: 'action',
-                action: { type: 'message', label: FAQ_CONFIRM_NO[lang] || 'いいえ', text: FAQ_CONFIRM_NO[lang] || 'いいえ' },
-              },
-            ],
-          },
-        });
-        return true;
-      }
-
-      // マッチしない場合は通常のFAQ検索へ
-      // （この場合は詳細入力画面を表示）
-    }
-
     currentState.supportState = supportState;
     await saveConversationState(userId, currentState);
 
+    // サービス選択後は大カテゴリをクイックリプライで表示
+    const { getCategoriesForService, generateCategoryQuickReplies } = await import('../support/categories');
+    const categories = getCategoriesForService(service);
+    const quickReplies = generateCategoryQuickReplies(categories, lang);
+
+    const categoryPromptMessages: Record<string, string> = {
+      ja: 'ありがとうございます。何についてお聞きですか？',
+      en: 'Thank you. What would you like to know about?',
+      ko: '감사합니다. 무엇에 대해 알고 싶으신가요?',
+      zh: '谢谢。您想了解什么？',
+      vi: 'Cảm ơn bạn. Bạn muốn hỏi về điều gì?',
+    };
+    const promptMessage = categoryPromptMessages[lang] || categoryPromptMessages.ja;
+
     await replyMessage(replyToken, {
       type: 'text',
-      text: getSupportMessage('describeIssue', lang),
+      text: promptMessage,
+      quickReply: quickReplies ? { items: quickReplies } : undefined,
     });
+
+    console.log(`✅ サービス選択完了、大カテゴリ表示: ${service}`);
     return true;
   }
 

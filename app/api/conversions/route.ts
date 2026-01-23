@@ -43,43 +43,51 @@ function getDateRange(period: string): { start: Date; end: Date } {
   }
 }
 
+// 新形式トークン（8文字hex）かどうかを判定
+function isNewFormatToken(token: string): boolean {
+  return /^[a-f0-9]{8}$/.test(token);
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const period = searchParams.get('period') || 'all';
   const { start, end } = getDateRange(period);
 
   try {
-    // 統計情報取得（期間フィルター付き）
-    let stats = null;
-    try {
-      const { data: statsData } = await supabase.rpc('get_conversion_stats', {
-        start_date: start.toISOString(),
-        end_date: end.toISOString(),
-      });
-      if (statsData) {
-        stats = {
-          uniqueIssuedUsers: statsData.unique_issued_users || 0,
-          uniqueClickedUsers: statsData.unique_clicked_users || 0,
-          totalTokens: statsData.total_tokens || 0,
-          totalClicks: statsData.total_clicks || 0,
-          totalConversions: statsData.total_conversions || 0,
-          uniqueConvertedUsers: statsData.unique_converted_users || 0,
-          clickRate: statsData.click_rate || 0,
-          conversionRate: statsData.conversion_rate || 0,
-        };
-      }
-    } catch {
-      // RPC失敗時はデフォルト値
-      stats = {
-        uniqueIssuedUsers: 0,
-        uniqueClickedUsers: 0,
-        totalTokens: 0,
-        totalClicks: 0,
-        totalConversions: 0,
-        uniqueConvertedUsers: 0,
-        clickRate: 0,
-        conversionRate: 0,
-      };
+    // 統計情報: RPCを使わず直接計算（新形式トークンのみ）
+    let stats = {
+      uniqueIssuedUsers: 0,
+      uniqueClickedUsers: 0,
+      totalTokens: 0,
+      totalClicks: 0,
+      totalConversions: 0,
+      uniqueConvertedUsers: 0,
+      clickRate: 0,
+      conversionRate: 0,
+    };
+
+    // 新形式トークンのみを取得して統計を計算
+    const { data: allTokensData } = await supabase
+      .from('tracking_tokens')
+      .select('token, user_id, clicked_at, converted_at')
+      .gte('created_at', start.toISOString())
+      .lt('created_at', end.toISOString());
+
+    if (allTokensData) {
+      // 新形式トークンのみフィルタ
+      const newFormatTokens = allTokensData.filter((t) => isNewFormatToken(t.token));
+
+      // 統計計算
+      const issuedUserIds = new Set(newFormatTokens.map((t) => t.user_id));
+      const clickedUserIds = new Set(newFormatTokens.filter((t) => t.clicked_at).map((t) => t.user_id));
+
+      stats.totalTokens = newFormatTokens.length;
+      stats.uniqueIssuedUsers = issuedUserIds.size;
+      stats.totalClicks = newFormatTokens.filter((t) => t.clicked_at).length;
+      stats.uniqueClickedUsers = clickedUserIds.size;
+      stats.clickRate = stats.uniqueIssuedUsers > 0
+        ? Math.round((stats.uniqueClickedUsers / stats.uniqueIssuedUsers) * 100 * 100) / 100
+        : 0;
     }
 
     // 応募完了ユーザー（GA4から取得後に設定するため、ここでは空で初期化）
@@ -94,7 +102,11 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     // GA4から検知されたキーイベント（complete_work等）を取得
-    const startDateStr = start.toISOString().split('T')[0];
+    // GA4は過去データに制限があるため、allの場合は90日前からに制限
+    const ga4StartDate = period === 'all'
+      ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+      : start;
+    const startDateStr = ga4StartDate.toISOString().split('T')[0];
     const endDateStr = end.toISOString().split('T')[0];
     const ga4Conversions = await getLineBotConversionsWithKeyEvents(startDateStr, endDateStr);
 
@@ -264,8 +276,11 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false });
 
       if (detailsData) {
+        // 新形式トークンのみフィルタ
+        const newFormatDetails = detailsData.filter((row) => isNewFormatToken(row.token));
+
         // 詳細リスト（最大100件）
-        details = detailsData.slice(0, 100).map((row) => ({
+        details = newFormatDetails.slice(0, 100).map((row) => ({
           id: row.id,
           token: row.token,
           urlType: row.url_type,
@@ -275,9 +290,9 @@ export async function GET(request: NextRequest) {
           convertedAt: row.converted_at,
         }));
 
-        // url_type別集計
+        // url_type別集計（新形式トークンのみ）
         const typeMap = new Map<string, { issued: number; clicked: number }>();
-        for (const row of detailsData) {
+        for (const row of newFormatDetails) {
           const urlType = row.url_type || 'unknown';
           const existing = typeMap.get(urlType);
           if (existing) {
@@ -304,7 +319,141 @@ export async function GET(request: NextRequest) {
       // テーブルが存在しない場合は空配列
     }
 
-    return NextResponse.json({ stats, users, details, applications, clicksByType, period });
+    // 発行者一覧（新形式トークンを持つユニークユーザー）
+    let issuers: Array<{
+      userId: string;
+      displayName: string | null;
+      pictureUrl: string | null;
+      tokenCount: number;
+      clickCount: number;
+      urlTypes: string[];
+      firstIssued: string;
+      lastIssued: string;
+      hasConverted: boolean;
+    }> = [];
+
+    if (allTokensData) {
+      const newFormatTokens = allTokensData.filter((t) => isNewFormatToken(t.token));
+
+      // ユーザーごとに集計
+      const issuerMap = new Map<string, {
+        tokenCount: number;
+        clickCount: number;
+        urlTypes: Set<string>;
+        firstIssued: string;
+        lastIssued: string;
+      }>();
+
+      // 詳細データからurl_type情報を取得
+      const { data: issuerDetailsData } = await supabase
+        .from('tracking_tokens')
+        .select('token, user_id, url_type, created_at, clicked_at')
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString());
+
+      const tokenUrlTypeMap = new Map<string, string>();
+      const tokenCreatedMap = new Map<string, string>();
+      if (issuerDetailsData) {
+        for (const row of issuerDetailsData) {
+          if (isNewFormatToken(row.token)) {
+            tokenUrlTypeMap.set(row.token, row.url_type || 'unknown');
+            tokenCreatedMap.set(row.token, row.created_at);
+          }
+        }
+      }
+
+      for (const t of newFormatTokens) {
+        const existing = issuerMap.get(t.user_id);
+        const urlType = tokenUrlTypeMap.get(t.token) || 'unknown';
+        const createdAt = tokenCreatedMap.get(t.token) || '';
+
+        if (existing) {
+          existing.tokenCount++;
+          if (t.clicked_at) existing.clickCount++;
+          existing.urlTypes.add(urlType);
+          if (createdAt && createdAt < existing.firstIssued) {
+            existing.firstIssued = createdAt;
+          }
+          if (createdAt && createdAt > existing.lastIssued) {
+            existing.lastIssued = createdAt;
+          }
+        } else {
+          issuerMap.set(t.user_id, {
+            tokenCount: 1,
+            clickCount: t.clicked_at ? 1 : 0,
+            urlTypes: new Set([urlType]),
+            firstIssued: createdAt,
+            lastIssued: createdAt,
+          });
+        }
+      }
+
+      // 発行者のプロフィールを取得
+      const issuerUserIds = [...issuerMap.keys()];
+      const issuerProfileMap = new Map<string, { displayName: string | null; pictureUrl: string | null }>();
+
+      // 既存のprofileMapを使いつつ、足りないものを追加取得
+      for (const userId of issuerUserIds) {
+        if (profileMap.has(userId)) {
+          issuerProfileMap.set(userId, profileMap.get(userId)!);
+        }
+      }
+
+      // まだプロフィールがないユーザーを取得
+      const missingProfileUserIds = issuerUserIds.filter((id) => !issuerProfileMap.has(id));
+      for (let i = 0; i < missingProfileUserIds.length; i += 10) {
+        const batch = missingProfileUserIds.slice(i, i + 10);
+        const profiles = await Promise.all(
+          batch.map(async (userId) => {
+            const profile = await getUserProfile(userId);
+            return {
+              userId,
+              displayName: profile?.displayName || null,
+              pictureUrl: profile?.pictureUrl || null,
+            };
+          })
+        );
+        for (const p of profiles) {
+          issuerProfileMap.set(p.userId, { displayName: p.displayName, pictureUrl: p.pictureUrl });
+        }
+      }
+
+      // 応募済みユーザーのセット
+      const convertedUserIds = new Set(users.map((u) => u.userId));
+
+      issuers = Array.from(issuerMap.entries())
+        .map(([userId, data]) => {
+          const profile = issuerProfileMap.get(userId);
+          return {
+            userId,
+            displayName: profile?.displayName || null,
+            pictureUrl: profile?.pictureUrl || null,
+            tokenCount: data.tokenCount,
+            clickCount: data.clickCount,
+            urlTypes: Array.from(data.urlTypes),
+            firstIssued: data.firstIssued,
+            lastIssued: data.lastIssued,
+            hasConverted: convertedUserIds.has(userId),
+          };
+        })
+        .sort((a, b) => b.lastIssued.localeCompare(a.lastIssued));
+    }
+
+    // GA4から取得した応募者数・応募数でstatsを更新
+    // （RPCはtracking_tokens.converted_atベースだが、GA4データの方が正確）
+    const ga4UniqueConvertedUsers = users.length;
+    const ga4TotalConversions = applications.length;
+
+    if (stats) {
+      stats.uniqueConvertedUsers = ga4UniqueConvertedUsers;
+      stats.totalConversions = ga4TotalConversions;
+      // 応募率も再計算（応募数 / クリック数）
+      stats.conversionRate = stats.uniqueClickedUsers > 0
+        ? Math.round((ga4TotalConversions / stats.uniqueClickedUsers) * 100 * 100) / 100
+        : 0;
+    }
+
+    return NextResponse.json({ stats, users, details, applications, clicksByType, issuers, period });
   } catch (error) {
     console.error('Failed to fetch conversion data:', error);
     return NextResponse.json(
