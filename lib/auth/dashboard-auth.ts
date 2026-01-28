@@ -1,37 +1,66 @@
 // =====================================================
-// Dashboard API Authentication
+// Dashboard API Authentication (NextAuth)
 // =====================================================
 
+import { getToken } from 'next-auth/jwt';
 import { NextRequest } from 'next/server';
 
-const DASHBOARD_USER = process.env.DASHBOARD_USER || 'admin';
-const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || 'password';
+// 許可するメールアドレスのドメイン
+const ALLOWED_DOMAINS = ['yolo-japan.com', 'yolo-japan.co.jp'];
+
+// 個別に許可するメールアドレス
+const ALLOWED_EMAILS = (process.env.ALLOWED_DASHBOARD_EMAILS || '').split(',').filter(Boolean);
 
 /**
- * Basic認証をチェック
+ * NextAuth認証をチェック
  */
-export function checkDashboardAuth(request: NextRequest): {
+export async function checkDashboardAuth(request: NextRequest): Promise<{
   authenticated: boolean;
   error?: string;
-} {
-  const authHeader = request.headers.get('authorization');
-
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    return { authenticated: false, error: 'Authorization header missing' };
-  }
-
+  user?: {
+    email: string;
+    name?: string;
+  };
+}> {
   try {
-    const base64Credentials = authHeader.slice('Basic '.length);
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-    const [username, password] = credentials.split(':');
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
 
-    if (username === DASHBOARD_USER && password === DASHBOARD_PASSWORD) {
-      return { authenticated: true };
+    if (!token || !token.email) {
+      return { authenticated: false, error: 'Not authenticated' };
     }
 
-    return { authenticated: false, error: 'Invalid credentials' };
-  } catch {
-    return { authenticated: false, error: 'Invalid authorization header' };
+    const email = token.email.toLowerCase();
+    const domain = email.split('@')[1];
+
+    // ドメインチェック
+    if (ALLOWED_DOMAINS.includes(domain)) {
+      return {
+        authenticated: true,
+        user: {
+          email,
+          name: token.name as string | undefined,
+        },
+      };
+    }
+
+    // 個別メールチェック
+    if (ALLOWED_EMAILS.includes(email)) {
+      return {
+        authenticated: true,
+        user: {
+          email,
+          name: token.name as string | undefined,
+        },
+      };
+    }
+
+    return { authenticated: false, error: 'Access denied' };
+  } catch (error) {
+    console.error('Auth check error:', error);
+    return { authenticated: false, error: 'Authentication error' };
   }
 }
 
@@ -43,7 +72,6 @@ export function unauthorizedResponse(error: string = 'Unauthorized') {
     status: 401,
     headers: {
       'Content-Type': 'application/json',
-      'WWW-Authenticate': 'Basic realm="Dashboard"',
     },
   });
 }

@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ ticketId: string }> }
 ) {
   // 認証チェック
-  const auth = checkDashboardAuth(request);
+  const auth = await checkDashboardAuth(request);
   if (!auth.authenticated) {
     return unauthorizedResponse(auth.error);
   }

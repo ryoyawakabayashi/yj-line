@@ -4,7 +4,7 @@ import { checkDashboardAuth, unauthorizedResponse } from '@/lib/auth/dashboard-a
 
 export async function GET(request: NextRequest) {
   // 認証チェック
-  const auth = checkDashboardAuth(request);
+  const auth = await checkDashboardAuth(request);
   if (!auth.authenticated) {
     return unauthorizedResponse(auth.error);
   }

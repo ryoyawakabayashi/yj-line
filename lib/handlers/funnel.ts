@@ -28,7 +28,7 @@ import { processUrl, processUrlsInText } from '../tracking/url-processor';
  */
 export interface FunnelResult {
   handled: boolean;
-  action?: 'diagnosis' | 'faq' | 'url' | 'escalate' | 'subcategory' | 'top_categories';
+  action?: 'diagnosis' | 'faq' | 'url' | 'escalate' | 'subcategory' | 'top_categories' | 'ask_other_details';
   data?: {
     presetData?: ExtractedData;
     faqId?: string;
@@ -213,7 +213,11 @@ async function executeAction(
       return { handled: false };
 
     case 'escalate':
-      // エスカレーション（呼び出し元で処理）
+      // 「その他」カテゴリの場合は、すぐにエスカレーションせず詳細を聞く
+      if (category.id === 'other') {
+        return { handled: true, action: 'ask_other_details' };
+      }
+      // それ以外のエスカレーション（呼び出し元で処理）
       return { handled: true, action: 'escalate' };
 
     case 'subcategory':

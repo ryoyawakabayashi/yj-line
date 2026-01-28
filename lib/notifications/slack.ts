@@ -5,7 +5,7 @@
 const SLACK_WEBHOOK_URL = process.env.SLACK_SUPPORT_WEBHOOK_URL;
 
 // 本番ダッシュボードURL
-const DASHBOARD_BASE_URL = 'https://line-bot-next-ryoyawakabayashis-projects.vercel.app';
+const DASHBOARD_BASE_URL = 'https://line-bot-next-omega.vercel.app';
 
 export interface SlackNotification {
   ticketId: string;

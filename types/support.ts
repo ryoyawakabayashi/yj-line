@@ -26,11 +26,12 @@ export type IssueStatus = 'investigating' | 'resolved' | 'wontfix';
  * サポートモードのステップ
  */
 export type SupportStep =
-  | 'select_type'      // ご意見 or 不具合報告 選択
-  | 'select_service'   // サービス選択（不具合報告時）
-  | 'describe_issue'   // 詳細入力
-  | 'confirm'          // 確認
-  | 'complete';        // 完了
+  | 'select_type'           // ご意見 or 不具合報告 選択
+  | 'select_service'        // サービス選択（不具合報告時）
+  | 'describe_issue'        // 詳細入力
+  | 'describe_other_issue'  // 「その他」選択後の詳細入力（FAQ検索→エスカレーション）
+  | 'confirm'               // 確認
+  | 'complete';             // 完了
 
 /**
  * 確認待ちの状態（イエスドリ用）

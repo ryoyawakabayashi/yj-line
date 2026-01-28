@@ -487,6 +487,11 @@ export async function handleSupportMessage(
     return false;
   }
 
+  // 「その他」からの詳細入力ステップの場合
+  if (supportState.step === 'describe_other_issue') {
+    return await handleDescribeOtherIssue(userId, replyToken, userMessage, currentState, lang);
+  }
+
   // 詳細入力ステップ以外では処理しない
   if (supportState.step !== 'describe_issue') {
     return false;
@@ -816,6 +821,30 @@ export async function handleSupportMessage(
       supportState.currentCategoryId = categoryResult.data.categoryId;
       currentState.supportState = supportState;
       await saveConversationState(userId, currentState);
+      return true;
+    }
+
+    if (categoryResult.action === 'ask_other_details') {
+      // 「その他」が選択された場合、詳細を聞く
+      const askDetailsMessages: Record<string, string> = {
+        ja: 'どのようなお困りですか？詳しく教えてください。',
+        en: 'What issue are you experiencing? Please tell me more details.',
+        ko: '어떤 문제가 있으신가요? 자세히 알려주세요.',
+        zh: '您遇到了什么问题？请告诉我详细情况。',
+        vi: 'Bạn đang gặp vấn đề gì? Vui lòng cho tôi biết chi tiết.',
+      };
+      const askDetailsMessage = askDetailsMessages[lang] || askDetailsMessages.ja;
+
+      conversationHistory.push({ role: 'assistant', content: askDetailsMessage });
+      supportState.step = 'describe_other_issue';
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: askDetailsMessage,
+      });
       return true;
     }
 
@@ -1288,6 +1317,99 @@ export async function handleSupportMessage(
     quickReply: quickReplies ? { items: quickReplies } : undefined,
   });
 
+  return true;
+}
+
+/**
+ * 「その他」カテゴリ選択後の詳細入力処理
+ * FAQ検索 → 見つかれば回答 → 見つからなければエスカレーション
+ */
+async function handleDescribeOtherIssue(
+  userId: string,
+  replyToken: string,
+  userMessage: string,
+  currentState: ConversationState,
+  lang: string
+): Promise<boolean> {
+  const supportState = currentState.supportState!;
+  const conversationHistory = supportState.conversationHistory || [];
+
+  await showLoadingAnimation(userId, 5);
+
+  // ユーザーメッセージを履歴に追加
+  conversationHistory.push({ role: 'user', content: userMessage });
+
+  // FAQ検索を実行
+  const faqResults = await searchFAQAsync(userMessage, supportState.service, lang);
+
+  // 高スコアのFAQが見つかった場合
+  if (faqResults.length > 0 && faqResults[0].score >= 0.5) {
+    const topFaq = faqResults[0];
+
+    // FAQ確認メッセージを表示
+    const confirmMessages: Record<string, string> = {
+      ja: `「${topFaq.question}」についてお困りですか？`,
+      en: `Are you having trouble with "${topFaq.question}"?`,
+      ko: `"${topFaq.question}"에 대해 어려움을 겪고 계신가요?`,
+      zh: `您是否在"${topFaq.question}"方面遇到困难？`,
+      vi: `Bạn có gặp khó khăn về "${topFaq.question}" không?`,
+    };
+    const confirmMessage = confirmMessages[lang] || confirmMessages.ja;
+
+    // 確認待ち状態を保存
+    supportState.pendingQuickReply = {
+      type: 'faq_confirm',
+      choices: [],
+      confirmFaq: {
+        faqId: topFaq.id,
+        response: topFaq.answer,
+      },
+    };
+
+    conversationHistory.push({ role: 'assistant', content: confirmMessage });
+    supportState.conversationHistory = conversationHistory;
+    // ステップをdescribe_issueに変更（通常のサポートフローに戻す）
+    supportState.step = 'describe_issue';
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    // クイックリプライ付きで確認
+    const yesLabel = FAQ_CONFIRM_YES[lang] || FAQ_CONFIRM_YES.ja;
+    const noLabel = FAQ_CONFIRM_NO[lang] || FAQ_CONFIRM_NO.ja;
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: confirmMessage,
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: { type: 'message', label: yesLabel, text: yesLabel },
+          },
+          {
+            type: 'action',
+            action: { type: 'message', label: noLabel, text: noLabel },
+          },
+        ],
+      },
+    });
+
+    return true;
+  }
+
+  // FAQが見つからない場合 → エスカレーション
+  const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
+  conversationHistory.push({ role: 'assistant', content: escalationResponse });
+  supportState.conversationHistory = conversationHistory;
+  currentState.supportState = supportState;
+  await saveConversationState(userId, currentState);
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: escalationResponse,
+  });
+
+  await handleEscalation(userId, supportState, lang, '「その他」カテゴリからのエスカレーション（FAQ該当なし）');
   return true;
 }
 
