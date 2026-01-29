@@ -270,110 +270,56 @@ export async function handleYoloDiscover(event: any, lang: string) {
   const greetingVi = displayName ? `${displayName} Của` : '';
 
   const messages: Record<string, string> = {
-    ja: `【${greetingJa}日本生活をアップグレード】
+    ja: `【YOLO :DISCOVER】
+グルメ・観光・ライフスタイルなど、日本の魅力を無料で体験できるサービスです。
 
-YOLO :DISCOVERは、グルメ・観光・ライフスタイルなど、日本の魅力を無料で体験し、あなたのSNSで日本の魅力を発信するサービスです。
+最新のプロジェクト情報はYOLO :DISCOVERのLINEでお届けしています。
 
-感じたことをシェアするだけ。
-SNSのフォロワー数は問いません。
+言語と住んでる地域を設定するだけですぐアクセスできます。
+※未登録の方は初回登録が必要です
 
-✨ こんなお店でサービスを体験できます
-・1人前3万円のすき焼き店
-・行列ができるお寿司屋さん
-・リゾートホテル宿泊
-などなど
+👇 友だち追加してチェック！
+https://lin.ee/bRDMgVx`,
+    en: `【YOLO :DISCOVER】
+A service where you can experience Japan's charm for FREE - gourmet, sightseeing, lifestyle and more!
 
-YOLO :DISCOVERなら、これらが無料で体験できます！
+Get the latest project info on YOLO :DISCOVER's LINE.
 
-💰 登録・参加すべて無料
-※店舗への交通費は実費
+Just set your language and region to get started.
+*First-time users need to register
 
-👇 今すぐチェック
-https://wom.yolo-japan.com/ja/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
-    en: `【Upgrade ${greetingEn} Life in Japan】
-YOLO :DISCOVER
+👇 Add as friend and check it out!
+https://lin.ee/bRDMgVx`,
+    ko: `【YOLO :DISCOVER】
+그루메・관광・라이프스타일 등 일본의 매력을 무료로 체험할 수 있는 서비스입니다.
 
-YOLO :DISCOVER is a service where you can experience Japanese culture for free—from gourmet dining to travel and lifestyle—and share Japan's appeal on your SNS.
+최신 프로젝트 정보는 YOLO :DISCOVER LINE에서 전달하고 있습니다.
 
-Just share what you feel.
-No follower count required.
+언어와 거주 지역만 설정하면 바로 이용할 수 있습니다.
+※미등록 회원은 최초 등록이 필요합니다
 
-✨ Experience services at places like:
-・Premium sukiyaki restaurant (¥30,000 per person)
-・Popular sushi restaurant with long queues
-・Resort hotel stays
-And more!
+👇 친구 추가하고 확인하세요!
+https://lin.ee/bRDMgVx`,
+    zh: `【YOLO :DISCOVER】
+美食・观光・生活方式等，可以免费体验日本魅力的服务。
 
-With YOLO :DISCOVER, you can experience all of these for FREE!
+最新项目信息在YOLO :DISCOVER的LINE上发布。
 
-💰 Registration & participation FREE
-※Transportation costs at your own expense
+只需设置语言和居住地区即可立即使用。
+※未注册用户需要首次注册
 
-👇 Check now
-https://wom.yolo-japan.com/en/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
-    ko: `【${greetingKo} 일본 생활을 업그레이드】
-YOLO :DISCOVER
+👇 添加好友查看！
+https://lin.ee/bRDMgVx`,
+    vi: `【YOLO :DISCOVER】
+Dịch vụ trải nghiệm miễn phí sức hấp dẫn của Nhật Bản - ẩm thực, du lịch, phong cách sống và nhiều hơn nữa!
 
-YOLO :DISCOVER는 그루메·관광·라이프스타일 등 일본의 매력을 무료로 체험하고, SNS에서 일본의 매력을 전달하는 서비스입니다.
+Thông tin dự án mới nhất được cập nhật trên LINE của YOLO :DISCOVER.
 
-느낀 것을 공유하기만 하면 됩니다.
-SNS 팔로워 수는 상관없습니다.
+Chỉ cần cài đặt ngôn ngữ và khu vực sinh sống để bắt đầu.
+※Người dùng mới cần đăng ký lần đầu
 
-✨ 이런 곳에서 서비스를 체험할 수 있습니다
-・1인 3만엔 스키야키 전문점
-・줄 서는 초밥집
-・리조트 호텔 숙박
-등등
-
-YOLO :DISCOVER로 이 모든 것을 무료로 체험할 수 있습니다!
-
-💰 등록·참가 모두 무료
-※교통비는 본인 부담
-
-👇 지금 확인
-https://wom.yolo-japan.com/ko/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
-    zh: `【升级${greetingZh}日本生活】
-YOLO :DISCOVER
-
-YOLO :DISCOVER是一项可以免费体验日本美食、旅游、生活方式等魅力，并在您的SNS上传播日本魅力的服务。
-
-只需分享您的感受。
-不限SNS粉丝数。
-
-✨ 可以在这些地方体验服务
-・人均3万日元的寿喜烧店
-・排队的寿司店
-・度假酒店住宿
-等等
-
-通过YOLO :DISCOVER，您可以免费体验这些！
-
-💰 注册·参加全部免费
-※交通费自理
-
-👇 立即查看
-https://wom.yolo-japan.com/zh-TW/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
-    vi: `【Nâng Cấp Cuộc Sống Nhật Bản${greetingVi ? ' ' + greetingVi : ''}】
-YOLO :DISCOVER
-
-YOLO :DISCOVER là dịch vụ trải nghiệm miễn phí sức hấp dẫn của Nhật Bản từ ẩm thực, du lịch đến phong cách sống, và chia sẻ sức hấp dẫn của Nhật Bản trên SNS của bạn.
-
-Chỉ cần chia sẻ những gì bạn cảm nhận.
-Không yêu cầu số lượng followers.
-
-✨ Trải nghiệm dịch vụ tại những nơi như:
-・Nhà hàng sukiyaki cao cấp (¥30,000/người)
-・Nhà hàng sushi xếp hàng dài
-・Nghỉ dưỡng tại khách sạn resort
-Và nhiều hơn nữa!
-
-Với YOLO :DISCOVER, bạn có thể trải nghiệm tất cả MIỄN PHÍ!
-
-💰 Đăng ký & tham gia MIỄN PHÍ
-※Chi phí di chuyển tự túc
-
-👇 Kiểm tra ngay
-https://wom.yolo-japan.com/vi/projects/?utm_source=line&utm_medium=yjline&utm_campaign=line_yjline_discover`,
+👇 Thêm bạn bè và kiểm tra ngay!
+https://lin.ee/bRDMgVx`,
   };
 
   await replyMessage(replyToken, {
