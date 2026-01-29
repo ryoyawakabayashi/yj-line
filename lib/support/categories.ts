@@ -111,6 +111,13 @@ const LABELS = {
     zh: '忘记密码',
     vi: 'Quên mật khẩu',
   },
+  change_email: {
+    ja: 'メールアドレスを変更したい',
+    en: 'Change email address',
+    ko: '이메일 주소 변경',
+    zh: '更改邮箱地址',
+    vi: 'Thay đổi địa chỉ email',
+  },
   profile_edit: {
     ja: 'プロフィールを編集したい',
     en: 'Edit profile',
@@ -124,6 +131,66 @@ const LABELS = {
     ko: '탈퇴하고 싶습니다',
     zh: '注销账户',
     vi: 'Xóa tài khoản',
+  },
+
+  // 応募・面接関連カテゴリー
+  application_interview: {
+    ja: '応募・面接について',
+    en: 'Application/Interview',
+    ko: '지원/면접',
+    zh: '申请/面试',
+    vi: 'Ứng tuyển/Phỏng vấn',
+  },
+  no_contact_from_company: {
+    ja: '企業から連絡がない',
+    en: 'No contact from company',
+    ko: '회사에서 연락이 없습니다',
+    zh: '公司没有联系',
+    vi: 'Công ty không liên hệ',
+  },
+  application_no_reply: {
+    ja: '応募後の流れを知りたい',
+    en: 'What happens after applying',
+    ko: '지원 후 진행 과정',
+    zh: '申请后的流程',
+    vi: 'Quy trình sau khi ứng tuyển',
+  },
+  cancel_interview: {
+    ja: '面接をキャンセルしたい',
+    en: 'Cancel interview',
+    ko: '면접 취소',
+    zh: '取消面试',
+    vi: 'Hủy phỏng vấn',
+  },
+  auto_cancelled: {
+    ja: '自動キャンセルされた',
+    en: 'Auto cancelled',
+    ko: '자동 취소됨',
+    zh: '自动取消',
+    vi: 'Tự động hủy',
+  },
+
+  // メール配信関連カテゴリー
+  email_delivery: {
+    ja: 'メール配信について',
+    en: 'Email Delivery',
+    ko: '이메일 수신',
+    zh: '邮件订阅',
+    vi: 'Nhận email',
+  },
+  stop_newsletter: {
+    ja: 'メルマガを停止したい',
+    en: 'Stop newsletter',
+    ko: '뉴스레터 중지',
+    zh: '停止订阅',
+    vi: 'Dừng bản tin',
+  },
+  confirmation_email_not_received: {
+    ja: '確認メールが届かない',
+    en: 'Confirmation email not received',
+    ko: '확인 이메일이 오지 않습니다',
+    zh: '没有收到确认邮件',
+    vi: 'Không nhận được email xác nhận',
   },
 };
 
@@ -171,6 +238,37 @@ export const YOLO_JAPAN_CATEGORIES: Category[] = [
     ],
   },
   {
+    id: 'application_interview',
+    keywords: ['応募', '面接', 'apply', 'interview', '지원', '면접', '申请', '面试', 'ứng tuyển', 'phỏng vấn', '連絡がない', '連絡こない'],
+    labels: LABELS.application_interview,
+    children: [
+      {
+        id: 'no_contact_from_company',
+        keywords: ['連絡がない', '連絡こない', '連絡取れない', '返事がない', 'no contact', 'no reply', '연락이 없'],
+        labels: LABELS.no_contact_from_company,
+        action: { type: 'faq', faqId: 'no_contact_from_company' },
+      },
+      {
+        id: 'application_no_reply',
+        keywords: ['応募後', '流れ', 'after applying', '지원 후', '申请后'],
+        labels: LABELS.application_no_reply,
+        action: { type: 'faq', faqId: 'application_no_reply' },
+      },
+      {
+        id: 'cancel_interview',
+        keywords: ['キャンセル', 'cancel', '辞退', '취소', '取消'],
+        labels: LABELS.cancel_interview,
+        action: { type: 'faq', faqId: 'cancel_interview' },
+      },
+      {
+        id: 'auto_cancelled',
+        keywords: ['自動', '勝手に', 'auto', '자동', '自动'],
+        labels: LABELS.auto_cancelled,
+        action: { type: 'faq', faqId: 'auto_cancelled' },
+      },
+    ],
+  },
+  {
     id: 'account',
     keywords: ['アカウント', 'account', '登録', 'register', 'ログイン', 'login', '계정', '账户', 'tài khoản'],
     labels: LABELS.account,
@@ -188,8 +286,14 @@ export const YOLO_JAPAN_CATEGORIES: Category[] = [
         action: { type: 'faq', faqId: 'forgot_password' },
       },
       {
+        id: 'change_email',
+        keywords: ['メールアドレス', 'メアド', 'email', 'change email', '이메일', '邮箱'],
+        labels: LABELS.change_email,
+        action: { type: 'faq', faqId: 'change_email' },
+      },
+      {
         id: 'profile_edit',
-        keywords: ['プロフィール', 'profile', '編集', 'edit', '変更', 'change', '履歴書'],
+        keywords: ['プロフィール', 'profile', '編集', 'edit', '履歴書'],
         labels: LABELS.profile_edit,
         action: {
           type: 'url',
@@ -201,6 +305,25 @@ export const YOLO_JAPAN_CATEGORIES: Category[] = [
         keywords: ['退会', 'withdraw', '削除', 'delete', '解約', 'cancel', '탈퇴', '注销'],
         labels: LABELS.withdraw,
         action: { type: 'faq', faqId: 'withdraw_account' },
+      },
+    ],
+  },
+  {
+    id: 'email_delivery',
+    keywords: ['メール', 'email', 'メルマガ', 'newsletter', '이메일', '邮件', '届かない', '停止'],
+    labels: LABELS.email_delivery,
+    children: [
+      {
+        id: 'stop_newsletter',
+        keywords: ['停止', 'メルマガ', 'stop', 'unsubscribe', '중지', '停止订阅'],
+        labels: LABELS.stop_newsletter,
+        action: { type: 'faq', faqId: 'stop_newsletter' },
+      },
+      {
+        id: 'confirmation_email_not_received',
+        keywords: ['届かない', '来ない', 'not received', '오지 않', '没有收到', '確認メール'],
+        labels: LABELS.confirmation_email_not_received,
+        action: { type: 'faq', faqId: 'confirmation_email_not_received' },
       },
     ],
   },

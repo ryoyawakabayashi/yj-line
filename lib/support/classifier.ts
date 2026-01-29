@@ -311,6 +311,47 @@ Càng chi tiết, chúng tôi càng điều tra nhanh hơn.`,
     },
   },
   {
+    id: 'confirmation_email_not_received',
+    keywords: ['確認メール', '届かない', '来ない', 'メールが届', 'confirmation email', 'email not received', '확인 이메일', '确认邮件'],
+    responses: {
+      ja: `確認メールが届かない場合は、以下をご確認ください：
+
+1. 迷惑メールフォルダを確認
+2. 入力したメールアドレスに間違いがないか確認
+3. @yolo-japan.com からのメールを受信許可
+
+それでも届かない場合は、少し時間をおいてから再度お試しください。`,
+      en: `If you haven't received the confirmation email, please check:
+
+1. Your spam/junk folder
+2. The email address you entered is correct
+3. Allow emails from @yolo-japan.com
+
+If it still doesn't arrive, please wait a moment and try again.`,
+      ko: `확인 이메일이 도착하지 않으면 다음을 확인해 주세요:
+
+1. 스팸/정크 폴더 확인
+2. 입력한 이메일 주소가 올바른지 확인
+3. @yolo-japan.com에서 오는 이메일 허용
+
+그래도 도착하지 않으면 잠시 후 다시 시도해 주세요.`,
+      zh: `如果没有收到确认邮件，请检查：
+
+1. 垃圾邮件文件夹
+2. 输入的邮箱地址是否正确
+3. 允许接收来自 @yolo-japan.com 的邮件
+
+如果仍未收到，请稍等片刻后重试。`,
+      vi: `Nếu chưa nhận được email xác nhận, vui lòng kiểm tra:
+
+1. Thư mục spam/rác
+2. Địa chỉ email đã nhập có chính xác không
+3. Cho phép nhận email từ @yolo-japan.com
+
+Nếu vẫn không nhận được, vui lòng đợi một lát rồi thử lại.`,
+    },
+  },
+  {
     id: 'how_to_apply',
     keywords: ['応募したい', '応募方法', '応募するには', 'how to apply', 'apply for job', '지원하고 싶', '想申请'],
     responses: {
