@@ -773,6 +773,30 @@ export async function handleSupportMessage(
       return true;
     }
 
+    if (funnelResult.action === 'ask_other_details') {
+      // 「その他」が選択された場合、詳細を聞く
+      const askDetailsMessages: Record<string, string> = {
+        ja: 'どのようなお困りですか？詳しく教えてください。',
+        en: 'What issue are you experiencing? Please tell me more details.',
+        ko: '어떤 문제가 있으신가요? 자세히 알려주세요.',
+        zh: '您遇到了什么问题？请告诉我详细情况。',
+        vi: 'Bạn đang gặp vấn đề gì? Vui lòng cho tôi biết chi tiết.',
+      };
+      const askDetailsMessage = askDetailsMessages[lang] || askDetailsMessages.ja;
+
+      conversationHistory.push({ role: 'assistant', content: askDetailsMessage });
+      supportState.step = 'describe_other_issue';
+      supportState.conversationHistory = conversationHistory;
+      currentState.supportState = supportState;
+      await saveConversationState(userId, currentState);
+
+      await replyMessage(replyToken, {
+        type: 'text',
+        text: askDetailsMessage,
+      });
+      return true;
+    }
+
     if (funnelResult.action === 'escalate') {
       // エスカレーション処理
       const escalationResponse = ESCALATION_MESSAGES[lang] || ESCALATION_MESSAGES.ja;
