@@ -38,7 +38,8 @@ export type UrlSourceType =
   | 'autochat'            // AIトーク（自由会話）から
   | 'richmenu'            // リッチメニューから
   | 'faq'                 // FAQ応答から
-  | 'followup';           // フォローアップから
+  | 'followup'            // フォローアップから
+  | '10apply_boost';      // 10件応募促進リマインダーから
 
 /**
  * テキスト内のURLを検出する正規表現

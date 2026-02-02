@@ -1834,11 +1834,44 @@ JSONのみで回答してください（説明不要）：
  * エスカレーション時の定型文
  */
 export const ESCALATION_MESSAGES: Record<string, string> = {
-  ja: '担当者に確認いたします。少々お待ちください。',
-  en: 'Let me check with our team. Please wait a moment.',
-  ko: '담당자에게 확인하겠습니다. 잠시만 기다려 주세요.',
-  zh: '我将与团队确认。请稍等。',
-  vi: 'Tôi sẽ kiểm tra với đội ngũ. Vui lòng đợi.',
+  ja: 'サポートスタッフが確認の上、ご連絡いたします。',
+  en: 'Our support staff will review and get back to you.',
+  ko: '지원 담당자가 확인 후 연락드리겠습니다.',
+  zh: '客服人员确认后会与您联系。',
+  vi: 'Nhân viên hỗ trợ sẽ xem xét và liên hệ lại với bạn.',
+};
+
+/**
+ * エスカレーション確認メッセージ（スタッフに繋ぐ前の確認）
+ */
+export const ESCALATION_CONFIRM_MESSAGES: Record<string, string> = {
+  ja: 'サポートスタッフにお繋ぎしますか？',
+  en: 'Would you like to connect with a support staff member?',
+  ko: '지원 담당자와 연결하시겠습니까?',
+  zh: '您需要与客服人员联系吗？',
+  vi: 'Bạn có muốn kết nối với nhân viên hỗ trợ không?',
+};
+
+/**
+ * エスカレーション確認の「はい」ラベル
+ */
+export const ESCALATION_CONFIRM_YES: Record<string, string> = {
+  ja: 'はい、お願いします',
+  en: 'Yes, please',
+  ko: '네, 부탁합니다',
+  zh: '是的，请联系',
+  vi: 'Vâng, xin vui lòng',
+};
+
+/**
+ * エスカレーション確認の「いいえ」ラベル
+ */
+export const ESCALATION_CONFIRM_NO: Record<string, string> = {
+  ja: 'いいえ、大丈夫です',
+  en: 'No, it\'s okay',
+  ko: '아니요, 괜찮습니다',
+  zh: '不用了，谢谢',
+  vi: 'Không, không cần đâu',
 };
 
 /**

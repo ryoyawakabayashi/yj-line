@@ -1,0 +1,118 @@
+// =====================================================
+// Application Reminder Messages
+// 応募リマインダーメッセージ定義
+// =====================================================
+
+/**
+ * 3日後リマインダーメッセージ（10件応募促進）
+ */
+export const APPLICATION_REMINDER_MESSAGES: Record<string, string> = {
+  ja: `【採用率アップのコツ】
+
+お仕事への応募ありがとうございます！
+
+実は、10件以上応募すると採用率が大幅にアップすることをご存知ですか？
+
+💡 日本語レベルが1つ上のお仕事にも積極的にチャレンジしてみてください！意外と採用されることも多いですよ✨
+
+複数応募することで：
+✅ 企業からの返信確率UP
+✅ 面接機会が増える
+✅ 自分に合った仕事が見つかりやすい
+
+👇 今すぐ他のお仕事もチェック！`,
+
+  en: `【Tips to Increase Your Hiring Rate】
+
+Thank you for applying!
+
+Did you know that applying to 10+ jobs significantly increases your chances of getting hired?
+
+💡 Don't hesitate to apply for jobs requiring a higher Japanese level - you might be surprised how often you get hired!✨
+
+By applying to multiple jobs:
+✅ Higher response rate from companies
+✅ More interview opportunities
+✅ Better chance of finding the right job
+
+👇 Check out more jobs now!`,
+
+  ko: `【채용률 높이는 팁】
+
+지원해 주셔서 감사합니다!
+
+10개 이상 지원하면 채용률이 크게 올라간다는 것을 알고 계셨나요?
+
+💡 일본어 레벨이 한 단계 높은 일자리에도 적극적으로 도전해 보세요! 의외로 채용되는 경우가 많아요✨
+
+여러 곳에 지원하면:
+✅ 기업의 회신 확률 UP
+✅ 면접 기회 증가
+✅ 나에게 맞는 일자리를 찾기 쉬움
+
+👇 지금 바로 다른 일자리도 확인하세요!`,
+
+  zh: `【提高录用率的技巧】
+
+感谢您的申请！
+
+您知道吗？申请10个以上的职位可以大大提高录用率！
+
+💡 也可以积极尝试申请日语要求高一级的工作！意外地很多人都被录用了✨
+
+多投简历的好处：
+✅ 提高企业回复率
+✅ 增加面试机会
+✅ 更容易找到适合的工作
+
+👇 现在就查看更多职位吧！`,
+
+  vi: `【Mẹo tăng tỷ lệ được tuyển dụng】
+
+Cảm ơn bạn đã ứng tuyển!
+
+Bạn có biết rằng ứng tuyển hơn 10 việc làm sẽ tăng đáng kể cơ hội được tuyển dụng không?
+
+💡 Hãy thử ứng tuyển cả những công việc yêu cầu trình độ tiếng Nhật cao hơn một bậc! Bạn có thể bất ngờ khi được tuyển dụng đấy✨
+
+Khi ứng tuyển nhiều nơi:
+✅ Tăng tỷ lệ phản hồi từ công ty
+✅ Nhiều cơ hội phỏng vấn hơn
+✅ Dễ tìm được công việc phù hợp
+
+👇 Xem thêm việc làm ngay!`,
+};
+
+/**
+ * 求人検索URL（言語別）
+ */
+export const JOB_SEARCH_URLS: Record<string, string> = {
+  ja: 'https://www.yolo-japan.com/ja/recruit/',
+  en: 'https://www.yolo-japan.com/en/recruit/',
+  ko: 'https://www.yolo-japan.com/ko/recruit/',
+  zh: 'https://www.yolo-japan.com/zh/recruit/',
+  vi: 'https://www.yolo-japan.com/vi/recruit/',
+};
+
+/**
+ * リマインダーメッセージを取得
+ */
+export function getApplicationReminderMessage(lang: string): string {
+  return APPLICATION_REMINDER_MESSAGES[lang] || APPLICATION_REMINDER_MESSAGES.ja;
+}
+
+/**
+ * 求人検索URLを取得
+ */
+export function getJobSearchUrl(lang: string): string {
+  return JOB_SEARCH_URLS[lang] || JOB_SEARCH_URLS.ja;
+}
+
+/**
+ * 完全なリマインダーメッセージを取得（URL付き）
+ */
+export function getFullReminderMessage(lang: string, trackedUrl?: string): string {
+  const message = getApplicationReminderMessage(lang);
+  const url = trackedUrl || getJobSearchUrl(lang);
+  return `${message}\n${url}`;
+}

@@ -1,0 +1,209 @@
+// =====================================================
+// Reminder Database Queries
+// リマインダー関連のDBクエリ
+// =====================================================
+
+import { supabase } from './client';
+
+/**
+ * リマインダー対象ユーザー情報
+ */
+export interface ReminderTargetUser {
+  userId: string;
+  applicationCount: number;
+  firstAppliedAt: string;
+  lastAppliedAt: string;
+  lang?: string;
+}
+
+/**
+ * 3日前に応募したユーザーを取得（リマインダー対象）
+ * - 3日前に初回応募したユーザー
+ * - まだリマインダーを送信していない
+ * - 応募回数が10件未満
+ */
+export async function getReminderTargetUsers(
+  reminderType: string = '3day_reminder'
+): Promise<ReminderTargetUser[]> {
+  // 3日前の日付範囲を計算（その日の0:00〜23:59）
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+  const startOfDay = new Date(threeDaysAgo);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(threeDaysAgo);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // 3日前に初回応募したユーザーを取得
+  const { data: applicants, error: applicantsError } = await supabase
+    .from('application_logs')
+    .select('user_id, applied_at')
+    .gte('applied_at', startOfDay.toISOString())
+    .lte('applied_at', endOfDay.toISOString());
+
+  if (applicantsError || !applicants) {
+    console.error('Failed to get applicants:', applicantsError);
+    return [];
+  }
+
+  // ユニークなユーザーIDを取得
+  const userIds = [...new Set(applicants.map((a) => a.user_id))];
+
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  // すでにリマインダーを送信済みのユーザーを取得
+  const { data: sentReminders, error: remindersError } = await supabase
+    .from('application_reminders')
+    .select('user_id')
+    .eq('reminder_type', reminderType)
+    .in('user_id', userIds);
+
+  if (remindersError) {
+    console.error('Failed to get sent reminders:', remindersError);
+    return [];
+  }
+
+  const sentUserIds = new Set(sentReminders?.map((r) => r.user_id) || []);
+
+  // 各ユーザーの応募回数を取得
+  const targetUsers: ReminderTargetUser[] = [];
+
+  for (const userId of userIds) {
+    // 既に送信済みならスキップ
+    if (sentUserIds.has(userId)) {
+      continue;
+    }
+
+    // ユーザーの応募回数を取得
+    const { count, error: countError } = await supabase
+      .from('application_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (countError) {
+      console.error(`Failed to get application count for ${userId}:`, countError);
+      continue;
+    }
+
+    const applicationCount = count || 0;
+
+    // 10件以上の場合はスキップ
+    if (applicationCount >= 10) {
+      continue;
+    }
+
+    // 初回と最終応募日を取得
+    const { data: userApps, error: userAppsError } = await supabase
+      .from('application_logs')
+      .select('applied_at')
+      .eq('user_id', userId)
+      .order('applied_at', { ascending: true });
+
+    if (userAppsError || !userApps || userApps.length === 0) {
+      continue;
+    }
+
+    // ユーザーの言語設定を取得（conversation_statesから）
+    const { data: stateData } = await supabase
+      .from('conversation_states')
+      .select('state')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const lang = stateData?.state?.lang || 'ja';
+
+    targetUsers.push({
+      userId,
+      applicationCount,
+      firstAppliedAt: userApps[0].applied_at,
+      lastAppliedAt: userApps[userApps.length - 1].applied_at,
+      lang,
+    });
+  }
+
+  return targetUsers;
+}
+
+/**
+ * リマインダー送信履歴を記録
+ */
+export async function recordReminderSent(
+  userId: string,
+  reminderType: string,
+  messageSent?: string
+): Promise<boolean> {
+  const { error } = await supabase.from('application_reminders').insert({
+    user_id: userId,
+    reminder_type: reminderType,
+    message_sent: messageSent,
+  });
+
+  if (error) {
+    console.error(`Failed to record reminder for ${userId}:`, error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * 特定ユーザーのリマインダー送信状況を確認
+ */
+export async function hasReminderBeenSent(
+  userId: string,
+  reminderType: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('application_reminders')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('reminder_type', reminderType)
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Failed to check reminder status for ${userId}:`, error);
+    return false;
+  }
+
+  return !!data;
+}
+
+/**
+ * リマインダー送信統計を取得
+ */
+export async function getReminderStats(): Promise<{
+  total: number;
+  today: number;
+  thisWeek: number;
+}> {
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const weekAgo = new Date(now);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  // 全体
+  const { count: total } = await supabase
+    .from('application_reminders')
+    .select('*', { count: 'exact', head: true });
+
+  // 今日
+  const { count: today } = await supabase
+    .from('application_reminders')
+    .select('*', { count: 'exact', head: true })
+    .gte('sent_at', todayStart.toISOString());
+
+  // 今週
+  const { count: thisWeek } = await supabase
+    .from('application_reminders')
+    .select('*', { count: 'exact', head: true })
+    .gte('sent_at', weekAgo.toISOString());
+
+  return {
+    total: total || 0,
+    today: today || 0,
+    thisWeek: thisWeek || 0,
+  };
+}

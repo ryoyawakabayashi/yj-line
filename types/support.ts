@@ -46,7 +46,7 @@ export interface PendingConfirmation {
  * クイックリプライ選択待ちの状態
  */
 export interface PendingQuickReply {
-  type: 'ambiguous' | 'faq_confirm' | 'faq_candidates';  // ambiguous: 曖昧パターン, faq_confirm: FAQ確認, faq_candidates: FAQ複数候補
+  type: 'ambiguous' | 'faq_confirm' | 'faq_candidates' | 'escalation_confirm';  // ambiguous: 曖昧パターン, faq_confirm: FAQ確認, faq_candidates: FAQ複数候補, escalation_confirm: エスカレーション確認
   choices: Array<{
     label: string;
     faqId: string;
@@ -57,6 +57,8 @@ export interface PendingQuickReply {
     faqId: string;
     response: string;
   };
+  // escalation_confirm用: エスカレーション理由
+  escalationReason?: string;
 }
 
 /**
