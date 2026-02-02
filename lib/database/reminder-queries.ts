@@ -107,7 +107,7 @@ export async function getReminderTargetUsers(
 
     // ユーザーの言語設定を取得（conversation_statesから）
     const { data: stateData } = await supabase
-      .from('conversation_states')
+      .from('conversation_state')
       .select('state')
       .eq('user_id', userId)
       .maybeSingle();
@@ -216,7 +216,7 @@ export async function getUserDiagnosisAnswers(
   userId: string
 ): Promise<{ lang: string; answers: DiagnosisAnswers } | null> {
   const { data, error } = await supabase
-    .from('conversation_states')
+    .from('conversation_state')
     .select('state')
     .eq('user_id', userId)
     .maybeSingle();
