@@ -116,3 +116,102 @@ export function getFullReminderMessage(lang: string, trackedUrl?: string): strin
   const url = trackedUrl || getJobSearchUrl(lang);
   return `${message}\n${url}`;
 }
+
+/**
+ * 日本語レベル別URLラベル
+ */
+const LEVEL_LABELS: Record<string, Record<string, string>> = {
+  no_japanese: {
+    ja: '🔹 日本語不要の求人',
+    en: '🔹 Jobs without Japanese',
+    ko: '🔹 일본어 불필요 구인',
+    zh: '🔹 无需日语的工作',
+    vi: '🔹 Không cần tiếng Nhật',
+  },
+  n5: {
+    ja: '🔹 N5レベルの求人',
+    en: '🔹 N5 Level Jobs',
+    ko: '🔹 N5 수준 구인',
+    zh: '🔹 N5水平工作',
+    vi: '🔹 Công việc N5',
+  },
+  n4: {
+    ja: '🔹 N4レベルの求人',
+    en: '🔹 N4 Level Jobs',
+    ko: '🔹 N4 수준 구인',
+    zh: '🔹 N4水平工作',
+    vi: '🔹 Công việc N4',
+  },
+  n3: {
+    ja: '🔹 N3レベルの求人',
+    en: '🔹 N3 Level Jobs',
+    ko: '🔹 N3 수준 구인',
+    zh: '🔹 N3水平工作',
+    vi: '🔹 Công việc N3',
+  },
+  n2: {
+    ja: '🔹 N2レベルの求人',
+    en: '🔹 N2 Level Jobs',
+    ko: '🔹 N2 수준 구인',
+    zh: '🔹 N2水平工作',
+    vi: '🔹 Công việc N2',
+  },
+  n1: {
+    ja: '🔹 N1レベルの求人',
+    en: '🔹 N1 Level Jobs',
+    ko: '🔹 N1 수준 구인',
+    zh: '🔹 N1水平工作',
+    vi: '🔹 Công việc N1',
+  },
+};
+
+/**
+ * 1つ上のレベル促進メッセージ
+ */
+const UPPER_LEVEL_PROMPT: Record<string, string> = {
+  ja: '🔸 チャレンジ！1つ上のレベル',
+  en: '🔸 Challenge! One level up',
+  ko: '🔸 도전! 한 단계 높은 레벨',
+  zh: '🔸 挑战！高一级',
+  vi: '🔸 Thử thách! Cao hơn một bậc',
+};
+
+/**
+ * レベルラベルを取得
+ */
+export function getLevelLabel(level: string, lang: string): string {
+  return LEVEL_LABELS[level]?.[lang] || LEVEL_LABELS[level]?.ja || '';
+}
+
+/**
+ * 上のレベル促進メッセージを取得
+ */
+export function getUpperLevelPrompt(lang: string): string {
+  return UPPER_LEVEL_PROMPT[lang] || UPPER_LEVEL_PROMPT.ja;
+}
+
+/**
+ * 診断結果に基づく完全なリマインダーメッセージを取得（2つのURL付き）
+ */
+export function getFullReminderMessageWithLevels(
+  lang: string,
+  japaneseLevel: string | undefined,
+  mainUrl: string,
+  upperUrl?: string
+): string {
+  const message = getApplicationReminderMessage(lang);
+
+  let urlSection = '';
+
+  if (japaneseLevel && upperUrl) {
+    // 診断結果がある場合: 自分のレベル + 1つ上
+    const mainLabel = getLevelLabel(japaneseLevel, lang);
+    const upperLabel = getUpperLevelPrompt(lang);
+    urlSection = `${mainLabel}\n${mainUrl}\n\n${upperLabel}\n${upperUrl}`;
+  } else {
+    // 診断結果がない場合: 汎用URL
+    urlSection = mainUrl;
+  }
+
+  return `${message}\n${urlSection}`;
+}

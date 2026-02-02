@@ -4,6 +4,7 @@
 // =====================================================
 
 import { supabase } from './client';
+import { DiagnosisAnswers } from '@/types/conversation';
 
 /**
  * リマインダー対象ユーザー情報
@@ -205,5 +206,30 @@ export async function getReminderStats(): Promise<{
     total: total || 0,
     today: today || 0,
     thisWeek: thisWeek || 0,
+  };
+}
+
+/**
+ * ユーザーの診断結果を取得
+ */
+export async function getUserDiagnosisAnswers(
+  userId: string
+): Promise<{ lang: string; answers: DiagnosisAnswers } | null> {
+  const { data, error } = await supabase
+    .from('conversation_states')
+    .select('state')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error(`Failed to get diagnosis answers for ${userId}:`, error);
+    return null;
+  }
+
+  const state = data.state as { lang?: string; answers?: DiagnosisAnswers } | null;
+
+  return {
+    lang: state?.lang || 'ja',
+    answers: state?.answers || {},
   };
 }
