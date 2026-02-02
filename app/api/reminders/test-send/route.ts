@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFullReminderMessageWithLevels, getJobSearchUrl } from '@/lib/messages/application-reminder';
+import { getReminderFlexMessage, getJobSearchUrl } from '@/lib/messages/application-reminder';
 import { getUserDiagnosisAnswers } from '@/lib/database/reminder-queries';
 import { pushMessage } from '@/lib/line/client';
 import { processUrl } from '@/lib/tracking/url-processor';
@@ -26,7 +26,7 @@ function getUpperLevel(currentLevel: string): string | null {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId } = body;
+    const { userId, testLevel, testLang } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -37,9 +37,11 @@ export async function POST(request: NextRequest) {
 
     // ユーザーの診断結果を取得
     const diagnosisData = await getUserDiagnosisAnswers(userId);
-    const lang = diagnosisData?.lang || 'ja';
+
+    // テスト用にレベルと言語をオーバーライド可能
+    const lang = testLang || diagnosisData?.lang || 'ja';
     const answers = diagnosisData?.answers || {};
-    const japaneseLevel = answers.japanese_level;
+    const japaneseLevel = testLevel || answers.japanese_level;
 
     console.log(`📬 テスト送信: userId=${userId}, lang=${lang}, japaneseLevel=${japaneseLevel}`);
 
@@ -48,13 +50,16 @@ export async function POST(request: NextRequest) {
 
     if (japaneseLevel) {
       // 診断結果がある場合: 診断条件に基づくURL
-      mainUrl = buildYoloSearchUrl(answers, lang);
+      const effectiveAnswers = testLevel
+        ? { ...answers, japanese_level: testLevel as typeof answers.japanese_level }
+        : answers;
+      mainUrl = buildYoloSearchUrl(effectiveAnswers, lang);
       mainUrl = await processUrl(mainUrl, userId, '10apply_boost');
 
       // 1つ上のレベルのURL
       const upperLevel = getUpperLevel(japaneseLevel);
       if (upperLevel) {
-        const upperAnswers = { ...answers, japanese_level: upperLevel as typeof answers.japanese_level };
+        const upperAnswers = { ...effectiveAnswers, japanese_level: upperLevel as typeof answers.japanese_level };
         upperUrl = buildYoloSearchUrl(upperAnswers, lang);
         upperUrl = await processUrl(upperUrl, userId, '10apply_boost');
       }
@@ -64,21 +69,18 @@ export async function POST(request: NextRequest) {
       mainUrl = await processUrl(baseUrl, userId, '10apply_boost');
     }
 
-    // メッセージを生成
-    const message = getFullReminderMessageWithLevels(lang, japaneseLevel, mainUrl, upperUrl);
+    // Flex Messageを生成
+    const flexMessage = getReminderFlexMessage(lang, japaneseLevel, mainUrl, upperUrl);
 
     // LINEプッシュ送信
-    const pushResult = await pushMessage(userId, {
-      type: 'text',
-      text: message,
-    });
+    const pushResult = await pushMessage(userId, flexMessage as Parameters<typeof pushMessage>[1]);
 
     if (pushResult) {
       console.log(`✅ テスト送信成功: ${userId}`);
       return NextResponse.json({
         success: true,
         message: 'メッセージを送信しました',
-        sentMessage: message,
+        flexMessage,
         diagnosisData: {
           lang,
           japaneseLevel,

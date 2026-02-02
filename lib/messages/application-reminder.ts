@@ -215,3 +215,173 @@ export function getFullReminderMessageWithLevels(
 
   return `${message}\n${urlSection}`;
 }
+
+/**
+ * ボタンラベル（多言語）
+ */
+const BUTTON_LABELS: Record<string, Record<string, string>> = {
+  main: {
+    ja: '求人を見る',
+    en: 'View Jobs',
+    ko: '일자리 보기',
+    zh: '查看职位',
+    vi: 'Xem việc làm',
+  },
+  upper: {
+    ja: 'チャレンジ求人を見る',
+    en: 'View Challenge Jobs',
+    ko: '도전 일자리 보기',
+    zh: '查看挑战职位',
+    vi: 'Xem việc thử thách',
+  },
+  generic: {
+    ja: '求人を探す',
+    en: 'Search Jobs',
+    ko: '일자리 검색',
+    zh: '搜索职位',
+    vi: 'Tìm việc làm',
+  },
+};
+
+/**
+ * Flex Messageのヘッダーテキスト（多言語）
+ */
+const FLEX_HEADER: Record<string, string> = {
+  ja: '採用率アップのコツ',
+  en: 'Tips to Get Hired',
+  ko: '채용률 높이는 팁',
+  zh: '提高录用率的技巧',
+  vi: 'Mẹo tăng tỷ lệ tuyển dụng',
+};
+
+/**
+ * Flex Messageの本文（多言語）- 短縮版
+ */
+const FLEX_BODY: Record<string, string> = {
+  ja: `お仕事への応募ありがとうございます！
+
+10件以上応募すると採用率が大幅にアップします✨
+
+💡 日本語レベルが1つ上のお仕事にもチャレンジしてみてください！意外と採用されることも多いですよ`,
+  en: `Thank you for applying!
+
+Applying to 10+ jobs significantly increases your hiring rate✨
+
+💡 Try applying for jobs requiring a higher Japanese level - you might be surprised!`,
+  ko: `지원해 주셔서 감사합니다!
+
+10개 이상 지원하면 채용률이 크게 올라갑니다✨
+
+💡 일본어 레벨이 한 단계 높은 일자리에도 도전해 보세요!`,
+  zh: `感谢您的申请！
+
+申请10个以上的职位可以大大提高录用率✨
+
+💡 也可以尝试申请日语要求高一级的工作！`,
+  vi: `Cảm ơn bạn đã ứng tuyển!
+
+Ứng tuyển hơn 10 việc sẽ tăng đáng kể cơ hội✨
+
+💡 Hãy thử ứng tuyển cả những công việc yêu cầu tiếng Nhật cao hơn!`,
+};
+
+/**
+ * Flex Message形式のリマインダーメッセージを生成
+ */
+export function getReminderFlexMessage(
+  lang: string,
+  japaneseLevel: string | undefined,
+  mainUrl: string,
+  upperUrl?: string
+): object {
+  const header = FLEX_HEADER[lang] || FLEX_HEADER.ja;
+  const body = FLEX_BODY[lang] || FLEX_BODY.ja;
+
+  const buttons: object[] = [];
+
+  if (japaneseLevel && upperUrl) {
+    // 診断結果がある場合: 2つのボタン
+    const mainLabel = getLevelLabel(japaneseLevel, lang).replace('🔹 ', '');
+    const mainButtonLabel = BUTTON_LABELS.main[lang] || BUTTON_LABELS.main.ja;
+    const upperButtonLabel = BUTTON_LABELS.upper[lang] || BUTTON_LABELS.upper.ja;
+
+    buttons.push(
+      {
+        type: 'button',
+        style: 'primary',
+        color: '#1DB446',
+        action: {
+          type: 'uri',
+          label: `${mainButtonLabel}（${mainLabel}）`.slice(0, 20),
+          uri: mainUrl,
+        },
+      },
+      {
+        type: 'button',
+        style: 'secondary',
+        action: {
+          type: 'uri',
+          label: upperButtonLabel,
+          uri: upperUrl,
+        },
+      }
+    );
+  } else {
+    // 診断結果がない場合: 1つのボタン
+    const genericLabel = BUTTON_LABELS.generic[lang] || BUTTON_LABELS.generic.ja;
+    buttons.push({
+      type: 'button',
+      style: 'primary',
+      color: '#1DB446',
+      action: {
+        type: 'uri',
+        label: genericLabel,
+        uri: mainUrl,
+      },
+    });
+  }
+
+  return {
+    type: 'flex',
+    altText: header,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: `🎯 ${header}`,
+            weight: 'bold',
+            size: 'lg',
+            color: '#1DB446',
+          },
+        ],
+        backgroundColor: '#F0FFF0',
+        paddingAll: '15px',
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: body,
+            wrap: true,
+            size: 'sm',
+            color: '#333333',
+          },
+        ],
+        paddingAll: '15px',
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: buttons,
+        paddingAll: '15px',
+      },
+    },
+  };
+}
