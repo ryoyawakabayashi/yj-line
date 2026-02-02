@@ -38,12 +38,14 @@ export async function POST(request: NextRequest) {
     // ユーザーの診断結果を取得
     const diagnosisData = await getUserDiagnosisAnswers(userId);
 
+    console.log(`📬 診断データ取得結果:`, JSON.stringify(diagnosisData, null, 2));
+
     // テスト用にレベルと言語をオーバーライド可能
     const lang = testLang || diagnosisData?.lang || 'ja';
     const answers = diagnosisData?.answers || {};
     const japaneseLevel = testLevel || answers.japanese_level;
 
-    console.log(`📬 テスト送信: userId=${userId}, lang=${lang}, japaneseLevel=${japaneseLevel}`);
+    console.log(`📬 テスト送信: userId=${userId}, lang=${lang}, japaneseLevel=${japaneseLevel}, answers=`, JSON.stringify(answers));
 
     let mainUrl: string;
     let upperUrl: string | undefined;

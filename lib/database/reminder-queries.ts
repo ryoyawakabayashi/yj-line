@@ -221,10 +221,17 @@ export async function getUserDiagnosisAnswers(
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     console.error(`Failed to get diagnosis answers for ${userId}:`, error);
     return null;
   }
+
+  if (!data) {
+    console.log(`No conversation_state found for ${userId}`);
+    return null;
+  }
+
+  console.log(`Found conversation_state for ${userId}:`, JSON.stringify(data.state));
 
   const state = data.state as { lang?: string; answers?: DiagnosisAnswers } | null;
 
