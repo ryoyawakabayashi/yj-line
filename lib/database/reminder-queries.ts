@@ -19,6 +19,7 @@ export interface ReminderTargetUser {
 
 /**
  * 3日前に応募したユーザーを取得（リマインダー対象）
+ * - tracking_tokensのconverted_atを使用（GA4で検知された応募）
  * - 3日前に初回応募したユーザー
  * - まだリマインダーを送信していない
  * - 応募回数が10件未満
@@ -34,22 +35,53 @@ export async function getReminderTargetUsers(
   const endOfDay = new Date(threeDaysAgo);
   endOfDay.setHours(23, 59, 59, 999);
 
-  // 3日前に初回応募したユーザーを取得
-  const { data: applicants, error: applicantsError } = await supabase
-    .from('application_logs')
-    .select('user_id, applied_at')
-    .gte('applied_at', startOfDay.toISOString())
-    .lte('applied_at', endOfDay.toISOString());
+  // tracking_tokensからconverted_atが設定されているレコードを取得
+  const { data: allConversions, error: conversionsError } = await supabase
+    .from('tracking_tokens')
+    .select('user_id, converted_at')
+    .not('converted_at', 'is', null);
 
-  if (applicantsError || !applicants) {
-    console.error('Failed to get applicants:', applicantsError);
+  if (conversionsError || !allConversions) {
+    console.error('Failed to get conversions:', conversionsError);
     return [];
   }
 
-  // ユニークなユーザーIDを取得
-  const userIds = [...new Set(applicants.map((a) => a.user_id))];
+  // ユーザーごとに応募データを集約
+  const userConversionMap = new Map<string, {
+    firstConvertedAt: string;
+    lastConvertedAt: string;
+    count: number
+  }>();
 
-  if (userIds.length === 0) {
+  for (const row of allConversions) {
+    const existing = userConversionMap.get(row.user_id);
+    if (existing) {
+      existing.count++;
+      if (row.converted_at < existing.firstConvertedAt) {
+        existing.firstConvertedAt = row.converted_at;
+      }
+      if (row.converted_at > existing.lastConvertedAt) {
+        existing.lastConvertedAt = row.converted_at;
+      }
+    } else {
+      userConversionMap.set(row.user_id, {
+        firstConvertedAt: row.converted_at,
+        lastConvertedAt: row.converted_at,
+        count: 1,
+      });
+    }
+  }
+
+  // 3日前に初回応募したユーザーをフィルタ
+  const targetUserIds: string[] = [];
+  for (const [userId, data] of userConversionMap) {
+    const firstDate = new Date(data.firstConvertedAt);
+    if (firstDate >= startOfDay && firstDate <= endOfDay) {
+      targetUserIds.push(userId);
+    }
+  }
+
+  if (targetUserIds.length === 0) {
     return [];
   }
 
@@ -58,7 +90,7 @@ export async function getReminderTargetUsers(
     .from('application_reminders')
     .select('user_id')
     .eq('reminder_type', reminderType)
-    .in('user_id', userIds);
+    .in('user_id', targetUserIds);
 
   if (remindersError) {
     console.error('Failed to get sent reminders:', remindersError);
@@ -67,45 +99,24 @@ export async function getReminderTargetUsers(
 
   const sentUserIds = new Set(sentReminders?.map((r) => r.user_id) || []);
 
-  // 各ユーザーの応募回数を取得
+  // 対象ユーザーリストを作成
   const targetUsers: ReminderTargetUser[] = [];
 
-  for (const userId of userIds) {
+  for (const userId of targetUserIds) {
     // 既に送信済みならスキップ
     if (sentUserIds.has(userId)) {
       continue;
     }
 
-    // ユーザーの応募回数を取得
-    const { count, error: countError } = await supabase
-      .from('application_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    if (countError) {
-      console.error(`Failed to get application count for ${userId}:`, countError);
-      continue;
-    }
-
-    const applicationCount = count || 0;
+    const conversionData = userConversionMap.get(userId)!;
+    const applicationCount = conversionData.count;
 
     // 10件以上の場合はスキップ
     if (applicationCount >= 10) {
       continue;
     }
 
-    // 初回と最終応募日を取得
-    const { data: userApps, error: userAppsError } = await supabase
-      .from('application_logs')
-      .select('applied_at')
-      .eq('user_id', userId)
-      .order('applied_at', { ascending: true });
-
-    if (userAppsError || !userApps || userApps.length === 0) {
-      continue;
-    }
-
-    // ユーザーの言語設定を取得（conversation_statesから）
+    // ユーザーの言語設定を取得（conversation_stateから）
     const { data: stateData } = await supabase
       .from('conversation_state')
       .select('state')
@@ -117,8 +128,8 @@ export async function getReminderTargetUsers(
     targetUsers.push({
       userId,
       applicationCount,
-      firstAppliedAt: userApps[0].applied_at,
-      lastAppliedAt: userApps[userApps.length - 1].applied_at,
+      firstAppliedAt: conversionData.firstConvertedAt,
+      lastAppliedAt: conversionData.lastConvertedAt,
       lang,
     });
   }

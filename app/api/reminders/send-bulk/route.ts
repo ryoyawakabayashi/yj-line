@@ -21,13 +21,14 @@ function getUpperLevel(currentLevel: string): string | null {
 }
 
 /**
- * ユーザーの応募件数を取得
+ * ユーザーの応募件数を取得（tracking_tokensのconverted_atベース）
  */
 async function getApplicationCount(userId: string): Promise<number> {
   const { count, error } = await supabase
-    .from('application_logs')
+    .from('tracking_tokens')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .not('converted_at', 'is', null);
 
   if (error) {
     console.error(`Failed to get application count for ${userId}:`, error);
