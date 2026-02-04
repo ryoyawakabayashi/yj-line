@@ -225,13 +225,13 @@ export default function FAQManagementPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     キーワード
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-20">
                     優先度
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-20">
                     状態
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-32">
                     操作
                   </th>
                 </tr>
@@ -277,12 +277,12 @@ export default function FAQManagementPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-center">
+                      <td className="px-4 py-3 text-sm text-center w-20">
                         {faq.priority}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center w-20">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs ${
+                          className={`inline-block px-2 py-1 rounded-full text-xs ${
                             faq.isActive
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-600'
@@ -291,8 +291,8 @@ export default function FAQManagementPage() {
                           {faq.isActive ? '有効' : '無効'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="px-4 py-3 w-32">
+                        <div className="flex items-center justify-center gap-2">
                           <Link
                             href={`/support/faq/${faq.id}`}
                             className="text-blue-600 hover:text-blue-800 text-sm"
