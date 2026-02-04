@@ -15,6 +15,7 @@ import {
   SparklesIcon,
   UserGroupIcon,
   LifebuoyIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -46,6 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: 'サポート',
     items: [
       { label: 'チケット一覧', href: '/dashboard/support', icon: LifebuoyIcon },
+      { label: 'FAQ管理', href: '/support/faq', icon: QuestionMarkCircleIcon },
     ],
   },
   {
