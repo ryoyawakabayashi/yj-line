@@ -48,6 +48,7 @@ import {
   BUG_REPORT_MESSAGES,
   ENTERPRISE_TROUBLE_MESSAGES,
 } from '../support/special-patterns';
+import { shouldEscalate, EscalationResult } from '../support/escalation-detector';
 import {
   handleFunnelFlow,
   handleCategoryQuickReply,
@@ -615,6 +616,118 @@ export async function handleSupportMessage(
     });
 
     console.log(`✅ 終了パターン検出: ${userMessage}`);
+    return true;
+  }
+
+  // 1.2.5. エスカレーション必要性の検出
+  // キーワードベース + AIベースでエスカレーションが必要か判定
+  const escalationResult = await shouldEscalate(
+    userMessage,
+    conversationHistory.map(m => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    })),
+    supportState.service,
+    { skipAI: false, aiThreshold: 0.8 }
+  );
+
+  if (escalationResult.shouldEscalate) {
+    console.log(`🚨 エスカレーション検出: ${escalationResult.reason} (category=${escalationResult.category})`);
+
+    // エスカレーション確認クイックリプライを表示
+    const confirmMessage = ESCALATION_CONFIRM_MESSAGES[lang] || ESCALATION_CONFIRM_MESSAGES.ja;
+    const reasonMessage: Record<string, Record<string, string>> = {
+      urgent: {
+        ja: '緊急のお問い合わせのようですね。',
+        en: 'This seems to be an urgent inquiry.',
+        ko: '긴급한 문의인 것 같습니다.',
+        zh: '这似乎是紧急询问。',
+        vi: 'Đây có vẻ là yêu cầu khẩn cấp.',
+      },
+      emotional: {
+        ja: 'お困りのご様子ですね。',
+        en: 'You seem to be having trouble.',
+        ko: '어려움을 겪고 계신 것 같습니다.',
+        zh: '您似乎遇到了困难。',
+        vi: 'Bạn có vẻ đang gặp khó khăn.',
+      },
+      complex: {
+        ja: '解決にお時間がかかっているようですね。',
+        en: 'It seems this issue is taking time to resolve.',
+        ko: '해결에 시간이 걸리고 있는 것 같습니다.',
+        zh: '这个问题似乎需要更多时间解决。',
+        vi: 'Vấn đề này có vẻ cần thêm thời gian để giải quyết.',
+      },
+      issue: {
+        ja: '深刻な問題のようですね。',
+        en: 'This seems to be a serious issue.',
+        ko: '심각한 문제인 것 같습니다.',
+        zh: '这似乎是一个严重的问题。',
+        vi: 'Đây có vẻ là vấn đề nghiêm trọng.',
+      },
+      repeated: {
+        ja: '同じ問題が続いているようですね。',
+        en: 'The same issue seems to be recurring.',
+        ko: '같은 문제가 계속되고 있는 것 같습니다.',
+        zh: '同样的问题似乎还在继续。',
+        vi: 'Vấn đề tương tự có vẻ vẫn tiếp diễn.',
+      },
+      ai_detected: {
+        ja: 'こちらの件、担当者が対応した方がよさそうです。',
+        en: 'A staff member should handle this matter.',
+        ko: '담당자가 처리하는 것이 좋을 것 같습니다.',
+        zh: '这件事最好由工作人员处理。',
+        vi: 'Vấn đề này nên được nhân viên xử lý.',
+      },
+    };
+
+    const categoryReason = reasonMessage[escalationResult.category]?.[lang] ||
+      reasonMessage[escalationResult.category]?.ja || '';
+
+    const fullMessage = categoryReason
+      ? `${categoryReason}\n\n${confirmMessage}`
+      : confirmMessage;
+
+    // エスカレーション確認のペンディング状態を設定
+    supportState.pendingQuickReply = {
+      type: 'escalation_confirm',
+      choices: [
+        { label: ESCALATION_CONFIRM_YES[lang] || ESCALATION_CONFIRM_YES.ja, faqId: '__escalate__' },
+        { label: ESCALATION_CONFIRM_NO[lang] || ESCALATION_CONFIRM_NO.ja, faqId: '__cancel__' },
+      ],
+      escalationReason: escalationResult.reason,
+    };
+
+    conversationHistory.push({ role: 'assistant', content: fullMessage });
+    supportState.conversationHistory = conversationHistory;
+    currentState.supportState = supportState;
+    await saveConversationState(userId, currentState);
+
+    const quickReplies = [
+      {
+        type: 'action' as const,
+        action: {
+          type: 'message' as const,
+          label: ESCALATION_CONFIRM_YES[lang] || ESCALATION_CONFIRM_YES.ja,
+          text: ESCALATION_CONFIRM_YES[lang] || ESCALATION_CONFIRM_YES.ja,
+        },
+      },
+      {
+        type: 'action' as const,
+        action: {
+          type: 'message' as const,
+          label: ESCALATION_CONFIRM_NO[lang] || ESCALATION_CONFIRM_NO.ja,
+          text: ESCALATION_CONFIRM_NO[lang] || ESCALATION_CONFIRM_NO.ja,
+        },
+      },
+    ];
+
+    await replyMessage(replyToken, {
+      type: 'text',
+      text: fullMessage,
+      quickReply: { items: quickReplies },
+    });
+
     return true;
   }
 

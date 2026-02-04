@@ -1837,6 +1837,75 @@ export async function getLineBotConversionsByToken(
 }
 
 /**
+ * ユーザーごとの応募件数をGA4から取得
+ * tracking_tokensテーブルと紐付けてユーザーIDごとの応募件数を返す
+ * @param userIds 対象ユーザーIDリスト
+ * @param days 何日前までのデータを取得するか（デフォルト90日）
+ */
+export async function getApplicationCountsByUserId(
+  userIds: string[],
+  days: number = 90
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+
+  if (userIds.length === 0) {
+    return result;
+  }
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = new Date().toISOString().split('T')[0];
+
+    // GA4からline_bot_*キャンペーンのキーイベントを取得
+    const ga4Conversions = await getLineBotConversionsWithKeyEvents(startDateStr, endDateStr);
+
+    // tracking_tokensテーブルからトークン→ユーザーIDのマッピングを取得
+    const { supabase } = await import('@/lib/database/client');
+    const tokens = ga4Conversions.map((cv) => cv.token);
+
+    if (tokens.length === 0) {
+      return result;
+    }
+
+    const { data: tokenData } = await supabase
+      .from('tracking_tokens')
+      .select('token, user_id')
+      .in('token', tokens);
+
+    const tokenUserMap = new Map(tokenData?.map((t) => [t.token, t.user_id]) || []);
+
+    // ユーザーごとにeventCountを集計
+    for (const cv of ga4Conversions) {
+      const userId = tokenUserMap.get(cv.token);
+      if (userId && userIds.includes(userId)) {
+        const current = result.get(userId) || 0;
+        result.set(userId, current + cv.eventCount);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error fetching application counts by user ID:', error);
+    return result;
+  }
+}
+
+/**
+ * 単一ユーザーの応募件数をGA4から取得
+ * @param userId 対象ユーザーID
+ * @param days 何日前までのデータを取得するか（デフォルト90日）
+ */
+export async function getApplicationCountByUserId(
+  userId: string,
+  days: number = 90
+): Promise<number> {
+  const counts = await getApplicationCountsByUserId([userId], days);
+  return counts.get(userId) || 0;
+}
+
+/**
  * Get YJ/YD conversions by date range filtered by diagnosis sources (line / chatbot + line / bot)
  * 診断結果のURLからのCV
  */

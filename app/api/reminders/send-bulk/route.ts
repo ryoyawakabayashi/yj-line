@@ -4,7 +4,7 @@ import { getUserDiagnosisAnswers } from '@/lib/database/reminder-queries';
 import { pushMessage } from '@/lib/line/client';
 import { processUrl } from '@/lib/tracking/url-processor';
 import { buildYoloSearchUrl } from '@/lib/utils/url';
-import { supabase } from '@/lib/database/client';
+import { getApplicationCountsByUserId } from '@/lib/ga4/queries';
 
 // 日本語レベルの順序
 const LEVEL_ORDER = ['no_japanese', 'n5', 'n4', 'n3', 'n2', 'n1'] as const;
@@ -20,23 +20,6 @@ function getUpperLevel(currentLevel: string): string | null {
   return LEVEL_ORDER[currentIndex + 1];
 }
 
-/**
- * ユーザーの応募件数を取得（tracking_tokensのconverted_atベース）
- */
-async function getApplicationCount(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('tracking_tokens')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .not('converted_at', 'is', null);
-
-  if (error) {
-    console.error(`Failed to get application count for ${userId}:`, error);
-    return 0;
-  }
-
-  return count || 0;
-}
 
 /**
  * 一括送信API
@@ -54,6 +37,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // GA4から全ユーザーの応募件数を一括取得（効率化）
+    console.log(`📊 GA4から応募件数を取得中... (${userIds.length}ユーザー)`);
+    const applicationCountMap = await getApplicationCountsByUserId(userIds);
+    console.log(`📊 応募件数取得完了:`, Object.fromEntries(applicationCountMap));
+
     const results: Array<{
       userId: string;
       success: boolean;
@@ -64,8 +52,8 @@ export async function POST(request: NextRequest) {
 
     for (const userId of userIds) {
       try {
-        // ユーザーの応募件数を取得
-        const applicationCount = await getApplicationCount(userId);
+        // ユーザーの応募件数を取得（GA4ベース）
+        const applicationCount = applicationCountMap.get(userId) || 0;
         const targetCount = getTargetApplicationCount(applicationCount);
 
         // ユーザーの診断結果を取得

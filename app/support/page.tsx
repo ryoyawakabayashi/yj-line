@@ -134,12 +134,20 @@ export default function SupportPage() {
                 お問い合わせの管理と有人対応
               </p>
             </div>
-            <button
-              onClick={fetchData}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              更新
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/support/faq"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              >
+                FAQ管理
+              </Link>
+              <button
+                onClick={fetchData}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                更新
+              </button>
+            </div>
           </div>
         </div>
       </header>
