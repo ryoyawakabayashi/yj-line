@@ -309,7 +309,7 @@ export function getReminderFlexMessage(
       {
         type: 'button',
         style: 'primary',
-        color: '#1DB446',
+        color: '#d10a1c',
         action: {
           type: 'uri',
           label: `${mainButtonLabel}（${mainLabel}）`.slice(0, 20),
@@ -318,10 +318,11 @@ export function getReminderFlexMessage(
       },
       {
         type: 'button',
-        style: 'secondary',
+        style: 'primary',
+        color: '#FF6B00',
         action: {
           type: 'uri',
-          label: upperButtonLabel,
+          label: `🔥 ${upperButtonLabel}`,
           uri: upperUrl,
         },
       }
@@ -332,7 +333,7 @@ export function getReminderFlexMessage(
     buttons.push({
       type: 'button',
       style: 'primary',
-      color: '#1DB446',
+      color: '#d10a1c',
       action: {
         type: 'uri',
         label: genericLabel,
@@ -355,10 +356,10 @@ export function getReminderFlexMessage(
             text: `🎯 ${header}`,
             weight: 'bold',
             size: 'lg',
-            color: '#1DB446',
+            color: '#d10a1c',
           },
         ],
-        backgroundColor: '#F0FFF0',
+        backgroundColor: '#FFF0F0',
         paddingAll: '15px',
       },
       body: {
