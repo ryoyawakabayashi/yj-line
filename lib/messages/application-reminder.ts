@@ -262,27 +262,27 @@ const FLEX_BODY: Record<string, string> = {
 
 10件以上応募すると採用率が大幅にアップします✨
 
-💡 日本語レベルが1つ上のお仕事にもチャレンジしてみてください！意外と採用されることも多いですよ`,
+💡 日本語レベルが1つ上のお仕事にも、ぜひチャレンジしてみてください！`,
   en: `Thank you for applying!
 
 Applying to 10+ jobs significantly increases your hiring rate✨
 
-💡 Try applying for jobs requiring a higher Japanese level - you might be surprised!`,
+💡 We encourage you to apply for jobs requiring one level higher Japanese as well!`,
   ko: `지원해 주셔서 감사합니다!
 
 10개 이상 지원하면 채용률이 크게 올라갑니다✨
 
-💡 일본어 레벨이 한 단계 높은 일자리에도 도전해 보세요!`,
+💡 일본어 레벨이 한 단계 높은 일자리에도 꼭 도전해 보세요!`,
   zh: `感谢您的申请！
 
 申请10个以上的职位可以大大提高录用率✨
 
-💡 也可以尝试申请日语要求高一级的工作！`,
+💡 我们建议您也尝试申请日语要求高一级的工作！`,
   vi: `Cảm ơn bạn đã ứng tuyển!
 
 Ứng tuyển hơn 10 việc sẽ tăng đáng kể cơ hội✨
 
-💡 Hãy thử ứng tuyển cả những công việc yêu cầu tiếng Nhật cao hơn!`,
+💡 Chúng tôi khuyến khích bạn ứng tuyển cả những công việc yêu cầu tiếng Nhật cao hơn một bậc!`,
 };
 
 /**
