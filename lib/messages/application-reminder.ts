@@ -255,47 +255,122 @@ const FLEX_HEADER: Record<string, string> = {
 };
 
 /**
- * Flex Messageの本文（多言語）- 短縮版
+ * 応募件数に基づく目標件数を取得
+ * 1-6件: 10件目標
+ * 7-8件: 15件目標
+ * 9件以上: 20件目標
  */
-const FLEX_BODY: Record<string, string> = {
-  ja: `お仕事への応募ありがとうございます！
+export function getTargetApplicationCount(currentCount: number): number {
+  if (currentCount >= 9) return 20;
+  if (currentCount >= 7) return 15;
+  return 10;
+}
+
+/**
+ * Flex Messageの本文を生成（応募件数に応じた目標を設定）
+ */
+function getFlexBody(lang: string, targetCount: number): string {
+  const bodies: Record<number, Record<string, string>> = {
+    10: {
+      ja: `お仕事への応募ありがとうございます！
 
 10件以上応募すると採用率が大幅にアップします✨
 
 💡 日本語レベルが1つ上のお仕事にも、ぜひチャレンジしてみてください！`,
-  en: `Thank you for applying!
+      en: `Thank you for applying!
 
 Applying to 10+ jobs significantly increases your hiring rate✨
 
 💡 We encourage you to apply for jobs requiring one level higher Japanese as well!`,
-  ko: `지원해 주셔서 감사합니다!
+      ko: `지원해 주셔서 감사합니다!
 
 10개 이상 지원하면 채용률이 크게 올라갑니다✨
 
 💡 일본어 레벨이 한 단계 높은 일자리에도 꼭 도전해 보세요!`,
-  zh: `感谢您的申请！
+      zh: `感谢您的申请！
 
 申请10个以上的职位可以大大提高录用率✨
 
 💡 我们建议您也尝试申请日语要求高一级的工作！`,
-  vi: `Cảm ơn bạn đã ứng tuyển!
+      vi: `Cảm ơn bạn đã ứng tuyển!
 
 Ứng tuyển hơn 10 việc sẽ tăng đáng kể cơ hội✨
 
 💡 Chúng tôi khuyến khích bạn ứng tuyển cả những công việc yêu cầu tiếng Nhật cao hơn một bậc!`,
-};
+    },
+    15: {
+      ja: `たくさんのご応募ありがとうございます！
+
+あと少しで15件！15件以上応募するとさらに採用率がアップします✨
+
+💡 日本語レベルが1つ上のお仕事にも、ぜひチャレンジしてみてください！`,
+      en: `Thank you for all your applications!
+
+Almost at 15! Applying to 15+ jobs increases your hiring rate even more✨
+
+💡 We encourage you to apply for jobs requiring one level higher Japanese as well!`,
+      ko: `많은 지원 감사합니다!
+
+15개까지 조금 남았어요! 15개 이상 지원하면 채용률이 더욱 올라갑니다✨
+
+💡 일본어 레벨이 한 단계 높은 일자리에도 꼭 도전해 보세요!`,
+      zh: `感谢您的积极申请！
+
+快到15个了！申请15个以上的职位可以进一步提高录用率✨
+
+💡 我们建议您也尝试申请日语要求高一级的工作！`,
+      vi: `Cảm ơn bạn đã ứng tuyển nhiều!
+
+Sắp đến 15 rồi! Ứng tuyển hơn 15 việc sẽ tăng cơ hội hơn nữa✨
+
+💡 Chúng tôi khuyến khích bạn ứng tuyển cả những công việc yêu cầu tiếng Nhật cao hơn một bậc!`,
+    },
+    20: {
+      ja: `素晴らしい！たくさんのご応募ありがとうございます！
+
+20件応募を目指してみませんか？採用率がさらにアップします✨
+
+💡 日本語レベルが1つ上のお仕事にも、ぜひチャレンジしてみてください！`,
+      en: `Great job! Thank you for all your applications!
+
+Why not aim for 20? It will increase your hiring rate even more✨
+
+💡 We encourage you to apply for jobs requiring one level higher Japanese as well!`,
+      ko: `잘하고 계세요! 많은 지원 감사합니다!
+
+20개를 목표로 해보세요! 채용률이 더욱 올라갑니다✨
+
+💡 일본어 레벨이 한 단계 높은 일자리에도 꼭 도전해 보세요!`,
+      zh: `太棒了！感谢您的积极申请！
+
+试试申请20个吧！录用率会进一步提高✨
+
+💡 我们建议您也尝试申请日语要求高一级的工作！`,
+      vi: `Tuyệt vời! Cảm ơn bạn đã ứng tuyển nhiều!
+
+Hãy thử đặt mục tiêu 20 nhé! Cơ hội sẽ tăng lên nhiều hơn✨
+
+💡 Chúng tôi khuyến khích bạn ứng tuyển cả những công việc yêu cầu tiếng Nhật cao hơn một bậc!`,
+    },
+  };
+
+  return bodies[targetCount]?.[lang] || bodies[targetCount]?.ja || bodies[10].ja;
+}
 
 /**
  * Flex Message形式のリマインダーメッセージを生成
+ * @param applicationCount - 現在の応募件数（目標件数の計算に使用）
  */
 export function getReminderFlexMessage(
   lang: string,
   japaneseLevel: string | undefined,
   mainUrl: string,
-  upperUrl?: string
+  upperUrl?: string,
+  applicationCount?: number
 ): object {
   const header = FLEX_HEADER[lang] || FLEX_HEADER.ja;
-  const body = FLEX_BODY[lang] || FLEX_BODY.ja;
+  const targetCount = applicationCount ? getTargetApplicationCount(applicationCount) : 10;
+  const body = getFlexBody(lang, targetCount);
 
   const buttons: object[] = [];
 
