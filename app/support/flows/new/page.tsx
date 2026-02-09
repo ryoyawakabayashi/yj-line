@@ -52,6 +52,7 @@ export default function NewFlowPage() {
   const [showFaqImportModal, setShowFaqImportModal] = useState(false);
   const [activeLang, setActiveLang] = useState<string>('ja');
   const [translating, setTranslating] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const LANGS = [
     { code: 'ja', name: '日本語' },
@@ -408,6 +409,76 @@ export default function NewFlowPage() {
     }
   };
 
+  // FAQからテンプレート自動生成
+  const handleGenerateTemplate = async () => {
+    if (nodes.length > 1 || edges.length > 0) {
+      const ok = confirm(
+        '現在のフローを上書きしてFAQテンプレートを生成します。よろしいですか？'
+      );
+      if (!ok) return;
+    }
+
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/dashboard/flows/generate-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Template generation failed');
+      }
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error');
+      }
+
+      // ノードをReact Flow形式に変換
+      const generatedNodes: Node[] = data.nodes.map((n: any) => ({
+        id: n.id,
+        type: 'default',
+        position: n.position,
+        data: {
+          label: n.data.label,
+          nodeType: n.data.nodeType,
+          config: n.data.config,
+        },
+      }));
+
+      // エッジをReact Flow形式に変換
+      const generatedEdges: CustomEdge[] = data.edges.map((e: any) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label,
+        labels: e.labels,
+        order: e.order,
+      }));
+
+      setNodes(generatedNodes);
+      setEdges(generatedEdges);
+      setSelectedNode(null);
+
+      const stats = data.stats;
+      const byService = Object.entries(stats.byService)
+        .map(([svc, count]) => `${svc}: ${count}件`)
+        .join(', ');
+      alert(
+        `テンプレートを生成しました\n合計FAQ: ${stats.totalFaqs}件\n${byService}`
+      );
+    } catch (error) {
+      console.error('テンプレート生成エラー:', error);
+      alert(
+        `テンプレート生成に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   // フロー保存
   const handleSave = async () => {
     if (!flowName) {
@@ -501,6 +572,13 @@ export default function NewFlowPage() {
             <h1 className="text-xl font-bold text-gray-900">新規フロー作成</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerateTemplate}
+              disabled={generating}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition disabled:opacity-50 text-sm"
+            >
+              {generating ? '生成中...' : 'FAQテンプレート生成'}
+            </button>
             <button
               onClick={handleTranslateAll}
               disabled={translating}
