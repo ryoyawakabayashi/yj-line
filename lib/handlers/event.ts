@@ -88,28 +88,22 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         return;
       }
 
-      // サポートモード発動トリガー
-      const supportTriggers = [
-        'SEOさん',
-      ];
-
-      if (supportTriggers.some(t => messageText.toLowerCase() === t.toLowerCase())) {
-        console.log('📞 サポートモード発動:', messageText);
-
-        // 診断モード中ならリセット
-        if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
-          console.log('🔄 診断モード中 → サポートモード → 診断リセット');
-          await clearConversationState(userId);
-        }
-
-        // フロー実行エンジンを優先的に使用
-        const flows = await getActiveFlows('keyword');
-        const matchingFlow = flows.find(f =>
+      // キーワードトリガー: DBに登録されたキーワードフローを動的にマッチング
+      {
+        const keywordFlows = await getActiveFlows('keyword');
+        const matchingFlow = keywordFlows.find(f =>
           f.triggerValue?.toLowerCase() === messageText.toLowerCase()
         );
 
         if (matchingFlow) {
-          console.log('🔄 フロー実行開始:', matchingFlow.id, matchingFlow.name);
+          console.log('📞 キーワードトリガー発動:', messageText, '→ フロー:', matchingFlow.name);
+
+          // 診断モード中ならリセット
+          if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
+            console.log('🔄 診断モード中 → フローモード → 診断リセット');
+            await clearConversationState(userId);
+          }
+
           const lang = await getUserLang(userId);
 
           try {
@@ -147,11 +141,6 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             // エラー時はフォールバック
           }
         }
-
-        // フローが見つからない場合は従来のハンドラーを使用
-        console.log('⚠️ マッチするフローなし、従来のハンドラーを使用');
-        await handleSupportButton(userId, event.replyToken);
-        return;
       }
 
       // リッチメニューボタンの処理
