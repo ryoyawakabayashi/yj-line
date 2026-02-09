@@ -16,6 +16,7 @@ import {
   UserGroupIcon,
   LifebuoyIcon,
   QuestionMarkCircleIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -48,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'チケット一覧', href: '/dashboard/support', icon: LifebuoyIcon },
       { label: 'FAQ管理', href: '/support/faq', icon: QuestionMarkCircleIcon },
+      { label: 'フロー管理', href: '/support/flows', icon: Squares2X2Icon },
     ],
   },
   {
@@ -101,7 +103,7 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
                 return (
                   <Link
