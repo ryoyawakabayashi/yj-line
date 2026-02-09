@@ -12,7 +12,6 @@ import ReactFlow, {
   Controls,
   Background,
   MiniMap,
-  Panel,
   NodeMouseHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
@@ -796,16 +795,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             onNodeDragStart={onNodeDragStart}
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
+            minZoom={0.05}
+            maxZoom={2}
             fitView
           >
             <Background />
             <Controls />
             <MiniMap />
-            <Panel position="top-right" className="bg-white p-2 rounded shadow text-sm">
-              <div className="text-gray-600">
-                ノード: {nodes.length} | エッジ: {edges.length}
-              </div>
-            </Panel>
           </ReactFlow>
         </main>
 
