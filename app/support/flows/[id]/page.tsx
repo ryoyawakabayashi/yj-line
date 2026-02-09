@@ -33,6 +33,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [triggerValue, setTriggerValue] = useState('');
   const [service, setService] = useState<string>('');
   const [priority, setPriority] = useState(0);
+  const [urlSourceType, setUrlSourceType] = useState<string>('flow');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showFaqImportModal, setShowFaqImportModal] = useState(false);
@@ -56,6 +57,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         setTriggerValue(flow.triggerValue || '');
         setService(flow.service || '');
         setPriority(flow.priority);
+        setUrlSourceType(flow.flowDefinition.variables?.urlSourceType || 'flow');
 
         // ノードとエッジを復元
         const loadedNodes = flow.flowDefinition.nodes.map((node: any) => ({
@@ -323,6 +325,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           label: edge.label,
           order: edge.order,
         })),
+        variables: {
+          urlSourceType,
+        },
       };
 
       const res = await fetch(`/api/dashboard/flows/${id}`, {
@@ -477,6 +482,28 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               />
               <p className="text-xs text-gray-500 mt-1">
                 数値が大きいほど優先されます
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                URLトラッキング種別
+              </label>
+              <select
+                value={urlSourceType}
+                onChange={(e) => setUrlSourceType(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="flow">フロー（汎用）</option>
+                <option value="support">サポート</option>
+                <option value="support_yolo_japan">サポート - YOLO JAPAN</option>
+                <option value="support_yolo_discover">サポート - YOLO DISCOVER</option>
+                <option value="support_yolo_home">サポート - YOLO HOME</option>
+                <option value="faq">FAQ</option>
+                <option value="diagnosis">診断</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                URL自動変換時のUTMキャンペーン名に使われます
               </p>
             </div>
 

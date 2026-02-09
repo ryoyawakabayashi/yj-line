@@ -39,7 +39,8 @@ export type UrlSourceType =
   | 'richmenu'            // リッチメニューから
   | 'faq'                 // FAQ応答から
   | 'followup'            // フォローアップから
-  | '10apply_boost';      // 10件応募促進リマインダーから
+  | '10apply_boost'       // 10件応募促進リマインダーから
+  | 'flow';              // フロー実行エンジンから
 
 /**
  * テキスト内のURLを検出する正規表現

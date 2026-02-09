@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { FlowNode, FlowEdge } from '@/lib/database/flow-queries';
 import { expandVariables, createTextMessage } from '../utils';
+import { processUrlsInText, UrlSourceType } from '@/lib/tracking/url-processor';
 
 /**
  * send_message ノードハンドラー
@@ -34,7 +35,11 @@ export class SendMessageHandler implements NodeHandler {
       }
 
       // 変数展開
-      const expandedContent = expandVariables(config.content, context);
+      let expandedContent = expandVariables(config.content, context);
+
+      // URL処理（LIFF外部ブラウザリダイレクト + トラッキングパラメータ付与）
+      const sourceType = (context.variables?.urlSourceType as UrlSourceType) || 'flow';
+      expandedContent = await processUrlsInText(expandedContent, context.userId, sourceType);
 
       // メッセージオブジェクトを作成
       let message: any;

@@ -11,6 +11,7 @@ import {
   QuickReplyConfig
 } from '../types';
 import { expandVariables } from '../utils';
+import { processUrlsInText, UrlSourceType } from '@/lib/tracking/url-processor';
 
 /**
  * quick_reply ノードハンドラークラス
@@ -41,7 +42,11 @@ export class QuickReplyHandler implements NodeHandler {
     }
 
     // メッセージ内の変数を展開
-    const message = expandVariables(config.message, context);
+    let message = expandVariables(config.message, context);
+
+    // URL処理（LIFF外部ブラウザリダイレクト + トラッキングパラメータ付与）
+    const sourceType = (context.variables?.urlSourceType as UrlSourceType) || 'flow';
+    message = await processUrlsInText(message, context.userId, sourceType);
 
     // クイックリプライアイテムを作成
     const quickReplyItems = outgoingEdges.map((edge) => ({

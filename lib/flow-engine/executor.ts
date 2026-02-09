@@ -55,12 +55,14 @@ export class FlowExecutor {
       const executionId = await createFlowExecution(flowId, userId);
 
       // 実行コンテキストを初期化
+      // flowDefinition.variablesからurlSourceTypeなどの設定を取得
+      const flowVariables = flow.flowDefinition.variables || {};
       const context: ExecutionContext = {
         userId,
         userMessage,
         lang: initialContext?.lang || 'ja',
         service: initialContext?.service,
-        variables: initialContext?.variables || {},
+        variables: { ...flowVariables, ...(initialContext?.variables || {}) },
         conversationHistory: initialContext?.conversationHistory || [],
         ...initialContext,
       };
