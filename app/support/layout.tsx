@@ -4,11 +4,13 @@ import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { AIChatSidebar } from '@/components/dashboard/AIChatSidebar';
+import { DashboardPeriodProvider } from '@/contexts/DashboardPeriodContext';
 
 export default function SupportLayout({ children }: { children: ReactNode }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
+    <DashboardPeriodProvider>
     <div className="min-h-screen bg-slate-100 flex">
       <Sidebar onOpenChat={() => setIsChatOpen(true)} />
       <main
@@ -20,5 +22,6 @@ export default function SupportLayout({ children }: { children: ReactNode }) {
       </main>
       <AIChatSidebar isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
+    </DashboardPeriodProvider>
   );
 }
