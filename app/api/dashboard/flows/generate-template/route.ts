@@ -124,6 +124,12 @@ async function categorizeFaqs(
   return grouped;
 }
 
+// --- レイアウト定数 ---
+const CAT_COL_WIDTH = 350;  // カテゴリ列の幅
+const SVC_GAP = 300;        // サービス間の間隔
+const ROW_GAP = 100;        // 行間の間隔
+const FAQ_NODE_HEIGHT = 90; // FAQ回答+終了ノードの高さ
+
 /**
  * POST /api/dashboard/flows/generate-template
  * FAQデータからフローテンプレートを自動生成（AI中カテゴリ分類版）
@@ -176,25 +182,41 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    // --- 各サービスの幅を事前計算 ---
+    const serviceWidths: Record<string, number> = {};
+    for (const svc of SERVICES) {
+      const catCount = Math.max(1, Object.keys(categoryResults[svc]).length);
+      serviceWidths[svc] = catCount * CAT_COL_WIDTH;
+    }
+
+    // サービスのx位置を計算（中央揃え、重ならないように）
+    const totalWidth = SERVICES.reduce((sum, svc) => sum + serviceWidths[svc], 0)
+      + (SERVICES.length - 1) * SVC_GAP;
+    let currentX = -totalWidth / 2;
+    const serviceCenterX: Record<string, number> = {};
+    for (const svc of SERVICES) {
+      serviceCenterX[svc] = currentX + serviceWidths[svc] / 2;
+      currentX += serviceWidths[svc] + SVC_GAP;
+    }
+
+    // 共通ノードのx位置（全体の中央）
+    const centerX = 0;
+
     // ノードとエッジを生成
     const nodes: any[] = [];
     const edges: any[] = [];
-
-    // レイアウト定数
-    const COL_WIDTH = 400;
-    const ROW_HEIGHT = 120;
-    const FAQ_ROW_HEIGHT = 100;
-    const startX = 250;
     let nodeCounter = 0;
-
     const makeId = (prefix: string) => `${prefix}-${++nodeCounter}`;
+
+    // Y座標管理
+    let y = 0;
 
     // --- Row 0: Trigger ---
     const triggerId = 'trigger-1';
     nodes.push({
       id: triggerId,
       type: 'default',
-      position: { x: startX, y: 0 },
+      position: { x: centerX, y },
       data: {
         label: '開始 (Trigger)',
         nodeType: 'trigger',
@@ -203,11 +225,12 @@ export async function POST(request: NextRequest) {
     });
 
     // --- Row 1: Greeting message ---
+    y += ROW_GAP;
     const greetingId = makeId('send_message');
     nodes.push({
       id: greetingId,
       type: 'default',
-      position: { x: startX, y: ROW_HEIGHT },
+      position: { x: centerX, y },
       data: {
         label: '挨拶メッセージ',
         nodeType: 'send_message',
@@ -224,11 +247,12 @@ export async function POST(request: NextRequest) {
     });
 
     // --- Row 2: Service selection (quick_reply) ---
+    y += ROW_GAP;
     const serviceSelectId = makeId('quick_reply');
     nodes.push({
       id: serviceSelectId,
       type: 'default',
-      position: { x: startX, y: ROW_HEIGHT * 2 },
+      position: { x: centerX, y },
       data: {
         label: 'サービス選択',
         nodeType: 'quick_reply',
@@ -243,16 +267,14 @@ export async function POST(request: NextRequest) {
       target: serviceSelectId,
     });
 
-    // --- Row 3+: Per-service branches with categories ---
-    const serviceCount = SERVICES.length;
-    const totalWidth = (serviceCount - 1) * COL_WIDTH;
-    const baseX = startX - totalWidth / 2;
+    // --- Row 3: Service guide messages ---
+    const svcGuideY = y + ROW_GAP;
 
     // カテゴリ統計情報
     const categoryStats: Record<string, Record<string, number>> = {};
 
     SERVICES.forEach((svc, svcIndex) => {
-      const svcX = baseX + svcIndex * COL_WIDTH;
+      const svcX = serviceCenterX[svc];
       const svcFaqs = faqsByService[svc];
       const svcLabel = SERVICE_LABELS[svc];
       const categories = categoryResults[svc];
@@ -268,13 +290,15 @@ export async function POST(request: NextRequest) {
       nodes.push({
         id: guideId,
         type: 'default',
-        position: { x: svcX, y: ROW_HEIGHT * 3 },
+        position: { x: svcX, y: svcGuideY },
         data: {
           label: `${svcLabel} ガイド`,
           nodeType: 'send_message',
           config: {
             messageType: 'text',
-            content: `${svcLabel}についてですね。\nどのカテゴリについてお困りですか？`,
+            content: categoryNames.length > 1
+              ? `${svcLabel}についてですね。\nどのカテゴリについてお困りですか？`
+              : `${svcLabel}についてですね。\n以下のよくある質問から選んでください。`,
           },
         },
       });
@@ -294,7 +318,7 @@ export async function POST(request: NextRequest) {
         nodes.push({
           id: endId,
           type: 'default',
-          position: { x: svcX, y: ROW_HEIGHT * 4 },
+          position: { x: svcX, y: svcGuideY + ROW_GAP },
           data: {
             label: '終了',
             nodeType: 'end',
@@ -312,11 +336,12 @@ export async function POST(request: NextRequest) {
       // カテゴリが1つだけの場合（13件以下）→ 直接FAQ選択へ
       if (categoryNames.length <= 1) {
         const catFaqs = categories[categoryNames[0]] || svcFaqs;
+        const faqSelectY = svcGuideY + ROW_GAP;
         const faqSelectId = makeId('quick_reply');
         nodes.push({
           id: faqSelectId,
           type: 'default',
-          position: { x: svcX, y: ROW_HEIGHT * 4 },
+          position: { x: svcX, y: faqSelectY },
           data: {
             label: `${svcLabel} FAQ選択`,
             nodeType: 'quick_reply',
@@ -331,20 +356,23 @@ export async function POST(request: NextRequest) {
           target: faqSelectId,
         });
 
-        // FAQ回答ノード生成
+        // FAQ回答ノード生成（縦に積む）
         generateFaqAnswerNodes(
-          catFaqs, faqSelectId, svcX, ROW_HEIGHT * 5,
-          nodes, edges, makeId, FAQ_ROW_HEIGHT
+          catFaqs, faqSelectId, svcX, faqSelectY + ROW_GAP,
+          nodes, edges, makeId
         );
         return;
       }
 
+      // --- 複数カテゴリの場合 ---
+
       // カテゴリ選択 (quick_reply)
+      const catSelectY = svcGuideY + ROW_GAP;
       const catSelectId = makeId('quick_reply');
       nodes.push({
         id: catSelectId,
         type: 'default',
-        position: { x: svcX, y: ROW_HEIGHT * 4 },
+        position: { x: svcX, y: catSelectY },
         data: {
           label: `${svcLabel} カテゴリ選択`,
           nodeType: 'quick_reply',
@@ -360,20 +388,22 @@ export async function POST(request: NextRequest) {
       });
 
       // 各カテゴリの分岐
+      // カテゴリ列のx位置を計算（サービスの範囲内で均等配置）
       const catCount = categoryNames.length;
-      const catTotalWidth = (catCount - 1) * COL_WIDTH * 0.8;
-      const catBaseX = svcX - catTotalWidth / 2;
+      const svcWidth = serviceWidths[svc];
+      const catStartX = svcX - svcWidth / 2 + CAT_COL_WIDTH / 2;
 
       categoryNames.forEach((catName, catIndex) => {
         const catFaqs = categories[catName];
-        const catX = catBaseX + catIndex * COL_WIDTH * 0.8;
+        const catX = catStartX + catIndex * CAT_COL_WIDTH;
 
         // カテゴリガイドメッセージ
+        const catGuideY = catSelectY + ROW_GAP;
         const catGuideId = makeId('send_message');
         nodes.push({
           id: catGuideId,
           type: 'default',
-          position: { x: catX, y: ROW_HEIGHT * 5 },
+          position: { x: catX, y: catGuideY },
           data: {
             label: `${catName}`,
             nodeType: 'send_message',
@@ -394,11 +424,12 @@ export async function POST(request: NextRequest) {
         });
 
         // カテゴリ別FAQ選択 (quick_reply)
+        const faqSelectY = catGuideY + ROW_GAP;
         const faqSelectId = makeId('quick_reply');
         nodes.push({
           id: faqSelectId,
           type: 'default',
-          position: { x: catX, y: ROW_HEIGHT * 6 },
+          position: { x: catX, y: faqSelectY },
           data: {
             label: `${catName} FAQ選択`,
             nodeType: 'quick_reply',
@@ -413,10 +444,10 @@ export async function POST(request: NextRequest) {
           target: faqSelectId,
         });
 
-        // FAQ回答ノード生成
+        // FAQ回答ノード生成（縦に積む）
         generateFaqAnswerNodes(
-          catFaqs, faqSelectId, catX, ROW_HEIGHT * 7,
-          nodes, edges, makeId, FAQ_ROW_HEIGHT
+          catFaqs, faqSelectId, catX, faqSelectY + ROW_GAP,
+          nodes, edges, makeId
         );
       });
     });
@@ -444,6 +475,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * FAQ回答ノードとエッジを生成するヘルパー
+ * ノードは縦に積む（横に広げない）
  */
 function generateFaqAnswerNodes(
   faqs: FaqWithTranslations[],
@@ -452,8 +484,7 @@ function generateFaqAnswerNodes(
   baseY: number,
   nodes: any[],
   edges: any[],
-  makeId: (prefix: string) => string,
-  faqRowHeight: number
+  makeId: (prefix: string) => string
 ) {
   faqs.forEach((faq, faqIndex) => {
     const jaTranslation = faq.faq_translations.find((t) => t.lang === 'ja');
@@ -468,19 +499,14 @@ function generateFaqAnswerNodes(
       questionLabels[t.lang] = t.question;
     });
 
-    // FAQ answer node (send_message)
+    // FAQ answer node (send_message) — 縦に積む
     const answerId = makeId('send_message');
-    const faqY = baseY + faqIndex * faqRowHeight;
-
-    // Spread FAQ answer nodes horizontally
-    const faqSpread = faqs.length > 1
-      ? (faqIndex - (faqs.length - 1) / 2) * 200
-      : 0;
+    const faqY = baseY + faqIndex * FAQ_NODE_HEIGHT;
 
     nodes.push({
       id: answerId,
       type: 'default',
-      position: { x: baseX + faqSpread, y: faqY },
+      position: { x: baseX, y: faqY },
       data: {
         label: question.length > 20 ? question.substring(0, 20) + '...' : question,
         nodeType: 'send_message',
@@ -501,12 +527,12 @@ function generateFaqAnswerNodes(
       order: faqIndex,
     });
 
-    // End node for each FAQ
+    // End node for each FAQ（回答ノードの直下）
     const endId = makeId('end');
     nodes.push({
       id: endId,
       type: 'default',
-      position: { x: baseX + faqSpread, y: faqY + faqRowHeight },
+      position: { x: baseX, y: faqY + FAQ_NODE_HEIGHT / 2 },
       data: {
         label: '終了',
         nodeType: 'end',
