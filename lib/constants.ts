@@ -3,6 +3,7 @@ export const CONSTANTS = {
   MODE: {
     DIAGNOSIS: "diagnosis",
     AI_CHAT: "ai_chat",
+    FLOW: "flow",
   },
   BUTTON: {
     FIND_JOB: "FIND_JOB",

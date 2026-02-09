@@ -1,5 +1,5 @@
 import { LineEvent } from '@/types/line';
-import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile } from '../database/queries';
+import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile, saveConversationState } from '../database/queries';
 import { getActiveTicketByUserId, saveMessage } from '../database/support-queries';
 import { replyMessage, linkRichMenu } from '../line/client';
 import { config } from '../config';
@@ -14,6 +14,8 @@ import {
   exitSupportMode,
 } from './support';
 import { detectUserIntentAdvanced } from './intent';
+import { getActiveFlows } from '../database/flow-queries';
+import { flowExecutor } from '../flow-engine/executor';
 
 export async function handleEvent(event: LineEvent): Promise<void> {
   const { type, source } = event;
@@ -100,6 +102,54 @@ export async function handleEvent(event: LineEvent): Promise<void> {
           await clearConversationState(userId);
         }
 
+        // フロー実行エンジンを優先的に使用
+        const flows = await getActiveFlows('keyword');
+        const matchingFlow = flows.find(f =>
+          f.triggerValue?.toLowerCase() === messageText.toLowerCase()
+        );
+
+        if (matchingFlow) {
+          console.log('🔄 フロー実行開始:', matchingFlow.id, matchingFlow.name);
+          const lang = await getUserLang(userId);
+
+          try {
+            const result = await flowExecutor.execute(
+              matchingFlow.id,
+              userId,
+              messageText,
+              {
+                lang,
+                replyToken: event.replyToken,
+                service: matchingFlow.service,
+              }
+            );
+
+            // レスポンスメッセージを送信
+            if (result.responseMessages && result.responseMessages.length > 0) {
+              await replyMessage(event.replyToken, result.responseMessages);
+            }
+
+            // クイックリプライ待機状態の場合は会話状態を保存
+            if (result.shouldWaitForInput && result.waitNodeId) {
+              console.log('⏸️ ユーザー入力待機中:', result.waitNodeId);
+              await saveConversationState(userId, {
+                mode: 'flow',
+                flowId: matchingFlow.id,
+                waitingNodeId: result.waitNodeId,
+                variables: result.variables || {},
+              });
+            }
+
+            console.log('✅ フロー実行完了');
+            return;
+          } catch (error) {
+            console.error('❌ フロー実行エラー:', error);
+            // エラー時はフォールバック
+          }
+        }
+
+        // フローが見つからない場合は従来のハンドラーを使用
+        console.log('⚠️ マッチするフローなし、従来のハンドラーを使用');
         await handleSupportButton(userId, event.replyToken);
         return;
       }
@@ -148,6 +198,52 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         const handled = await handleSupportMessage(userId, event.replyToken, messageText);
         if (handled) {
           return;
+        }
+      }
+
+      // === フローモード中の処理（クイックリプライへの応答） ===
+      if (currentState?.mode === 'flow' && currentState.flowId && currentState.waitingNodeId) {
+        console.log('🔄 フロー継続:', currentState.flowId, 'ノード:', currentState.waitingNodeId);
+        const lang = await getUserLang(userId);
+
+        try {
+          const result = await flowExecutor.execute(
+            currentState.flowId,
+            userId,
+            messageText,
+            {
+              lang,
+              replyToken: event.replyToken,
+              variables: currentState.variables || {}
+            },
+            currentState.waitingNodeId  // resumeFromNodeId
+          );
+
+          // レスポンスメッセージを送信
+          if (result.responseMessages && result.responseMessages.length > 0) {
+            await replyMessage(event.replyToken, result.responseMessages);
+          }
+
+          // まだ入力待機中の場合は状態を更新
+          if (result.shouldWaitForInput && result.waitNodeId) {
+            console.log('⏸️ ユーザー入力待機中:', result.waitNodeId);
+            await saveConversationState(userId, {
+              mode: 'flow',
+              flowId: currentState.flowId,
+              waitingNodeId: result.waitNodeId,
+              variables: result.variables || {},
+            });
+          } else {
+            // フロー完了、状態をクリア
+            console.log('✅ フロー完了、状態クリア');
+            await clearConversationState(userId);
+          }
+
+          return;
+        } catch (error) {
+          console.error('❌ フロー継続エラー:', error);
+          // エラー時は状態をクリアして通常処理へ
+          await clearConversationState(userId);
         }
       }
 

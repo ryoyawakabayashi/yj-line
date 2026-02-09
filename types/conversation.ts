@@ -1,6 +1,6 @@
 import { SupportModeState } from './support';
 
-export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support';
+export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support' | 'flow';
 
 export type FollowupStep = 'ask_applied' | 'ask_count' | 'ask_trouble' | 'complete';
 
@@ -13,15 +13,18 @@ export interface FollowupAnswers {
 
 export interface ConversationState {
   mode: ConversationMode;
-  currentQuestion: number | null;
-  answers: DiagnosisAnswers;
-  selectedIndustries: string[];
-  lang: string;
+  currentQuestion?: number | null;
+  answers?: DiagnosisAnswers;
+  selectedIndustries?: string[];
+  lang?: string;
   q4_step?: 'select_major' | 'select_region' | 'select_prefecture';
   selectedRegion?: string;
   followupStep?: FollowupStep;
   followupAnswers?: FollowupAnswers;
   supportState?: SupportModeState;
+  flowId?: string;
+  waitingNodeId?: string;
+  variables?: Record<string, any>;
 }
 
 export interface DiagnosisAnswers {

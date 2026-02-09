@@ -63,6 +63,8 @@ import {
 import OpenAI from 'openai';
 import { config } from '../config';
 import { processUrlsInText, UrlSourceType } from '../tracking/url-processor';
+import { flowExecutor } from '../flow-engine';
+import { getActiveFlows } from '../database/flow-queries';
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -505,6 +507,62 @@ export async function handleSupportMessage(
 
   // 会話履歴を更新
   const conversationHistory = supportState.conversationHistory || [];
+
+  // === チャットフロー実行エンジン ===
+  // サービスが決定している場合、フローエディタで作成されたフローを優先的に実行
+  if (supportState.service) {
+    try {
+      // アクティブなフローを取得（トリガー: support_button）
+      const activeFlows = await getActiveFlows('support_button', supportState.service);
+
+      if (activeFlows.length > 0) {
+        console.log(`🔄 フロー実行開始: ${activeFlows[0].name} (${activeFlows[0].id})`);
+
+        // フロー実行エンジンで処理
+        const result = await flowExecutor.execute(
+          activeFlows[0].id,
+          userId,
+          userMessage,
+          {
+            lang,
+            service: supportState.service,
+            replyToken,
+            variables: {},
+            conversationHistory: conversationHistory.map((m) => ({
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+            })),
+          }
+        );
+
+        if (result.handled && result.responseMessages && result.responseMessages.length > 0) {
+          // フローで処理できた場合
+          console.log(`✅ フロー実行完了: ${result.responseMessages.length}件のメッセージ送信`);
+
+          // 会話履歴に追加
+          conversationHistory.push({ role: 'user', content: userMessage });
+          for (const msg of result.responseMessages) {
+            const msgText = msg.type === 'text' ? msg.text : '[メッセージ]';
+            conversationHistory.push({ role: 'assistant', content: msgText });
+          }
+
+          supportState.conversationHistory = conversationHistory;
+          currentState.supportState = supportState;
+          await saveConversationState(userId, currentState);
+
+          // メッセージを送信
+          await replyMessage(replyToken, result.responseMessages);
+
+          return true;
+        }
+
+        console.log(`ℹ️  フローで処理されなかったため既存ロジックに進みます`);
+      }
+    } catch (error) {
+      console.error('❌ フロー実行エラー（既存ロジックにフォールバック）:', error);
+      // エラーが発生しても既存ロジックに進む
+    }
+  }
 
   // === 確認待ち状態のチェック ===
   if (supportState.pendingConfirmation) {
