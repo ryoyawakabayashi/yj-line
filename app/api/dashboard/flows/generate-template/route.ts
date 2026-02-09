@@ -125,10 +125,11 @@ async function categorizeFaqs(
 }
 
 // --- レイアウト定数 ---
-const CAT_COL_WIDTH = 350;  // カテゴリ列の幅
-const SVC_GAP = 300;        // サービス間の間隔
-const ROW_GAP = 100;        // 行間の間隔
-const FAQ_NODE_HEIGHT = 90; // FAQ回答+終了ノードの高さ
+const CAT_COL_WIDTH = 400;  // カテゴリ列の幅
+const SVC_GAP = 400;        // サービス間の間隔
+const ROW_GAP = 120;        // 行間の間隔
+const FAQ_NODE_HEIGHT = 160; // FAQ回答+終了ノードペアの高さ
+const END_NODE_OFFSET = 80;  // 回答ノードから終了ノードまでのオフセット
 
 /**
  * POST /api/dashboard/flows/generate-template
@@ -527,12 +528,12 @@ function generateFaqAnswerNodes(
       order: faqIndex,
     });
 
-    // End node for each FAQ（回答ノードの直下）
+    // End node for each FAQ（回答ノードの下に十分な間隔で配置）
     const endId = makeId('end');
     nodes.push({
       id: endId,
       type: 'default',
-      position: { x: baseX, y: faqY + FAQ_NODE_HEIGHT / 2 },
+      position: { x: baseX, y: faqY + END_NODE_OFFSET },
       data: {
         label: '終了',
         nodeType: 'end',

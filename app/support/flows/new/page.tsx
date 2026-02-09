@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
@@ -85,6 +85,62 @@ export default function NewFlowPage() {
   // キャンバスクリック時のハンドラー（選択解除）
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
+  }, []);
+
+  // --- 親ノードドラッグで子ノードも追従（マインドマップ風） ---
+  const dragState = useRef<{
+    startPos: { x: number; y: number };
+    descendants: Array<{ id: string; startPos: { x: number; y: number } }>;
+  } | null>(null);
+
+  // エッジから子孫ノードIDを再帰的に取得
+  const getDescendants = useCallback((nodeId: string, edgeList: Edge[]): string[] => {
+    const children = edgeList.filter((e) => e.source === nodeId).map((e) => e.target);
+    const all: string[] = [...children];
+    for (const child of children) {
+      all.push(...getDescendants(child, edgeList));
+    }
+    return [...new Set(all)]; // 重複除去
+  }, []);
+
+  const onNodeDragStart = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      const descendants = getDescendants(node.id, edges);
+      dragState.current = {
+        startPos: { x: node.position.x, y: node.position.y },
+        descendants: descendants.map((id) => {
+          const n = nodes.find((nd) => nd.id === id);
+          return { id, startPos: { x: n?.position.x || 0, y: n?.position.y || 0 } };
+        }),
+      };
+    },
+    [edges, nodes, getDescendants]
+  );
+
+  const onNodeDrag = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (!dragState.current || dragState.current.descendants.length === 0) return;
+      const dx = node.position.x - dragState.current.startPos.x;
+      const dy = node.position.y - dragState.current.startPos.y;
+
+      setNodes((prevNodes) =>
+        prevNodes.map((n) => {
+          const desc = dragState.current?.descendants.find((d) => d.id === n.id);
+          if (desc) {
+            return {
+              ...n,
+              position: { x: desc.startPos.x + dx, y: desc.startPos.y + dy },
+            };
+          }
+          return n;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  const onNodeDragStop = useCallback(() => {
+    dragState.current = null;
   }, []);
 
   // ノード追加
@@ -763,6 +819,9 @@ export default function NewFlowPage() {
             onConnect={onConnect}
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDrag={onNodeDrag}
+            onNodeDragStop={onNodeDragStop}
             fitView
           >
             <Background />
