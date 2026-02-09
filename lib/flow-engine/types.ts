@@ -61,7 +61,7 @@ export interface NodeHandler {
  */
 export interface SendMessageConfig {
   messageType: 'text' | 'flex' | 'template';
-  content: string;  // 変数埋め込み可: {{user.name}}
+  content: string | Record<string, string>;  // 変数埋め込み可: {{user.name}} / 多言語対応
   quickReply?: {
     items: Array<{
       type: 'action';
@@ -135,7 +135,7 @@ export interface SetVariableConfig {
  * 複数の接続先エッジをLINEクイックリプライボタンとして表示
  */
 export interface QuickReplyConfig {
-  message: string;  // クイックリプライと一緒に送るメッセージ
+  message: string | Record<string, string>;  // クイックリプライと一緒に送るメッセージ / 多言語対応
   // エッジのlabelがボタンのテキストになります
   // エッジのtargetが選択後の遷移先ノードIDになります
 }

@@ -3,9 +3,14 @@ import OpenAI from 'openai';
 
 export const runtime = 'nodejs';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Convert File to the format OpenAI expects
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await getOpenAI().audio.transcriptions.create({
       file: audio,
       model: 'whisper-1',
       language: 'ja',

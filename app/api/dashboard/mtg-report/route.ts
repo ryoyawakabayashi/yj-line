@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { DASHBOARD_ANALYST_SYSTEM_PROMPT, MTG_REPORT_TEMPLATE } from '@/lib/ai/dashboard-analyst-prompt';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 // AIコンテキストを取得するヘルパー
 async function fetchAIContext(period: string, baseUrl: string) {
@@ -117,7 +122,7 @@ ${MTG_REPORT_TEMPLATE}${actionsContext}
 - 対策は実行可能で具体的なものを提案してください
 - 「やったこと」が登録されている場合は、その施策の効果を数値で評価してください`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },

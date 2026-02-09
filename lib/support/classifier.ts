@@ -5,9 +5,14 @@
 import OpenAI from 'openai';
 import { config } from '../config';
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: config.openai.apiKey });
+  }
+  return openai;
+}
 
 // UTMパラメータ
 const UTM = '?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry';
@@ -1772,7 +1777,7 @@ JSONのみで回答してください（説明不要）：
 - confidenceは0.0〜1.0で、0.7以上なら確信あり、0.4〜0.7は可能性あり`;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 200,

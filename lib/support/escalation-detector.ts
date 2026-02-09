@@ -6,9 +6,14 @@ import OpenAI from 'openai';
 import { config } from '../config';
 import { ServiceType } from '@/types/support';
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: config.openai.apiKey });
+  }
+  return openai;
+}
 
 // =====================================================
 // Types
@@ -209,7 +214,7 @@ export async function detectEscalationByAI(
       .map((m) => `${m.role === 'user' ? 'ユーザー' : 'アシスタント'}: ${m.content}`)
       .join('\n');
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },

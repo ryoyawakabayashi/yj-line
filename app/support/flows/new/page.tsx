@@ -50,6 +50,16 @@ export default function NewFlowPage() {
   const [urlSourceType, setUrlSourceType] = useState<string>('flow');
   const [saving, setSaving] = useState(false);
   const [showFaqImportModal, setShowFaqImportModal] = useState(false);
+  const [activeLang, setActiveLang] = useState<string>('ja');
+  const [translating, setTranslating] = useState(false);
+
+  const LANGS = [
+    { code: 'ja', name: '日本語' },
+    { code: 'en', name: 'EN' },
+    { code: 'ko', name: 'KO' },
+    { code: 'zh', name: 'ZH' },
+    { code: 'vi', name: 'VI' },
+  ];
 
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
@@ -240,6 +250,164 @@ export default function NewFlowPage() {
     );
   };
 
+  // 多言語コンテンツのヘルパー関数
+  const getContentForLang = (content: string | Record<string, string> | undefined, lang: string): string => {
+    if (!content) return '';
+    if (typeof content === 'object') return content[lang] || '';
+    return lang === 'ja' ? content : '';
+  };
+
+  const setContentForLang = (
+    content: string | Record<string, string> | undefined,
+    lang: string,
+    value: string
+  ): string | Record<string, string> => {
+    if (lang === 'ja' && typeof content !== 'object') {
+      return value;
+    }
+    const obj = typeof content === 'object' ? { ...content } : { ja: String(content || '') };
+    obj[lang] = value;
+    return obj;
+  };
+
+  const getEdgeLabelForLang = (edge: any, lang: string): string => {
+    if (lang === 'ja') return (edge.label as string) || '';
+    return edge.labels?.[lang] || '';
+  };
+
+  const updateEdgeLabelForLang = (edgeId: string, newLabel: string, lang: string) => {
+    setEdges((prevEdges) =>
+      prevEdges.map((edge) => {
+        if (edge.id !== edgeId) return edge;
+        if (lang === 'ja') {
+          return { ...edge, label: newLabel };
+        }
+        const currentLabels = (edge as any).labels || {};
+        return { ...edge, labels: { ...currentLabels, [lang]: newLabel } };
+      })
+    );
+  };
+
+  // 一括翻訳
+  const handleTranslateAll = async () => {
+    setTranslating(true);
+    try {
+      const texts: string[] = [];
+      const textSources: Array<{ type: string; id: string }> = [];
+
+      nodes.forEach((node) => {
+        const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
+        if (nodeType === 'send_message') {
+          const content = typeof node.data.config.content === 'object'
+            ? node.data.config.content.ja
+            : node.data.config.content;
+          if (content) {
+            texts.push(content);
+            textSources.push({ type: 'node_content', id: node.id });
+          }
+        }
+        if (nodeType === 'quick_reply') {
+          const message = typeof node.data.config.message === 'object'
+            ? node.data.config.message.ja
+            : node.data.config.message;
+          if (message) {
+            texts.push(message);
+            textSources.push({ type: 'node_message', id: node.id });
+          }
+        }
+      });
+
+      edges.forEach((edge) => {
+        if (edge.label) {
+          texts.push(edge.label as string);
+          textSources.push({ type: 'edge_label', id: edge.id });
+        }
+      });
+
+      if (texts.length === 0) {
+        alert('翻訳対象のテキストがありません');
+        setTranslating(false);
+        return;
+      }
+
+      const res = await fetch('/api/dashboard/flows/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts }),
+      });
+
+      if (!res.ok) throw new Error('Translation API failed');
+      const data = await res.json();
+      const translations = data.translations;
+
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          const source = textSources.find(
+            (s) => s.id === node.id && (s.type === 'node_content' || s.type === 'node_message')
+          );
+          if (!source) return node;
+          const idx = textSources.indexOf(source);
+          const t = translations[idx];
+          if (!t) return node;
+
+          const configKey = source.type === 'node_content' ? 'content' : 'message';
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              config: {
+                ...node.data.config,
+                [configKey]: { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi },
+              },
+            },
+          };
+        })
+      );
+
+      setEdges((prevEdges) =>
+        prevEdges.map((edge) => {
+          const source = textSources.find((s) => s.id === edge.id && s.type === 'edge_label');
+          if (!source) return edge;
+          const idx = textSources.indexOf(source);
+          const t = translations[idx];
+          if (!t) return edge;
+          return {
+            ...edge,
+            labels: { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi },
+          };
+        })
+      );
+
+      if (selectedNode) {
+        const source = textSources.find((s) => s.id === selectedNode.id);
+        if (source) {
+          const idx = textSources.indexOf(source);
+          const t = translations[idx];
+          if (t) {
+            const configKey = source.type === 'node_content' ? 'content' : 'message';
+            setSelectedNode({
+              ...selectedNode,
+              data: {
+                ...selectedNode.data,
+                config: {
+                  ...selectedNode.data.config,
+                  [configKey]: { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi },
+                },
+              },
+            });
+          }
+        }
+      }
+
+      alert(`${texts.length}件のテキストを翻訳しました`);
+    } catch (error) {
+      console.error('翻訳エラー:', error);
+      alert('翻訳に失敗しました');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   // フロー保存
   const handleSave = async () => {
     if (!flowName) {
@@ -271,6 +439,7 @@ export default function NewFlowPage() {
           target: edge.target,
           sourceHandle: edge.sourceHandle,
           label: edge.label,
+          labels: (edge as any).labels,
           order: edge.order,
         })),
         variables: {
@@ -331,13 +500,22 @@ export default function NewFlowPage() {
             </button>
             <h1 className="text-xl font-bold text-gray-900">新規フロー作成</h1>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {saving ? '保存中...' : '保存'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleTranslateAll}
+              disabled={translating}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-sm"
+            >
+              {translating ? '翻訳中...' : '一括翻訳 (5言語)'}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -562,15 +740,32 @@ export default function NewFlowPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     メッセージ内容 <span className="text-red-500">*</span>
                   </label>
+                  <div className="flex gap-1 mb-2">
+                    {LANGS.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => setActiveLang(lang.code)}
+                        className={`px-2 py-1 text-xs rounded transition ${
+                          activeLang === lang.code
+                            ? 'bg-blue-600 text-white'
+                            : getContentForLang(selectedNode.data.config.content, lang.code)
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {lang.name}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
-                    value={selectedNode.data.config.content || ''}
+                    value={getContentForLang(selectedNode.data.config.content, activeLang)}
                     onChange={(e) =>
                       updateNodeConfig(selectedNode.id, {
                         ...selectedNode.data.config,
-                        content: e.target.value,
+                        content: setContentForLang(selectedNode.data.config.content, activeLang, e.target.value),
                       })
                     }
-                    placeholder="メッセージを入力..."
+                    placeholder={activeLang === 'ja' ? 'メッセージを入力...' : `${activeLang}の翻訳を入力...`}
                     rows={6}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
                   />
@@ -587,15 +782,32 @@ export default function NewFlowPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     メッセージ <span className="text-red-500">*</span>
                   </label>
+                  <div className="flex gap-1 mb-2">
+                    {LANGS.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => setActiveLang(lang.code)}
+                        className={`px-2 py-1 text-xs rounded transition ${
+                          activeLang === lang.code
+                            ? 'bg-blue-600 text-white'
+                            : getContentForLang(selectedNode.data.config.message, lang.code)
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {lang.name}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
-                    value={selectedNode.data.config.message || ''}
+                    value={getContentForLang(selectedNode.data.config.message, activeLang)}
                     onChange={(e) =>
                       updateNodeConfig(selectedNode.id, {
                         ...selectedNode.data.config,
-                        message: e.target.value,
+                        message: setContentForLang(selectedNode.data.config.message, activeLang, e.target.value),
                       })
                     }
-                    placeholder="選択肢と一緒に送るメッセージを入力..."
+                    placeholder={activeLang === 'ja' ? '選択肢と一緒に送るメッセージを入力...' : `${activeLang}の翻訳を入力...`}
                     rows={4}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
@@ -611,7 +823,7 @@ export default function NewFlowPage() {
                   <ol className="text-xs text-yellow-700 space-y-1 list-decimal list-inside">
                     <li>このノードから複数のノードにエッジで接続</li>
                     <li>各エッジのラベルを入力欄で編集</li>
-                    <li>ラベルがLINEのボタンテキストになります</li>
+                    <li>ラ���ルがLINEのボタンテキストになります</li>
                     <li>ユーザーがボタンを押すと対応するノードへ進みます</li>
                   </ol>
                 </div>
@@ -637,9 +849,9 @@ export default function NewFlowPage() {
                           <div className="flex items-center gap-2 mb-1">
                             <input
                               type="text"
-                              value={(edge.label as string) || ''}
-                              onChange={(e) => updateEdgeLabel(edge.id, e.target.value)}
-                              placeholder="ボタンのラベル"
+                              value={getEdgeLabelForLang(edge, activeLang)}
+                              onChange={(e) => updateEdgeLabelForLang(edge.id, e.target.value, activeLang)}
+                              placeholder={activeLang === 'ja' ? 'ボタンのラベル' : `${activeLang}のラベル`}
                               className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                             <div className="flex gap-1">

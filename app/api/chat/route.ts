@@ -3,9 +3,14 @@ import OpenAI from 'openai';
 
 export const runtime = 'nodejs';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 // 許可するモデルのリスト
 const ALLOWED_MODELS = ['gpt-4o-mini', 'gpt-4o', 'gpt-5.1', 'o3', 'o3-mini'];
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
       requestPayload.temperature = 0.7;
     }
 
-    const completion = await openai.chat.completions.create(requestPayload);
+    const completion = await getOpenAI().chat.completions.create(requestPayload);
 
     const response = completion.choices[0]?.message?.content;
 

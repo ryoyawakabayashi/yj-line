@@ -46,6 +46,7 @@ export interface FlowEdge {
   target: string;
   sourceHandle?: string;
   label?: string;
+  labels?: Record<string, string>;  // 多言語対応ラベル: { ja: "...", en: "...", ko: "..." }
   order?: number;  // クイックリプライの表示順序（数値が小さいほど先に表示）
 }
 

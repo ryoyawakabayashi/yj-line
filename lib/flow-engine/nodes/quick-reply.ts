@@ -41,22 +41,36 @@ export class QuickReplyHandler implements NodeHandler {
       };
     }
 
+    // 多言語対応: messageがオブジェクトの場合はユーザー言語のテキストを取得
+    const rawMessage = config.message
+      ? (typeof config.message === 'object'
+        ? ((config.message as Record<string, string>)[context.lang] || (config.message as Record<string, string>).ja || Object.values(config.message)[0])
+        : config.message)
+      : '';
+
     // メッセージ内の変数を展開
-    let message = expandVariables(config.message, context);
+    let message = expandVariables(String(rawMessage), context);
 
     // URL処理（LIFF外部ブラウザリダイレクト + トラッキングパラメータ付与）
     const sourceType = (context.variables?.urlSourceType as UrlSourceType) || 'flow';
     message = await processUrlsInText(message, context.userId, sourceType);
 
-    // クイックリプライアイテムを作成
-    const quickReplyItems = outgoingEdges.map((edge) => ({
-      type: 'action' as const,
-      action: {
-        type: 'message' as const,
-        label: edge.label || edge.target,  // エッジのラベルをボタンテキストとして使用
-        text: edge.label || edge.target,   // ユーザーが選択したときに送信されるテキスト
-      },
-    }));
+    // クイックリプライアイテムを作成（多言語対応）
+    const quickReplyItems = outgoingEdges.map((edge) => {
+      // 多言語ラベル: edge.labelsがあればユーザー言語のラベルを使用
+      const localizedLabel = edge.labels
+        ? (edge.labels[context.lang] || edge.labels.ja || edge.label || edge.target)
+        : (edge.label || edge.target);
+
+      return {
+        type: 'action' as const,
+        action: {
+          type: 'message' as const,
+          label: localizedLabel,  // エッジのラベルをボタンテキストとして使用
+          text: localizedLabel,   // ユーザーが選択したときに送信されるテキスト
+        },
+      };
+    });
 
     // LINEメッセージを作成
     const lineMessage = {

@@ -2,9 +2,14 @@ import OpenAI from 'openai';
 import { config, FAQ_CONTENT } from '../config';
 import { buildYoloAutochatUrl } from '../utils/url';
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: config.openai.apiKey });
+  }
+  return openai;
+}
 
 export async function callOpenAIWithHistory(
   lang: string,
@@ -47,7 +52,7 @@ ${FAQ_CONTENT}
   ];
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages,
       max_tokens: 500,

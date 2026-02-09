@@ -27,7 +27,14 @@ export class SendMessageHandler implements NodeHandler {
     try {
       const config = node.data.config as SendMessageConfig;
 
-      if (!config.content) {
+      // 多言語対応: contentがオブジェクトの場合はユーザー言語のテキストを取得
+      const rawContent = config.content
+        ? (typeof config.content === 'object'
+          ? ((config.content as Record<string, string>)[context.lang] || (config.content as Record<string, string>).ja || Object.values(config.content)[0])
+          : config.content)
+        : '';
+
+      if (!rawContent) {
         return {
           success: false,
           error: 'Message content is required',
@@ -35,7 +42,7 @@ export class SendMessageHandler implements NodeHandler {
       }
 
       // 変数展開
-      let expandedContent = expandVariables(config.content, context);
+      let expandedContent = expandVariables(String(rawContent), context);
 
       // URL処理（LIFF外部ブラウザリダイレクト + トラッキングパラメータ付与）
       const sourceType = (context.variables?.urlSourceType as UrlSourceType) || 'flow';

@@ -66,9 +66,14 @@ import { processUrlsInText, UrlSourceType } from '../tracking/url-processor';
 import { flowExecutor } from '../flow-engine';
 import { getActiveFlows } from '../database/flow-queries';
 
-const openai = new OpenAI({
-  apiKey: config.openai.apiKey,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: config.openai.apiKey });
+  }
+  return openai;
+}
 
 /**
  * サービス種別からトラッキングURLソースタイプを取得
@@ -1789,7 +1794,7 @@ async function handleEscalation(
 ${conversationHistory.map((m) => `${m.role === 'user' ? 'ユーザー' : 'AI'}: ${m.content}`).join('\n')}
 
 日本語要約:`;
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: summaryPrompt }],
       max_tokens: 100,
@@ -1883,7 +1888,7 @@ async function completeSupport(
   let aiSummary = '';
   try {
     const summaryPrompt = generateSummaryPrompt(conversationHistory);
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: summaryPrompt }],
       max_tokens: 150,
