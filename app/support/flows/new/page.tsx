@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
@@ -52,6 +52,116 @@ export default function NewFlowPage() {
   const [activeLang, setActiveLang] = useState<string>('ja');
   const [translating, setTranslating] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const isInitializedRef = useRef(false);
+
+  const DRAFT_KEY = 'flow-editor-draft-new';
+
+  // 下書きデータの型
+  interface DraftData {
+    flowName: string;
+    flowDescription: string;
+    triggerType: string;
+    triggerValue: string;
+    service: string;
+    priority: number;
+    urlSourceType: string;
+    nodes: any[];
+    edges: any[];
+    savedAt: string;
+  }
+
+  // 下書き保存
+  const saveDraft = useCallback(() => {
+    try {
+      const draft: DraftData = {
+        flowName,
+        flowDescription,
+        triggerType,
+        triggerValue,
+        service,
+        priority,
+        urlSourceType,
+        nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
+        edges: (edges as CustomEdge[]).map((e) => ({
+          id: e.id, source: e.source, target: e.target,
+          sourceHandle: e.sourceHandle, label: e.label, labels: (e as any).labels, order: e.order,
+        })),
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setDraftSavedAt(draft.savedAt);
+    } catch (e) {
+      console.error('下書き保存エラー:', e);
+    }
+  }, [flowName, flowDescription, triggerType, triggerValue, service, priority, urlSourceType, nodes, edges]);
+
+  // 下書き復元
+  const restoreDraft = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (!saved) return false;
+      const draft: DraftData = JSON.parse(saved);
+
+      setFlowName(draft.flowName || '');
+      setFlowDescription(draft.flowDescription || '');
+      setTriggerType(draft.triggerType || 'support_button');
+      setTriggerValue(draft.triggerValue || '');
+      setService(draft.service || '');
+      setPriority(draft.priority || 0);
+      setUrlSourceType(draft.urlSourceType || 'flow');
+
+      if (draft.nodes && draft.nodes.length > 0) {
+        setNodes(draft.nodes);
+      }
+      if (draft.edges) {
+        setEdges(draft.edges);
+      }
+      setDraftSavedAt(draft.savedAt);
+      return true;
+    } catch (e) {
+      console.error('下書き復元エラー:', e);
+      return false;
+    }
+  }, [setNodes, setEdges]);
+
+  // 下書き削除
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftSavedAt(null);
+  }, []);
+
+  // 初回マウント時: 下書きがあれば復元を提案
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const draft: DraftData = JSON.parse(saved);
+        const savedTime = new Date(draft.savedAt).toLocaleString('ja-JP');
+        if (confirm(`前回の下書きが見つかりました（${savedTime}）\n復元しますか？`)) {
+          restoreDraft();
+        } else {
+          clearDraft();
+        }
+      } catch {
+        clearDraft();
+      }
+    }
+    isInitializedRef.current = true;
+  }, []);
+
+  // 自動一時保存（変更時にdebounce）
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    const timer = setTimeout(() => {
+      // 初期状態（空フローでフォーム未入力）ではスキップ
+      const hasContent = flowName || flowDescription || nodes.length > 1 || edges.length > 0;
+      if (hasContent) {
+        saveDraft();
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [flowName, flowDescription, triggerType, triggerValue, service, priority, urlSourceType, nodes, edges, saveDraft]);
 
   const LANGS = [
     { code: 'ja', name: '日本語' },
@@ -588,6 +698,7 @@ export default function NewFlowPage() {
       });
 
       if (res.ok) {
+        clearDraft();
         alert('フローを保存しました');
         router.push('/support/flows');
       } else {
@@ -625,8 +736,19 @@ export default function NewFlowPage() {
               ← 戻る
             </button>
             <h1 className="text-xl font-bold text-gray-900">新規フロー作成</h1>
+            {draftSavedAt && (
+              <span className="text-xs text-gray-400">
+                下書き保存: {new Date(draftSavedAt).toLocaleTimeString('ja-JP')}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => { saveDraft(); alert('一時保存しました'); }}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
+            >
+              一時保存
+            </button>
             <button
               onClick={handleGenerateTemplate}
               disabled={generating}

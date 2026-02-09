@@ -38,6 +38,84 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [showFaqImportModal, setShowFaqImportModal] = useState(false);
   const [activeLang, setActiveLang] = useState<string>('ja');
   const [translating, setTranslating] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const isInitializedRef = useRef(false);
+
+  const DRAFT_KEY = `flow-editor-draft-${id}`;
+
+  // 下書きデータの型
+  interface DraftData {
+    flowName: string;
+    flowDescription: string;
+    triggerType: string;
+    triggerValue: string;
+    service: string;
+    priority: number;
+    urlSourceType: string;
+    nodes: any[];
+    edges: any[];
+    savedAt: string;
+  }
+
+  // 下書き保存
+  const saveDraft = useCallback(() => {
+    try {
+      const draft: DraftData = {
+        flowName,
+        flowDescription,
+        triggerType,
+        triggerValue,
+        service,
+        priority,
+        urlSourceType,
+        nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
+        edges: (edges as CustomEdge[]).map((e) => ({
+          id: e.id, source: e.source, target: e.target,
+          sourceHandle: e.sourceHandle, label: e.label, labels: (e as any).labels, order: e.order,
+        })),
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setDraftSavedAt(draft.savedAt);
+    } catch (e) {
+      console.error('下書き保存エラー:', e);
+    }
+  }, [flowName, flowDescription, triggerType, triggerValue, service, priority, urlSourceType, nodes, edges, DRAFT_KEY]);
+
+  // 下書き復元
+  const restoreDraft = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (!saved) return false;
+      const draft: DraftData = JSON.parse(saved);
+
+      setFlowName(draft.flowName || '');
+      setFlowDescription(draft.flowDescription || '');
+      setTriggerType(draft.triggerType || 'support_button');
+      setTriggerValue(draft.triggerValue || '');
+      setService(draft.service || '');
+      setPriority(draft.priority || 0);
+      setUrlSourceType(draft.urlSourceType || 'flow');
+
+      if (draft.nodes && draft.nodes.length > 0) {
+        setNodes(draft.nodes);
+      }
+      if (draft.edges) {
+        setEdges(draft.edges);
+      }
+      setDraftSavedAt(draft.savedAt);
+      return true;
+    } catch (e) {
+      console.error('下書き復元エラー:', e);
+      return false;
+    }
+  }, [setNodes, setEdges, DRAFT_KEY]);
+
+  // 下書き削除
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftSavedAt(null);
+  }, [DRAFT_KEY]);
 
   const LANGS = [
     { code: 'ja', name: '日本語' },
@@ -59,6 +137,27 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       if (res.ok) {
         const data = await res.json();
         const flow = data.flow;
+
+        // 下書きチェック: サーバーデータより新しい下書きがあれば復元を提案
+        const saved = localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+          try {
+            const draft: DraftData = JSON.parse(saved);
+            const draftTime = new Date(draft.savedAt);
+            const serverTime = new Date(flow.updatedAt);
+            if (draftTime > serverTime) {
+              const savedTimeStr = draftTime.toLocaleString('ja-JP');
+              if (confirm(`未保存の下書きが見つかりました（${savedTimeStr}）\n復元しますか？（「キャンセル」でサーバーのデータを使用）`)) {
+                restoreDraft();
+                isInitializedRef.current = true;
+                return;
+              }
+            }
+            clearDraft();
+          } catch {
+            clearDraft();
+          }
+        }
 
         setFlowName(flow.name);
         setFlowDescription(flow.description || '');
@@ -100,8 +199,21 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       alert('フローの読み込みに失敗しました');
     } finally {
       setLoading(false);
+      isInitializedRef.current = true;
     }
   };
+
+  // 自動一時保存（変更時にdebounce）
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    const timer = setTimeout(() => {
+      const hasContent = flowName || nodes.length > 0 || edges.length > 0;
+      if (hasContent) {
+        saveDraft();
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [flowName, flowDescription, triggerType, triggerValue, service, priority, urlSourceType, nodes, edges, saveDraft]);
 
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
@@ -571,6 +683,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       });
 
       if (res.ok) {
+        clearDraft();
         alert('フローを更新しました');
         router.push('/support/flows');
       } else {
@@ -606,8 +719,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               ← 戻る
             </button>
             <h1 className="text-xl font-bold text-gray-900">フロー編集</h1>
+            {draftSavedAt && (
+              <span className="text-xs text-gray-400">
+                下書き保存: {new Date(draftSavedAt).toLocaleTimeString('ja-JP')}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => { saveDraft(); alert('一時保存しました'); }}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
+            >
+              一時保存
+            </button>
             <button
               onClick={handleTranslateAll}
               disabled={translating}
