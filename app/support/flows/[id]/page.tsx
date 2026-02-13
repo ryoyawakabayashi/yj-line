@@ -20,6 +20,13 @@ import { FaqImportModal } from '@/components/flow-editor/FaqImportModal';
 // カスタムエッジ型（order プロパティを追加）
 type CustomEdge = Edge & { order?: number };
 
+// 送信テキストプリセット
+const SEND_TEXT_PRESETS = [
+  { label: 'AI診断', text: 'AI_MODE' },
+  { label: 'サイト検索', text: 'SITE_MODE' },
+  { label: 'サイト(AIトーク経由)', text: 'SITE_MODE_AUTOCHAT' },
+];
+
 // サービス別カラー定義
 const SERVICE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   YOLO_JAPAN: { bg: '#fde8ea', border: '#d10a1c', text: '#8a0712' },
@@ -1398,6 +1405,21 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   placeholder="未入力=ノード名と同じ"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {SEND_TEXT_PRESETS.map((preset) => (
+                    <button
+                      key={preset.text}
+                      onClick={() => updateNodeSendText(selectedNode.id, preset.text)}
+                      className={`px-2 py-0.5 text-xs rounded transition ${
+                        selectedNode.data.sendText === preset.text
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1698,8 +1720,26 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               if (activeLang === 'ja') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
                             }}
                             placeholder="送信テキスト（例: AI_MODE）未入力=ラベルと同じ"
-                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white mb-1"
+                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                           />
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            {SEND_TEXT_PRESETS.map((preset) => (
+                              <button
+                                key={preset.text}
+                                onClick={() => {
+                                  updateEdgeTextForLang(edge.id, preset.text, 'ja');
+                                  syncTargetNodeSendTextFromEdge(edge.id, preset.text);
+                                }}
+                                className={`px-1.5 py-0.5 text-[10px] rounded transition ${
+                                  getEdgeTextForLang(edge, 'ja') === preset.text
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     {edges.filter((edge) => edge.source === selectedNode.id).length === 0 && (
