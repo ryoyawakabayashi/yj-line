@@ -1488,7 +1488,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
-            {getSelectedNodeType() === 'send_message' && (
+            {getSelectedNodeType() === 'send_message' && SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                このノードは「{SEND_TEXT_PRESETS.find(p => p.text === selectedNode.data.sendText)?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
+              </div>
+            )}
+
+            {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1633,7 +1639,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
-            {getSelectedNodeType() === 'quick_reply' && (
+            {getSelectedNodeType() === 'quick_reply' && SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                このノードは「{SEND_TEXT_PRESETS.find(p => p.text === selectedNode.data.sendText)?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
+              </div>
+            )}
+
+            {getSelectedNodeType() === 'quick_reply' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
