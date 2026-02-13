@@ -243,18 +243,23 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         finalParams = { ...params, source: params.target, target: params.source };
       }
 
-      // 子ノードのノード名をエッジラベルに自動セット
+      // 子ノードのノード名・送信テキストをエッジに自動セット
       const childNode = nodes.find((n) => n.id === finalParams.target);
       const childLabel = childNode?.data?.label || '';
+      const childSendText = childNode?.data?.sendText || '';
 
       setEdges((eds) => {
         const sameSourceEdges = eds.filter((e) => e.source === finalParams.source);
         const newOrder = sameSourceEdges.length;
         const newEdges = addEdge({ ...finalParams, order: newOrder } as any, eds);
-        // addEdge がlabelを保持しない場合があるため、新規エッジに明示的にセット
+        // addEdge がlabel/textを保持しない場合があるため、新規エッジに明示的にセット
         return newEdges.map((e) => {
-          if (e.source === finalParams.source && e.target === finalParams.target && !e.label && childLabel) {
-            return { ...e, label: childLabel };
+          if (e.source === finalParams.source && e.target === finalParams.target) {
+            return {
+              ...e,
+              ...(!e.label && childLabel ? { label: childLabel } : {}),
+              ...(!(e as any).text && childSendText ? { text: childSendText } : {}),
+            };
           }
           return e;
         });
@@ -792,6 +797,42 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     }
   };
 
+  // エッジ送信テキスト変更時に子ノードのsendTextも同期する
+  const syncTargetNodeSendTextFromEdge = (edgeId: string, newText: string) => {
+    const targetEdge = edges.find((e) => e.id === edgeId);
+    if (!targetEdge) return;
+    const targetId = targetEdge.target;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === targetId ? { ...n, data: { ...n.data, sendText: newText } } : n
+      )
+    );
+    if (selectedNode?.id === targetId) {
+      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, sendText: newText } });
+    }
+  };
+
+  // 子ノードのsendText変更時に親エッジのtextも同期する
+  const updateNodeSendText = (nodeId: string, newText: string) => {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, sendText: newText } } : n
+      )
+    );
+    // 親エッジのtextを同期
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.target === nodeId) {
+          return { ...edge, text: newText || undefined };
+        }
+        return edge;
+      })
+    );
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, sendText: newText } });
+    }
+  };
+
   // エッジの送信テキスト取得・更新
   const getEdgeTextForLang = (edge: any, lang: string): string => {
     if (lang === 'ja') return (edge as any).text || '';
@@ -1324,6 +1365,21 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               />
             </div>
 
+            {getSelectedNodeType() !== 'trigger' && edges.some((e) => e.target === selectedNode.id) && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  送信テキスト
+                </label>
+                <input
+                  type="text"
+                  value={selectedNode.data.sendText || ''}
+                  onChange={(e) => updateNodeSendText(selectedNode.id, e.target.value)}
+                  placeholder="未入力=ノード名と同じ"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+
             {getSelectedNodeType() !== 'trigger' && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1616,7 +1672,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                           <input
                             type="text"
                             value={getEdgeTextForLang(edge, activeLang)}
-                            onChange={(e) => updateEdgeTextForLang(edge.id, e.target.value, activeLang)}
+                            onChange={(e) => {
+                              updateEdgeTextForLang(edge.id, e.target.value, activeLang);
+                              if (activeLang === 'ja') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
+                            }}
                             placeholder="送信テキスト（例: AI_MODE）未入力=ラベルと同じ"
                             className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white mb-1"
                           />
