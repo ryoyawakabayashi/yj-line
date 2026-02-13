@@ -15,6 +15,7 @@ import ReactFlow, {
   NodeMouseHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { FlowNode } from '@/components/flow-editor/FlowNode';
 import { FaqImportModal } from '@/components/flow-editor/FaqImportModal';
 
 // カスタムエッジ型（order プロパティを追加）
@@ -26,6 +27,9 @@ const SEND_TEXT_PRESETS = [
   { label: 'サイト検索', text: 'SITE_MODE' },
   { label: 'サイト(AIトーク経由)', text: 'SITE_MODE_AUTOCHAT' },
 ];
+
+// カスタムノードタイプ（コンポーネント外で定義して再レンダリング防止）
+const nodeTypes = { flowNode: FlowNode };
 
 // サービス別カラー定義
 const SERVICE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -180,7 +184,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             }
           }
         }
-        setNodes(draft.nodes);
+        // 旧下書きの type: 'default' を 'flowNode' に変換
+        const normalizedNodes = draft.nodes.map((n: any) => ({
+          ...n,
+          type: n.type === 'default' ? 'flowNode' : (n.type || 'flowNode'),
+        }));
+        setNodes(normalizedNodes);
       }
       if (draft.edges) {
         setEdges(draft.edges);
@@ -252,7 +261,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         // ノードとエッジを復元
         const loadedNodes = flow.flowDefinition.nodes.map((node: any) => ({
           id: node.id,
-          type: 'default',
+          type: 'flowNode',
           position: node.position,
           data: {
             ...node.data,
@@ -461,7 +470,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
     const newNode: Node = {
       id: `${nodeType}-${Date.now()}`,
-      type: 'default',
+      type: 'flowNode',
       position,
       data: {
         label: getNodeLabel(nodeType),
@@ -501,7 +510,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     const newNodeId = `send_message-${Date.now()}`;
     const newNode: Node = {
       id: newNodeId,
-      type: 'default',
+      type: 'flowNode',
       position: {
         x: selectedNode.position.x + 250,
         y: selectedNode.position.y + offsetIndex * 120,
@@ -1165,10 +1174,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const colors = svc && SERVICE_COLORS[svc] ? SERVICE_COLORS[svc] : null;
       const isEditing = editingNodeId === node.id;
 
+      // カスタムノード用: スタイルは data._style で渡す
+      const nodeStyle = colors ? {
+        background: colors.bg,
+        borderColor: colors.border,
+        borderWidth: 2,
+        color: colors.text,
+      } : undefined;
+
       return {
         ...node,
         data: {
           ...node.data,
+          _style: nodeStyle,
           label: isEditing ? (
             <input
               autoFocus
@@ -1191,15 +1209,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             />
           ) : (node.data.label || node.id),
         },
-        ...(colors ? {
-          style: {
-            ...node.style,
-            background: colors.bg,
-            borderColor: colors.border,
-            borderWidth: 2,
-            color: colors.text,
-          },
-        } : {}),
       };
     });
   }, [nodes, editingNodeId]);
@@ -1486,6 +1495,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           <ReactFlow
             nodes={styledNodes}
             edges={styledEdges}
+            nodeTypes={nodeTypes}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}

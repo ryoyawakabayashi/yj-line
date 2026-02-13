@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
@@ -15,16 +15,27 @@ import ReactFlow, {
   NodeMouseHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { FlowNode } from '@/components/flow-editor/FlowNode';
 import { FaqImportModal } from '@/components/flow-editor/FaqImportModal';
 
 // カスタムエッジ型（order プロパティを追加）
 type CustomEdge = Edge & { order?: number };
 
+// カスタムノードタイプ（コンポーネント外で定義して再レンダリング防止）
+const nodeTypes = { flowNode: FlowNode };
+
+// サービス別カラー定義
+const SERVICE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  YOLO_JAPAN: { bg: '#fde8ea', border: '#d10a1c', text: '#8a0712' },
+  YOLO_DISCOVER: { bg: '#fef9e7', border: '#f9c83d', text: '#7a6100' },
+  YOLO_HOME: { bg: '#e6f0fa', border: '#036ed9', text: '#024a91' },
+};
+
 // 初期ノード（空のフロー）
 const initialNodes: Node[] = [
   {
     id: 'trigger-1',
-    type: 'default',
+    type: 'flowNode',
     position: { x: 250, y: 50 },
     data: {
       label: '開始 (Trigger)',
@@ -267,12 +278,13 @@ export default function NewFlowPage() {
 
     const newNode: Node = {
       id: `${nodeType}-${Date.now()}`,
-      type: 'default',
+      type: 'flowNode',
       position,
       data: {
         label: getNodeLabel(nodeType),
         config: getDefaultConfig(nodeType),
         nodeType: nodeType, // ノードタイプを保存
+        ...(service ? { service } : {}),
       },
     };
 
@@ -322,8 +334,8 @@ export default function NewFlowPage() {
     }
   };
 
-  // ノード設定更新
-  const updateNodeConfig = (nodeId: string, newConfig: any) => {
+  // ノードラベル更新
+  const updateNodeLabel = (nodeId: string, newLabel: string) => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
@@ -331,7 +343,78 @@ export default function NewFlowPage() {
             ...node,
             data: {
               ...node.data,
+              label: newLabel,
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode({
+        ...selectedNode,
+        data: {
+          ...selectedNode.data,
+          label: newLabel,
+        },
+      });
+    }
+  };
+
+  // ノードのサービスを更新
+  const updateNodeService = (nodeId: string, newService: string) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              service: newService || undefined,
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode({
+        ...selectedNode,
+        data: {
+          ...selectedNode.data,
+          service: newService || undefined,
+        },
+      });
+    }
+  };
+
+  // コンテンツからラベルプレビューを生成
+  const generateLabelFromConfig = (nodeType: string, config: any): string | null => {
+    let text = '';
+    if (nodeType === 'send_message' && config.content) {
+      text = typeof config.content === 'object' ? (config.content.ja || '') : config.content;
+    } else if (nodeType === 'quick_reply' && config.message) {
+      text = typeof config.message === 'object' ? (config.message.ja || '') : config.message;
+    }
+    if (!text) return null;
+    return text.length > 25 ? text.substring(0, 25) + '...' : text;
+  };
+
+  // ノード設定更新
+  const updateNodeConfig = (nodeId: string, newConfig: any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
+          const autoLabel = generateLabelFromConfig(nodeType, newConfig);
+          return {
+            ...node,
+            data: {
+              ...node.data,
               config: newConfig,
+              ...(autoLabel ? { label: autoLabel } : {}),
             },
           };
         }
@@ -341,11 +424,14 @@ export default function NewFlowPage() {
 
     // selectedNodeも更新
     if (selectedNode?.id === nodeId) {
+      const nodeType = selectedNode.data.nodeType || (selectedNode.id.startsWith('trigger') ? 'trigger' : selectedNode.id.split('-')[0]);
+      const autoLabel = generateLabelFromConfig(nodeType, newConfig);
       setSelectedNode({
         ...selectedNode,
         data: {
           ...selectedNode.data,
           config: newConfig,
+          ...(autoLabel ? { label: autoLabel } : {}),
         },
       });
     }
@@ -604,11 +690,12 @@ export default function NewFlowPage() {
       // ノードをReact Flow形式に変換
       const generatedNodes: Node[] = data.nodes.map((n: any) => ({
         id: n.id,
-        type: 'default',
+        type: 'flowNode',
         position: n.position,
         data: {
           label: n.data.label,
           nodeType: n.data.nodeType,
+          ...(n.data.service ? { service: n.data.service } : {}),
           config: n.data.config,
         },
       }));
@@ -666,6 +753,7 @@ export default function NewFlowPage() {
           position: node.position,
           data: {
             label: node.data.label,
+            ...(node.data.service ? { service: node.data.service } : {}),
             config: node.data.config,
           },
         })),
@@ -722,6 +810,46 @@ export default function NewFlowPage() {
     if (selectedNode.id.startsWith('trigger')) return 'trigger';
     return selectedNode.id.split('-')[0];
   };
+
+  // サービス別カラーをノードに適用
+  const styledNodes = useMemo(() => {
+    return nodes.map((node) => {
+      const svc = node.data.service;
+      const colors = svc && SERVICE_COLORS[svc] ? SERVICE_COLORS[svc] : null;
+      const nodeStyle = colors ? {
+        background: colors.bg,
+        borderColor: colors.border,
+        borderWidth: 2,
+        color: colors.text,
+      } : undefined;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          _style: nodeStyle,
+        },
+      };
+    });
+  }, [nodes]);
+
+  // サービス別カラーをエッジに適用
+  const styledEdges = useMemo(() => {
+    return edges.map((edge) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      const targetNode = nodes.find((n) => n.id === edge.target);
+      const svc = sourceNode?.data.service || targetNode?.data.service;
+      if (!svc || !SERVICE_COLORS[svc]) return edge;
+      const colors = SERVICE_COLORS[svc];
+      return {
+        ...edge,
+        style: {
+          ...edge.style,
+          stroke: colors.border,
+          strokeWidth: 2,
+        },
+      };
+    });
+  }, [edges, nodes]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -933,8 +1061,9 @@ export default function NewFlowPage() {
         {/* Main Canvas */}
         <main className="flex-1">
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={styledNodes}
+            edges={styledEdges}
+            nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -949,7 +1078,13 @@ export default function NewFlowPage() {
           >
             <Background />
             <Controls />
-            <MiniMap />
+            <MiniMap
+              nodeColor={(node) => {
+                const svc = node.data?.service;
+                if (svc && SERVICE_COLORS[svc]) return SERVICE_COLORS[svc].border;
+                return '#e2e8f0';
+              }}
+            />
           </ReactFlow>
         </main>
 
@@ -962,6 +1097,42 @@ export default function NewFlowPage() {
               <div className="text-xs text-gray-500">ノードID</div>
               <div className="text-sm font-mono">{selectedNode.id}</div>
             </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ノード名
+              </label>
+              <input
+                type="text"
+                value={selectedNode.data.label || ''}
+                onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
+                placeholder="ノードの表示名"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+
+            {getSelectedNodeType() !== 'trigger' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  サービス
+                </label>
+                <select
+                  value={selectedNode.data.service || ''}
+                  onChange={(e) => updateNodeService(selectedNode.id, e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  style={
+                    selectedNode.data.service && SERVICE_COLORS[selectedNode.data.service]
+                      ? { borderColor: SERVICE_COLORS[selectedNode.data.service].border, borderWidth: 2 }
+                      : {}
+                  }
+                >
+                  <option value="">なし</option>
+                  <option value="YOLO_JAPAN">YOLO JAPAN</option>
+                  <option value="YOLO_DISCOVER">YOLO DISCOVER</option>
+                  <option value="YOLO_HOME">YOLO HOME</option>
+                </select>
+              </div>
+            )}
 
             {getSelectedNodeType() === 'trigger' && (
               <div className="text-sm text-gray-600">
@@ -1078,7 +1249,7 @@ export default function NewFlowPage() {
                   <ol className="text-xs text-yellow-700 space-y-1 list-decimal list-inside">
                     <li>このノードから複数のノードにエッジで接続</li>
                     <li>各エッジのラベルを入力欄で編集</li>
-                    <li>ラ���ルがLINEのボタンテキストになります</li>
+                    <li>ラベルがLINEのボタンテキストになります</li>
                     <li>ユーザーがボタンを押すと対応するノードへ進みます</li>
                   </ol>
                 </div>
