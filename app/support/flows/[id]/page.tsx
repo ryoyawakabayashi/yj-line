@@ -243,10 +243,14 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         finalParams = { ...params, source: params.target, target: params.source };
       }
 
+      // 子ノードのノード名をエッジラベルに自動セット
+      const childNode = nodes.find((n) => n.id === finalParams.target);
+      const childLabel = childNode?.data?.label || '';
+
       setEdges((eds) => {
         const sameSourceEdges = eds.filter((e) => e.source === finalParams.source);
         const newOrder = sameSourceEdges.length;
-        return addEdge({ ...finalParams, order: newOrder } as any, eds);
+        return addEdge({ ...finalParams, label: childLabel, order: newOrder } as any, eds);
       });
 
       // 親ノードのサービス（色）を子ノードに引き継ぐ
