@@ -250,7 +250,14 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       setEdges((eds) => {
         const sameSourceEdges = eds.filter((e) => e.source === finalParams.source);
         const newOrder = sameSourceEdges.length;
-        return addEdge({ ...finalParams, label: childLabel, order: newOrder } as any, eds);
+        const newEdges = addEdge({ ...finalParams, order: newOrder } as any, eds);
+        // addEdge がlabelを保持しない場合があるため、新規エッジに明示的にセット
+        return newEdges.map((e) => {
+          if (e.source === finalParams.source && e.target === finalParams.target && !e.label && childLabel) {
+            return { ...e, label: childLabel };
+          }
+          return e;
+        });
       });
 
       // 親ノードのサービス（色）を子ノードに引き継ぐ
@@ -745,7 +752,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   };
 
   const getEdgeLabelForLang = (edge: any, lang: string): string => {
-    if (lang === 'ja') return (edge.label as string) || '';
+    if (lang === 'ja') {
+      const label = (edge.label as string) || '';
+      if (!label) {
+        // フォールバック: エッジラベルが空なら子ノード名を表示
+        const targetNode = nodes.find((n: Node) => n.id === edge.target);
+        return targetNode?.data?.label || '';
+      }
+      return label;
+    }
     return edge.labels?.[lang] || '';
   };
 
@@ -953,17 +968,25 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             config: node.data.config,
           },
         })),
-        edges: (edges as CustomEdge[]).map((edge) => ({
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          sourceHandle: edge.sourceHandle,
-          label: edge.label,
-          labels: (edge as any).labels,
-          text: (edge as any).text,
-          texts: (edge as any).texts,
-          order: edge.order,
-        })),
+        edges: (edges as CustomEdge[]).map((edge) => {
+          // ラベルが空なら子ノード名をフォールバック
+          let label = edge.label;
+          if (!label) {
+            const targetNode = nodes.find((n) => n.id === edge.target);
+            label = targetNode?.data?.label || '';
+          }
+          return {
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            label,
+            labels: (edge as any).labels,
+            text: (edge as any).text,
+            texts: (edge as any).texts,
+            order: edge.order,
+          };
+        }),
         variables: {
           urlSourceType,
         },
