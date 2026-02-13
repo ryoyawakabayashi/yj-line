@@ -185,13 +185,18 @@ export default function NewFlowPage() {
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
     (params: Connection) => {
+      const finalParams = {
+        ...params,
+        sourceHandle: params.sourceHandle || 'bottom-source',
+        targetHandle: params.targetHandle || 'top-target',
+      };
       setEdges((eds) => {
         // 同じソースから出ているエッジの数を取得
-        const sameSourceEdges = eds.filter((e) => e.source === params.source);
+        const sameSourceEdges = eds.filter((e) => e.source === finalParams.source);
         const newOrder = sameSourceEdges.length;
 
         // 新しいエッジに order を設定
-        return addEdge({ ...params, order: newOrder } as any, eds);
+        return addEdge({ ...finalParams, order: newOrder } as any, eds);
       });
     },
     [setEdges]
@@ -485,6 +490,8 @@ export default function NewFlowPage() {
       id: `edge-faq-${faq.id}-${Date.now()}-${index}`,
       source: selectedNode.id,
       target: '', // ユーザーが後で接続する
+      sourceHandle: 'bottom-source',
+      targetHandle: 'top-target',
       label: faq.question,
       order: maxOrder + index + 1,
     } as Edge));
@@ -705,6 +712,8 @@ export default function NewFlowPage() {
         id: e.id,
         source: e.source,
         target: e.target,
+        sourceHandle: e.sourceHandle || 'bottom-source',
+        targetHandle: e.targetHandle || 'top-target',
         label: e.label,
         labels: e.labels,
         order: e.order,

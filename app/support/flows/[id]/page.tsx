@@ -145,7 +145,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
         edges: (edges as CustomEdge[]).map((e) => ({
           id: e.id, source: e.source, target: e.target,
-          sourceHandle: e.sourceHandle, label: e.label, labels: (e as any).labels,
+          sourceHandle: e.sourceHandle, targetHandle: e.targetHandle,
+          label: e.label, labels: (e as any).labels,
           text: (e as any).text, texts: (e as any).texts, order: e.order,
         })),
         savedAt: new Date().toISOString(),
@@ -192,7 +193,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         setNodes(normalizedNodes);
       }
       if (draft.edges) {
-        setEdges(draft.edges);
+        // 旧エッジにデフォルトハンドルIDを付与
+        const normalizedEdges = draft.edges.map((e: any) => ({
+          ...e,
+          sourceHandle: e.sourceHandle || 'bottom-source',
+          targetHandle: e.targetHandle || 'top-target',
+        }));
+        setEdges(normalizedEdges);
       }
       setDraftSavedAt(draft.savedAt);
       return true;
@@ -274,7 +281,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          sourceHandle: edge.sourceHandle,
+          sourceHandle: edge.sourceHandle || 'bottom-source',
+          targetHandle: edge.targetHandle || 'top-target',
           label: edge.label,
           labels: edge.labels,
           text: edge.text,
@@ -335,7 +343,20 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       let finalParams = params;
       if (targetType === 'quick_reply' && sourceType !== 'trigger') {
-        finalParams = { ...params, source: params.target, target: params.source };
+        finalParams = {
+          ...params,
+          source: params.target,
+          target: params.source,
+          sourceHandle: params.targetHandle || 'bottom-source',
+          targetHandle: params.sourceHandle || 'top-target',
+        };
+      } else {
+        // ハンドルIDが未設定の場合デフォルトを設定
+        finalParams = {
+          ...params,
+          sourceHandle: params.sourceHandle || 'bottom-source',
+          targetHandle: params.targetHandle || 'top-target',
+        };
       }
 
       // 子ノードのノード名・送信テキストをエッジに自動セット
@@ -527,6 +548,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       id: `e-${parentId}-${newNodeId}`,
       source: parentId,
       target: newNodeId,
+      sourceHandle: 'bottom-source',
+      targetHandle: 'top-target',
       label: `選択肢${offsetIndex + 1}`,
       order: offsetIndex,
     };
@@ -824,6 +847,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       id: `edge-faq-${faq.id}-${Date.now()}-${index}`,
       source: selectedNode.id,
       target: '', // ユーザーが後で接続する
+      sourceHandle: 'bottom-source',
+      targetHandle: 'top-target',
       label: faq.question,
       order: maxOrder + index + 1,
     } as Edge));
@@ -1126,6 +1151,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             source: edge.source,
             target: edge.target,
             sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
             label,
             labels: (edge as any).labels,
             text: (edge as any).text,
