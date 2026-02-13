@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, use, useRef } from 'react';
+import { useState, useCallback, useEffect, use, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
@@ -19,6 +19,13 @@ import { FaqImportModal } from '@/components/flow-editor/FaqImportModal';
 
 // カスタムエッジ型（order プロパティを追加）
 type CustomEdge = Edge & { order?: number };
+
+// サービス別カラー定義
+const SERVICE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  YOLO_JAPAN: { bg: '#fde8ea', border: '#d10a1c', text: '#8a0712' },
+  YOLO_DISCOVER: { bg: '#fef9e7', border: '#f9c83d', text: '#7a6100' },
+  YOLO_HOME: { bg: '#e6f0fa', border: '#036ed9', text: '#024a91' },
+};
 
 export default function EditFlowPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -39,6 +46,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [activeLang, setActiveLang] = useState<string>('ja');
   const [translating, setTranslating] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; message: string; quickReplies: { label: string; text: string }[] }>>([]);
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const isInitializedRef = useRef(false);
 
   const DRAFT_KEY = `flow-editor-draft-${id}`;
@@ -71,7 +80,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
         edges: (edges as CustomEdge[]).map((e) => ({
           id: e.id, source: e.source, target: e.target,
-          sourceHandle: e.sourceHandle, label: e.label, labels: (e as any).labels, order: e.order,
+          sourceHandle: e.sourceHandle, label: e.label, labels: (e as any).labels,
+          text: (e as any).text, texts: (e as any).texts, order: e.order,
         })),
         savedAt: new Date().toISOString(),
       };
@@ -178,6 +188,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           },
         }));
 
+
         const loadedEdges = flow.flowDefinition.edges.map((edge: any) => ({
           id: edge.id,
           source: edge.source,
@@ -185,6 +196,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           sourceHandle: edge.sourceHandle,
           label: edge.label,
           labels: edge.labels,
+          text: edge.text,
+          texts: edge.texts,
           order: edge.order,
         }));
 
@@ -226,8 +239,22 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         // 新しいエッジに order を設定
         return addEdge({ ...params, order: newOrder } as any, eds);
       });
+
+      // 親ノードのサービス（色）を子ノードに引き継ぐ
+      if (params.source && params.target) {
+        setNodes((nds) => {
+          const sourceNode = nds.find((n) => n.id === params.source);
+          const parentService = sourceNode?.data?.service;
+          if (!parentService) return nds;
+          return nds.map((n) =>
+            n.id === params.target
+              ? { ...n, data: { ...n.data, service: parentService } }
+              : n
+          );
+        });
+      }
     },
-    [setEdges]
+    [setEdges, setNodes]
   );
 
   // ノードクリック時のハンドラー
@@ -241,6 +268,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   }, []);
 
   // --- 親ノードドラッグで子ノードも追従（マインドマップ風） ---
+  const reactFlowInstance = useRef<any>(null);
   const dragState = useRef<{
     startPos: { x: number; y: number };
     descendants: Array<{ id: string; startPos: { x: number; y: number } }>;
@@ -296,17 +324,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     dragState.current = null;
   }, []);
 
-  // ノード追加
+  // ノード追加（ビューポート中央に配置）
   const addNode = (nodeType: string) => {
     let position = { x: 250, y: 150 }; // デフォルト位置
 
-    // 既存ノードがある場合、最後のノードの下に配置
-    if (nodes.length > 0) {
-      const lastNode = nodes[nodes.length - 1];
-      position = {
-        x: lastNode.position.x,
-        y: lastNode.position.y + 150, // 150px下に配置
-      };
+    // ReactFlowインスタンスがある場合、現在のビューポート中央に配置
+    if (reactFlowInstance.current) {
+      const rfBounds = document.querySelector('.react-flow')?.getBoundingClientRect();
+      if (rfBounds) {
+        position = reactFlowInstance.current.screenToFlowPosition({
+          x: rfBounds.x + rfBounds.width / 2,
+          y: rfBounds.y + rfBounds.height / 2,
+        });
+      }
     }
 
     const newNode: Node = {
@@ -317,10 +347,61 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         label: getNodeLabel(nodeType),
         config: getDefaultConfig(nodeType),
         nodeType: nodeType, // ノードタイプを保存
+        ...(service ? { service } : {}),
       },
     };
 
     setNodes((nds) => [...nds, newNode]);
+  };
+
+  // エッジ削除（接続先ノードも削除）
+  const deleteEdgeAndTarget = (edgeId: string) => {
+    const edge = edges.find((e) => e.id === edgeId);
+    if (!edge) return;
+    const targetId = edge.target;
+    // 他のエッジからも接続されているか確認（他からも繋がってたらノードは残す）
+    const otherEdgesToTarget = edges.filter((e) => e.id !== edgeId && e.target === targetId);
+    setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+    if (otherEdgesToTarget.length === 0) {
+      setNodes((nds) => nds.filter((n) => n.id !== targetId));
+    }
+  };
+
+  // クイックリプライの選択肢追加（ノード+エッジを同時作成）
+  const addQuickReplyChoice = () => {
+    if (!selectedNode) return;
+    const parentId = selectedNode.id;
+    const parentService = selectedNode.data?.service || '';
+
+    // 親ノードの位置から右下にオフセットして配置
+    const existingEdges = edges.filter((e) => e.source === parentId);
+    const offsetIndex = existingEdges.length;
+    const newNodeId = `send_message-${Date.now()}`;
+    const newNode: Node = {
+      id: newNodeId,
+      type: 'default',
+      position: {
+        x: selectedNode.position.x + 250,
+        y: selectedNode.position.y + offsetIndex * 120,
+      },
+      data: {
+        label: `選択肢${offsetIndex + 1}`,
+        config: getDefaultConfig('send_message'),
+        nodeType: 'send_message',
+        ...(parentService ? { service: parentService } : {}),
+      },
+    };
+
+    const newEdge = {
+      id: `e-${parentId}-${newNodeId}`,
+      source: parentId,
+      target: newNodeId,
+      label: `選択肢${offsetIndex + 1}`,
+      order: offsetIndex,
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+    setEdges((eds) => [...eds, newEdge]);
   };
 
   // ノードタイプのラベル取得
@@ -366,8 +447,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  // ノード設定更新
-  const updateNodeConfig = (nodeId: string, newConfig: any) => {
+  // ノードラベル更新
+  const updateNodeLabel = (nodeId: string, newLabel: string) => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
@@ -375,7 +456,149 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             ...node,
             data: {
               ...node.data,
+              label: newLabel,
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode({
+        ...selectedNode,
+        data: {
+          ...selectedNode.data,
+          label: newLabel,
+        },
+      });
+    }
+  };
+
+  // ノードのサービスを更新
+  const updateNodeService = (nodeId: string, newService: string) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              service: newService || undefined,
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode({
+        ...selectedNode,
+        data: {
+          ...selectedNode.data,
+          service: newService || undefined,
+        },
+      });
+    }
+  };
+
+  // コンテンツからラベルプレビューを生成
+  const generateLabelFromConfig = (nodeType: string, config: any): string | null => {
+    let text = '';
+    if (nodeType === 'send_message' && config.content) {
+      text = typeof config.content === 'object' ? (config.content.ja || '') : config.content;
+    } else if (nodeType === 'quick_reply' && config.message) {
+      text = typeof config.message === 'object' ? (config.message.ja || '') : config.message;
+    }
+    if (!text) return null;
+    return text.length > 25 ? text.substring(0, 25) + '...' : text;
+  };
+
+  // テンプレート読み込み
+  const loadTemplates = async () => {
+    try {
+      const res = await fetch('/api/dashboard/templates');
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableTemplates(data.templates || []);
+      }
+    } catch (error) {
+      console.error('テンプレート読み込みエラー:', error);
+    }
+  };
+
+  // テンプレートをsend_messageノードに適用
+  const applyTemplate = (template: { name: string; message: string; quickReplies: { label: string; text: string }[] }) => {
+    if (!selectedNode) return;
+    const items = template.quickReplies.map((qr) => ({
+      type: 'action' as const,
+      action: { type: 'message' as const, label: qr.label, text: qr.text },
+    }));
+    const newConfig = {
+      ...selectedNode.data.config,
+      content: template.message,
+      quickReply: items.length > 0 ? { items } : undefined,
+    };
+    updateNodeConfig(selectedNode.id, newConfig);
+    setShowTemplateDropdown(false);
+  };
+
+  // クイックリプライアイテム追加
+  const addQuickReplyItem = () => {
+    if (!selectedNode) return;
+    const current = selectedNode.data.config.quickReply?.items || [];
+    const newItems = [
+      ...current,
+      { type: 'action' as const, action: { type: 'message' as const, label: '', text: '' } },
+    ];
+    updateNodeConfig(selectedNode.id, {
+      ...selectedNode.data.config,
+      quickReply: { items: newItems },
+    });
+  };
+
+  // クイックリプライアイテム削除
+  const removeQuickReplyItem = (index: number) => {
+    if (!selectedNode) return;
+    const current = selectedNode.data.config.quickReply?.items || [];
+    const newItems = current.filter((_: any, i: number) => i !== index);
+    updateNodeConfig(selectedNode.id, {
+      ...selectedNode.data.config,
+      quickReply: newItems.length > 0 ? { items: newItems } : undefined,
+    });
+  };
+
+  // クイックリプライアイテム更新
+  const updateQuickReplyItem = (index: number, field: 'label' | 'text', value: string) => {
+    if (!selectedNode) return;
+    const current = selectedNode.data.config.quickReply?.items || [];
+    const newItems = current.map((item: any, i: number) => {
+      if (i !== index) return item;
+      return {
+        ...item,
+        action: { ...item.action, [field]: value },
+      };
+    });
+    updateNodeConfig(selectedNode.id, {
+      ...selectedNode.data.config,
+      quickReply: { items: newItems },
+    });
+  };
+
+  // ノード設定更新
+  const updateNodeConfig = (nodeId: string, newConfig: any) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
+          const autoLabel = generateLabelFromConfig(nodeType, newConfig);
+          return {
+            ...node,
+            data: {
+              ...node.data,
               config: newConfig,
+              ...(autoLabel ? { label: autoLabel } : {}),
             },
           };
         }
@@ -385,11 +608,14 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
     // selectedNodeも更新
     if (selectedNode?.id === nodeId) {
+      const nodeType = selectedNode.data.nodeType || (selectedNode.id.startsWith('trigger') ? 'trigger' : selectedNode.id.split('-')[0]);
+      const autoLabel = generateLabelFromConfig(nodeType, newConfig);
       setSelectedNode({
         ...selectedNode,
         data: {
           ...selectedNode.data,
           config: newConfig,
+          ...(autoLabel ? { label: autoLabel } : {}),
         },
       });
     }
@@ -494,6 +720,40 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         }
         const currentLabels = (edge as any).labels || {};
         return { ...edge, labels: { ...currentLabels, [lang]: newLabel } };
+      })
+    );
+  };
+
+  // エッジラベル変更時に接続先（子）ノードの名前も同期する
+  const syncTargetNodeLabelFromEdge = (edgeId: string, newLabel: string) => {
+    const targetEdge = edges.find((e) => e.id === edgeId);
+    if (!targetEdge || !newLabel) return;
+    const targetId = targetEdge.target;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === targetId ? { ...n, data: { ...n.data, label: newLabel } } : n
+      )
+    );
+    if (selectedNode?.id === targetId) {
+      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, label: newLabel } });
+    }
+  };
+
+  // エッジの送信テキスト取得・更新
+  const getEdgeTextForLang = (edge: any, lang: string): string => {
+    if (lang === 'ja') return (edge as any).text || '';
+    return (edge as any).texts?.[lang] || '';
+  };
+
+  const updateEdgeTextForLang = (edgeId: string, newText: string, lang: string) => {
+    setEdges((prevEdges) =>
+      prevEdges.map((edge) => {
+        if (edge.id !== edgeId) return edge;
+        if (lang === 'ja') {
+          return { ...edge, text: newText || undefined };
+        }
+        const currentTexts = (edge as any).texts || {};
+        return { ...edge, texts: { ...currentTexts, [lang]: newText } };
       })
     );
   };
@@ -651,6 +911,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           position: node.position,
           data: {
             label: node.data.label,
+            ...(node.data.service ? { service: node.data.service } : {}),
             config: node.data.config,
           },
         })),
@@ -661,6 +922,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           sourceHandle: edge.sourceHandle,
           label: edge.label,
           labels: (edge as any).labels,
+          text: (edge as any).text,
+          texts: (edge as any).texts,
           order: edge.order,
         })),
         variables: {
@@ -685,7 +948,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       if (res.ok) {
         clearDraft();
         alert('フローを更新しました');
-        router.push('/support/flows');
       } else {
         const error = await res.json();
         alert(`更新エラー: ${error.error}`);
@@ -697,6 +959,44 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       setSaving(false);
     }
   };
+
+  // サービス別カラーをノードに適用
+  const styledNodes = useMemo(() => {
+    return nodes.map((node) => {
+      const svc = node.data.service;
+      if (!svc || !SERVICE_COLORS[svc]) return node;
+      const colors = SERVICE_COLORS[svc];
+      return {
+        ...node,
+        style: {
+          ...node.style,
+          background: colors.bg,
+          borderColor: colors.border,
+          borderWidth: 2,
+          color: colors.text,
+        },
+      };
+    });
+  }, [nodes]);
+
+  // サービス別カラーをエッジに適用
+  const styledEdges = useMemo(() => {
+    return edges.map((edge) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source);
+      const targetNode = nodes.find((n) => n.id === edge.target);
+      const svc = sourceNode?.data.service || targetNode?.data.service;
+      if (!svc || !SERVICE_COLORS[svc]) return edge;
+      const colors = SERVICE_COLORS[svc];
+      return {
+        ...edge,
+        style: {
+          ...edge.style,
+          stroke: colors.border,
+          strokeWidth: 2,
+        },
+      };
+    });
+  }, [edges, nodes]);
 
   if (loading) {
     return (
@@ -909,8 +1209,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         {/* Main Canvas */}
         <main className="flex-1">
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={styledNodes}
+            edges={styledEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -919,25 +1219,68 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             onNodeDragStart={onNodeDragStart}
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
+            onInit={(instance) => { reactFlowInstance.current = instance; }}
             minZoom={0.05}
             maxZoom={2}
             fitView
           >
             <Background />
             <Controls />
-            <MiniMap />
+            <MiniMap
+              nodeColor={(node) => {
+                const svc = node.data?.service;
+                if (svc && SERVICE_COLORS[svc]) return SERVICE_COLORS[svc].border;
+                return '#e2e8f0';
+              }}
+            />
           </ReactFlow>
         </main>
 
         {/* Right Sidebar - Node Settings */}
         {selectedNode && (
-          <aside className="w-80 bg-white border-l p-4 overflow-y-auto">
+          <aside className="w-80 bg-white border-l p-4 overflow-y-auto relative flex flex-col">
             <h2 className="font-bold text-lg mb-4">ノード設定</h2>
 
             <div className="mb-4 p-2 bg-gray-50 rounded">
               <div className="text-xs text-gray-500">ノードID</div>
               <div className="text-sm font-mono">{selectedNode.id}</div>
             </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ノード名
+              </label>
+              <input
+                type="text"
+                value={selectedNode.data.label || ''}
+                onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
+                placeholder="ノードの表示名"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+
+            {getSelectedNodeType() !== 'trigger' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  サービス
+                </label>
+                <select
+                  value={selectedNode.data.service || ''}
+                  onChange={(e) => updateNodeService(selectedNode.id, e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  style={
+                    selectedNode.data.service && SERVICE_COLORS[selectedNode.data.service]
+                      ? { borderColor: SERVICE_COLORS[selectedNode.data.service].border, borderWidth: 2 }
+                      : {}
+                  }
+                >
+                  <option value="">なし</option>
+                  <option value="YOLO_JAPAN">YOLO JAPAN</option>
+                  <option value="YOLO_DISCOVER">YOLO DISCOVER</option>
+                  <option value="YOLO_HOME">YOLO HOME</option>
+                </select>
+              </div>
+            )}
 
             {getSelectedNodeType() === 'trigger' && (
               <div className="text-sm text-gray-600">
@@ -1004,6 +1347,89 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
                   </p>
                 </div>
+
+                {/* クイックリプライ設定 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      クイックリプライ
+                    </label>
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          if (!showTemplateDropdown) loadTemplates();
+                          setShowTemplateDropdown(!showTemplateDropdown);
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                      >
+                        テンプレートから追加
+                      </button>
+                      {showTemplateDropdown && (
+                        <div className="absolute right-0 top-6 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                          {availableTemplates.length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-gray-400">
+                              テンプレートがありません
+                            </div>
+                          ) : (
+                            availableTemplates.map((tpl) => (
+                              <button
+                                key={tpl.id}
+                                onClick={() => applyTemplate(tpl)}
+                                className="w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 border-b last:border-b-0"
+                              >
+                                <div className="font-medium text-gray-800">{tpl.name}</div>
+                                <div className="text-gray-500 truncate">{tpl.message}</div>
+                                {tpl.quickReplies.length > 0 && (
+                                  <div className="text-indigo-500 mt-0.5">
+                                    {tpl.quickReplies.map((q) => q.label).join(' / ')}
+                                  </div>
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {(selectedNode.data.config.quickReply?.items || []).map((item: any, idx: number) => (
+                    <div key={idx} className="flex gap-1 mb-2 items-center">
+                      <input
+                        type="text"
+                        value={item.action?.label || ''}
+                        onChange={(e) => updateQuickReplyItem(idx, 'label', e.target.value)}
+                        placeholder="ラベル"
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={item.action?.text || ''}
+                        onChange={(e) => updateQuickReplyItem(idx, 'text', e.target.value)}
+                        placeholder="送信テキスト"
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs"
+                      />
+                      <button
+                        onClick={() => removeQuickReplyItem(idx)}
+                        className="text-red-400 hover:text-red-600 text-sm px-1"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={addQuickReplyItem}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    + アイテム追加
+                  </button>
+
+                  {(selectedNode.data.config.quickReply?.items || []).length > 0 && (
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      フロー終了後、ユーザーがボタンを押すとテキスト（AI_MODEなど）が送信され、通常のハンドラーで処理されます。
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1062,14 +1488,22 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 <div className="text-sm text-gray-600">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium">接続されたエッジ (表示順序):</p>
-                    <button
-                      onClick={() => setShowFaqImportModal(true)}
-                      className="px-2 py-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded flex items-center gap-1 transition-colors"
-                      title="FAQから質問をインポート"
-                    >
-                      <span className="text-lg leading-none">+</span>
-                      FAQから追加
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={addQuickReplyChoice}
+                        className="px-2 py-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded flex items-center gap-1 transition-colors"
+                        title="選択肢を追加"
+                      >
+                        + 追加
+                      </button>
+                      <button
+                        onClick={() => setShowFaqImportModal(true)}
+                        className="px-2 py-1 text-xs bg-gray-50 text-gray-600 hover:bg-gray-100 rounded flex items-center gap-1 transition-colors"
+                        title="FAQから質問をインポート"
+                      >
+                        + FAQ
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     {(edges as CustomEdge[])
@@ -1081,7 +1515,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                             <input
                               type="text"
                               value={getEdgeLabelForLang(edge, activeLang)}
-                              onChange={(e) => updateEdgeLabelForLang(edge.id, e.target.value, activeLang)}
+                              onChange={(e) => {
+                                updateEdgeLabelForLang(edge.id, e.target.value, activeLang);
+                                if (activeLang === 'ja') syncTargetNodeLabelFromEdge(edge.id, e.target.value);
+                              }}
                               placeholder={activeLang === 'ja' ? 'ボタンのラベル' : `${activeLang}のラベル`}
                               className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
@@ -1102,10 +1539,24 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               >
                                 ↓
                               </button>
+                              <button
+                                onClick={() => deleteEdgeAndTarget(edge.id)}
+                                className="px-1.5 py-0.5 text-xs bg-white border border-red-200 rounded hover:bg-red-50 text-red-500"
+                                title="削除"
+                              >
+                                ×
+                              </button>
                             </div>
                           </div>
+                          <input
+                            type="text"
+                            value={getEdgeTextForLang(edge, activeLang)}
+                            onChange={(e) => updateEdgeTextForLang(edge.id, e.target.value, activeLang)}
+                            placeholder="送信テキスト（例: AI_MODE）未入力=ラベルと同じ"
+                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white mb-1"
+                          />
                           <div className="text-xs text-gray-500 pl-2">
-                            → {edge.target || '(未接続)'}
+                            → {nodes.find((n) => n.id === edge.target)?.data.label || edge.target || '(未接続)'}
                           </div>
                         </div>
                       ))}
@@ -1224,6 +1675,16 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 終了ノードは設定不要です。フローを終了します。
               </div>
             )}
+
+            {/* 一時保存ボタン */}
+            <div className="sticky bottom-0 pt-3 mt-auto -mx-4 px-4 pb-1 bg-white border-t">
+              <button
+                onClick={() => { saveDraft(); alert('一時保存しました'); }}
+                className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+              >
+                保存
+              </button>
+            </div>
           </aside>
         )}
       </div>
