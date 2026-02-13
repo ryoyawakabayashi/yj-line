@@ -231,30 +231,40 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
     (params: Connection) => {
-      setEdges((eds) => {
-        // 同じソースから出ているエッジの数を取得
-        const sameSourceEdges = eds.filter((e) => e.source === params.source);
-        const newOrder = sameSourceEdges.length;
+      // ターゲットがquick_replyノードの場合、エッジの向きを反転
+      // （子→親へドラッグした場合に親→子に補正）
+      const targetNode = nodes.find((n) => n.id === params.target);
+      const sourceNode = nodes.find((n) => n.id === params.source);
+      const targetType = targetNode?.data?.nodeType || targetNode?.id?.split('-')[0];
+      const sourceType = sourceNode?.data?.nodeType || sourceNode?.id?.split('-')[0];
 
-        // 新しいエッジに order を設定
-        return addEdge({ ...params, order: newOrder } as any, eds);
+      let finalParams = params;
+      if (targetType === 'quick_reply' && sourceType !== 'trigger') {
+        finalParams = { ...params, source: params.target, target: params.source };
+      }
+
+      setEdges((eds) => {
+        const sameSourceEdges = eds.filter((e) => e.source === finalParams.source);
+        const newOrder = sameSourceEdges.length;
+        return addEdge({ ...finalParams, order: newOrder } as any, eds);
       });
 
       // 親ノードのサービス（色）を子ノードに引き継ぐ
-      if (params.source && params.target) {
-        setNodes((nds) => {
-          const sourceNode = nds.find((n) => n.id === params.source);
-          const parentService = sourceNode?.data?.service;
-          if (!parentService) return nds;
-          return nds.map((n) =>
-            n.id === params.target
-              ? { ...n, data: { ...n.data, service: parentService } }
-              : n
+      if (finalParams.source && finalParams.target) {
+        const parentNode = nodes.find((n) => n.id === finalParams.source);
+        const parentService = parentNode?.data?.service;
+        if (parentService) {
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === finalParams.target
+                ? { ...n, data: { ...n.data, service: parentService } }
+                : n
+            )
           );
-        });
+        }
       }
     },
-    [setEdges, setNodes]
+    [setEdges, setNodes, nodes]
   );
 
   // ノードクリック時のハンドラー
