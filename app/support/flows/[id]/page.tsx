@@ -108,6 +108,17 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       setUrlSourceType(draft.urlSourceType || 'flow');
 
       if (draft.nodes && draft.nodes.length > 0) {
+        // 既存エッジの送信テキストを子ノードに反映
+        if (draft.edges) {
+          for (const edge of draft.edges) {
+            if ((edge as any).text) {
+              const targetNode = draft.nodes.find((n: any) => n.id === edge.target);
+              if (targetNode && !targetNode.data?.sendText) {
+                targetNode.data = { ...targetNode.data, sendText: (edge as any).text };
+              }
+            }
+          }
+        }
         setNodes(draft.nodes);
       }
       if (draft.edges) {
@@ -200,6 +211,16 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           texts: edge.texts,
           order: edge.order,
         }));
+
+        // 既存エッジの送信テキストを子ノードのsendTextに反映
+        for (const edge of loadedEdges) {
+          if (edge.text) {
+            const targetNode = loadedNodes.find((n: any) => n.id === edge.target);
+            if (targetNode && !targetNode.data.sendText) {
+              targetNode.data.sendText = edge.text;
+            }
+          }
+        }
 
         setNodes(loadedNodes);
         setEdges(loadedEdges);
