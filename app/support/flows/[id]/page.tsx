@@ -194,10 +194,11 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       }
       if (draft.edges) {
         // 旧エッジにデフォルトハンドルIDを付与
+        const vh = ['bottom-source', 'top-source', 'bottom-target', 'top-target'];
         const normalizedEdges = draft.edges.map((e: any) => ({
           ...e,
-          sourceHandle: e.sourceHandle || 'bottom-source',
-          targetHandle: e.targetHandle || 'top-target',
+          sourceHandle: vh.includes(e.sourceHandle) ? e.sourceHandle : 'bottom-source',
+          targetHandle: vh.includes(e.targetHandle) ? e.targetHandle : 'top-target',
         }));
         setEdges(normalizedEdges);
       }
@@ -277,12 +278,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         }));
 
 
+        const validHandles = ['bottom-source', 'top-source', 'bottom-target', 'top-target'];
         const loadedEdges = flow.flowDefinition.edges.map((edge: any) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          sourceHandle: edge.sourceHandle || 'bottom-source',
-          targetHandle: edge.targetHandle || 'top-target',
+          sourceHandle: validHandles.includes(edge.sourceHandle) ? edge.sourceHandle : 'bottom-source',
+          targetHandle: validHandles.includes(edge.targetHandle) ? edge.targetHandle : 'top-target',
           label: edge.label,
           labels: edge.labels,
           text: edge.text,
