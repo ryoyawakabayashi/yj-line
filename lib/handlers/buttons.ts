@@ -1,6 +1,7 @@
 import { replyMessage, replyWithQuickReply } from '../line/client';
 import { getUserLang } from '../database/queries';
 import { buildYoloSiteUrl, buildYoloFeatureUrl, addUtmParams } from '../utils/url';
+import { processUrlsInText } from '../tracking/url-processor';
 import { config } from '../config';
 
 export async function handleGreeting(
@@ -160,7 +161,8 @@ export async function handleSiteMode(
   lang: string
 ): Promise<void> {
   const userId = event.source.userId;
-  const replyToken = event.replyToken;  const siteUrl = buildYoloSiteUrl(lang);
+  const replyToken = event.replyToken;
+  const siteUrl = buildYoloSiteUrl(lang);
 
   const messages: Record<string, string> = {
     ja: `こちらからお仕事を探せます：\n${siteUrl}`,
@@ -170,9 +172,12 @@ export async function handleSiteMode(
     vi: `Bạn có thể tìm công việc tại đây:\n${siteUrl}`,
   };
 
+  const rawText = messages[lang] || messages.ja;
+  const text = await processUrlsInText(rawText, userId, 'support', 'line_chatbot_site_mode');
+
   await replyMessage(replyToken, {
     type: 'text',
-    text: messages[lang] || messages.ja,
+    text,
   });
 }
 
@@ -184,6 +189,7 @@ export async function handleSiteModeAutochat(
   event: any,
   lang: string
 ): Promise<void> {
+  const userId = event.source.userId;
   const replyToken = event.replyToken;
   const { buildYoloAutochatUrl } = await import('../utils/url');
   const siteUrl = buildYoloAutochatUrl(lang);
@@ -196,9 +202,12 @@ export async function handleSiteModeAutochat(
     vi: `Bạn có thể tìm công việc tại đây:\n${siteUrl}`,
   };
 
+  const rawText = messages[lang] || messages.ja;
+  const text = await processUrlsInText(rawText, userId, 'support', 'line_chatbot_site_mode_autochat');
+
   await replyMessage(replyToken, {
     type: 'text',
-    text: messages[lang] || messages.ja,
+    text,
   });
 }
 
