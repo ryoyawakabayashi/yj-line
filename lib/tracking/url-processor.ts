@@ -8,10 +8,10 @@ import { generateTrackingUrl } from './token';
  * 追跡対象ドメイン
  */
 const TRACKABLE_DOMAINS = [
-  'yolo-japan.com',
+  'wom.yolo-japan.com',
+  'www.yolo-japan.co.jp',
   'www.yolo-japan.com',
-  'yolojapan.co.jp',
-  'www.yolojapan.co.jp',
+  'home.yolo-japan.com',
 ];
 
 /**
@@ -45,7 +45,7 @@ export type UrlSourceType =
 /**
  * テキスト内のURLを検出する正規表現
  */
-const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]\u3000-\u9FFF\uF900-\uFAFF\uFF01-\uFF60]+/gi;
 
 /**
  * テキスト内のURLをトラッキングURL化
@@ -57,7 +57,8 @@ const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
 export async function processUrlsInText(
   text: string,
   userId: string,
-  sourceType: UrlSourceType = 'support'
+  sourceType: UrlSourceType = 'support',
+  campaign?: string
 ): Promise<string> {
   // URLを抽出
   const urls = text.match(URL_REGEX);
@@ -75,13 +76,12 @@ export async function processUrlsInText(
     try {
       // トラッキング対象のドメインかチェック
       const urlObj = new URL(originalUrl);
-      const isTrackable = TRACKABLE_DOMAINS.some(
-        (domain) => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
-      );
+      const isTrackable = TRACKABLE_DOMAINS.includes(urlObj.hostname);
 
       if (isTrackable) {
-        // トラッキングURLを生成
-        let trackingUrl = await generateTrackingUrl(userId, originalUrl, sourceType);
+        // トラッキングURLを生成（campaignがなければsourceTypeからデフォルト生成）
+        const campaignName = campaign || `line_chatbot_${sourceType}`;
+        let trackingUrl = await generateTrackingUrl(userId, originalUrl, sourceType, campaignName);
 
         // LIFF URL経由にする（外部ブラウザで開く）
         // liff.line.me 経由で開くとクエリパラメータが消えるため、ハッシュを使用
@@ -118,16 +118,16 @@ export async function processUrlsInText(
 export async function processUrl(
   url: string,
   userId: string,
-  sourceType: UrlSourceType
+  sourceType: UrlSourceType,
+  campaign?: string
 ): Promise<string> {
   try {
     const urlObj = new URL(url);
-    const isTrackable = TRACKABLE_DOMAINS.some(
-      (domain) => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
-    );
+    const isTrackable = TRACKABLE_DOMAINS.includes(urlObj.hostname);
 
     if (isTrackable) {
-      let trackingUrl = await generateTrackingUrl(userId, url, sourceType);
+      const campaignName = campaign || `line_chatbot_${sourceType}`;
+      let trackingUrl = await generateTrackingUrl(userId, url, sourceType, campaignName);
 
       // LIFF URL経由にする（外部ブラウザで開く）
       // liff.line.me 経由で開くとクエリパラメータが消えるため、ハッシュを使用
@@ -154,9 +154,7 @@ export function hasTrackableUrls(text: string): boolean {
   return urls.some((url) => {
     try {
       const urlObj = new URL(url);
-      return TRACKABLE_DOMAINS.some(
-        (domain) => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
-      );
+      return TRACKABLE_DOMAINS.includes(urlObj.hostname);
     } catch {
       return false;
     }
