@@ -58,6 +58,59 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const isInitializedRef = useRef(false);
 
+  // Undo/Redo 履歴管理
+  const historyRef = useRef<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
+  const historyIndexRef = useRef(-1);
+  const isUndoRedoRef = useRef(false);
+  const MAX_HISTORY = 50;
+
+  const pushHistory = useCallback(() => {
+    if (isUndoRedoRef.current) return;
+    const snapshot = {
+      nodes: nodes.map((n) => ({ ...n, data: { ...n.data } })),
+      edges: edges.map((e) => ({ ...e })),
+    };
+    // 現在位置より先の履歴を捨てる
+    historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    historyRef.current.push(snapshot);
+    if (historyRef.current.length > MAX_HISTORY) {
+      historyRef.current.shift();
+    }
+    historyIndexRef.current = historyRef.current.length - 1;
+  }, [nodes, edges]);
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    // 初回undoの時、現在の状態を先に保存
+    if (historyIndexRef.current === historyRef.current.length - 1) {
+      const current = {
+        nodes: nodes.map((n) => ({ ...n, data: { ...n.data } })),
+        edges: edges.map((e) => ({ ...e })),
+      };
+      // 最新と同じでなければ追加
+      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+      historyRef.current.push(current);
+    }
+    historyIndexRef.current -= 1;
+    const prev = historyRef.current[historyIndexRef.current];
+    isUndoRedoRef.current = true;
+    setNodes(prev.nodes);
+    setEdges(prev.edges);
+    setSelectedNode(null);
+    setTimeout(() => { isUndoRedoRef.current = false; }, 0);
+  }, [nodes, edges, setNodes, setEdges]);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    const next = historyRef.current[historyIndexRef.current];
+    isUndoRedoRef.current = true;
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    setSelectedNode(null);
+    setTimeout(() => { isUndoRedoRef.current = false; }, 0);
+  }, [setNodes, setEdges]);
+
   const DRAFT_KEY = `flow-editor-draft-${id}`;
 
   // 下書きデータの型
@@ -232,6 +285,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
         setNodes(loadedNodes);
         setEdges(loadedEdges);
+        // 初期状態をhistoryに保存
+        historyRef.current = [{ nodes: loadedNodes, edges: loadedEdges }];
+        historyIndexRef.current = 0;
       } else {
         alert('フローの読み込みに失敗しました');
         router.push('/support/flows');
@@ -260,6 +316,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
     (params: Connection) => {
+      pushHistory();
       // ターゲットがquick_replyノードの場合、エッジの向きを反転
       // （子→親へドラッグした場合に親→子に補正）
       const targetNode = nodes.find((n) => n.id === params.target);
@@ -348,6 +405,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
   const onNodeDragStart = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      pushHistory();
       const descendants = getDescendants(node.id, edges);
       dragState.current = {
         startPos: { x: node.position.x, y: node.position.y },
@@ -418,6 +476,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
   // エッジ削除（接続先ノードも削除）
   const deleteEdgeAndTarget = (edgeId: string) => {
+    pushHistory();
     const edge = edges.find((e) => e.id === edgeId);
     if (!edge) return;
     const targetId = edge.target;
@@ -432,6 +491,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // クイックリプライの選択肢追加（ノード+エッジを同時作成）
   const addQuickReplyChoice = () => {
     if (!selectedNode) return;
+    pushHistory();
     const parentId = selectedNode.id;
     const parentService = selectedNode.data?.service || '';
 
@@ -1167,6 +1227,36 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     });
   }, [edges, nodes]);
 
+  // ノード/エッジ削除時にhistoryをpush
+  const handleNodesChange = useCallback((changes: any[]) => {
+    const hasRemove = changes.some((c: any) => c.type === 'remove');
+    if (hasRemove) pushHistory();
+    onNodesChange(changes);
+  }, [onNodesChange, pushHistory]);
+
+  const handleEdgesChange = useCallback((changes: any[]) => {
+    const hasRemove = changes.some((c: any) => c.type === 'remove');
+    if (hasRemove) pushHistory();
+    onEdgesChange(changes);
+  }, [onEdgesChange, pushHistory]);
+
+  // キーボードショートカット: Ctrl+Z = undo, Ctrl+Shift+Z / Ctrl+Y = redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'Z' || e.key === 'y')) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
@@ -1195,6 +1285,22 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={undo}
+              disabled={historyIndexRef.current <= 0}
+              className="px-2 py-2 text-gray-600 hover:bg-gray-100 rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
+              title="元に戻す (Ctrl+Z)"
+            >
+              ↩
+            </button>
+            <button
+              onClick={redo}
+              disabled={historyIndexRef.current >= historyRef.current.length - 1}
+              className="px-2 py-2 text-gray-600 hover:bg-gray-100 rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
+              title="やり直す (Ctrl+Shift+Z)"
+            >
+              ↪
+            </button>
             <button
               onClick={() => { saveDraft(); alert('一時保存しました'); }}
               className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
@@ -1380,8 +1486,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           <ReactFlow
             nodes={styledNodes}
             edges={styledEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
