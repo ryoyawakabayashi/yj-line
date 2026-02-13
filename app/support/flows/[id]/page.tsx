@@ -1620,9 +1620,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                             placeholder="送信テキスト（例: AI_MODE）未入力=ラベルと同じ"
                             className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white mb-1"
                           />
-                          <div className="text-xs text-gray-500 pl-2">
-                            → {nodes.find((n) => n.id === edge.target)?.data.label || edge.target || '(未接続)'}
-                          </div>
                         </div>
                       ))}
                     {edges.filter((edge) => edge.source === selectedNode.id).length === 0 && (
