@@ -475,11 +475,25 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  // ノードのサービスを更新
+  // ノードのサービスを更新（子孫ノードにも伝播）
   const updateNodeService = (nodeId: string, newService: string) => {
+    // 子孫ノードIDを全て取得（BFS）
+    const descendantIds = new Set<string>();
+    const queue = [nodeId];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const childEdges = edges.filter((e) => e.source === current);
+      for (const edge of childEdges) {
+        if (!descendantIds.has(edge.target)) {
+          descendantIds.add(edge.target);
+          queue.push(edge.target);
+        }
+      }
+    }
+
     setNodes((nds) =>
       nds.map((node) => {
-        if (node.id === nodeId) {
+        if (node.id === nodeId || descendantIds.has(node.id)) {
           return {
             ...node,
             data: {
