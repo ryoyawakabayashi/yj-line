@@ -43,14 +43,21 @@ function generateUserToken(userId: string): string {
 }
 
 /**
- * トラッキングトークン付きURLを生成
- * ユニークなUTMパラメータ（utm_content=トークン）を付与
- * GA4やYOLO JAPAN側でトークンからCV追跡可能
+ * リダイレクト用のアプリベースURL
+ * メッセージ内にはUTMパラメータを埋め込まず、リダイレクト時にサーバー側で付与
+ */
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://line-bot-next-omega.vercel.app';
+
+/**
+ * トラッキングリダイレクトURLを生成
+ * メッセージにはパラメータを含めず、/api/r/[token] リダイレクト経由でUTMを付与
+ * リダイレクト時: utm_source=line, utm_medium=inquiry, utm_content=TOKEN
  */
 export async function generateTrackingUrl(
   userId: string,
   baseUrl: string,
-  urlType: string
+  urlType: string,
+  campaign?: string
 ): Promise<string> {
   // ユーザー固定のトークン生成（同じユーザーは常に同じトークン）
   const token = generateUserToken(userId);
@@ -90,25 +97,22 @@ export async function generateTrackingUrl(
       .eq('token', token);
   }
 
-  // URLにユニークなUTMパラメータを付与
-  // utm_campaign = ソース_メディア_キャンペーン_ユーザートークン（GA4でCV追跡用）
-  const url = new URL(baseUrl);
-  url.searchParams.set('utm_source', 'line');
-  url.searchParams.set('utm_medium', 'bot');
-  url.searchParams.set('utm_campaign', `line_bot_${urlType}_${token}`); // source_medium_campaign_token 形式
+  // リダイレクトURL生成（UTMパラメータはリダイレクト時にサーバー側で付与）
+  let redirectUrl = `${APP_BASE_URL}/api/r/${token}?url=${encodeURIComponent(baseUrl)}`;
+  if (campaign) {
+    // キャンペーン名にユニークID（ユーザートークン）を付加
+    const campaignWithToken = `${campaign}_${token}`;
+    redirectUrl += `&campaign=${encodeURIComponent(campaignWithToken)}`;
+  }
 
-  // デバッグ: 生成されたURLの詳細をログ出力
   console.log('🔗 トラッキングURL生成:', {
     userId: userId.slice(0, 8) + '...',
     token,
     urlType,
-    utm_source: 'line',
-    utm_medium: 'bot',
-    utm_campaign: `line_bot_${urlType}_${token}`,
-    finalUrl: url.toString()
+    redirectUrl,
   });
 
-  return url.toString();
+  return redirectUrl;
 }
 
 /**
