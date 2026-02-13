@@ -120,9 +120,8 @@ export async function GET(
     const redirectUrl = new URL(destinationUrl);
     redirectUrl.searchParams.set('utm_source', 'line');
     redirectUrl.searchParams.set('utm_medium', 'inquiry');
-    redirectUrl.searchParams.set('utm_content', utmContent);
 
-    // utm_campaign（Narrowcast等で指定された場合）
+    // utm_campaign（キャンペーン名_ユニークID）
     const campaign = request.nextUrl.searchParams.get('campaign');
     if (campaign) {
       redirectUrl.searchParams.set('utm_campaign', campaign);
