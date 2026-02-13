@@ -55,6 +55,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; message: string; quickReplies: { label: string; text: string }[] }>>([]);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const isInitializedRef = useRef(false);
 
   const DRAFT_KEY = `flow-editor-draft-${id}`;
@@ -319,6 +320,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // キャンバスクリック時のハンドラー（選択解除）
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
+    setEditingNodeId(null);
+  }, []);
+
+  // ノードダブルクリック → インライン編集開始
+  const onNodeDoubleClick: NodeMouseHandler = useCallback((event, node) => {
+    event.preventDefault();
+    setEditingNodeId(node.id);
   }, []);
 
   // --- 親ノードドラッグで子ノードも追従（マインドマップ風） ---
@@ -1094,20 +1102,47 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const styledNodes = useMemo(() => {
     return nodes.map((node) => {
       const svc = node.data.service;
-      if (!svc || !SERVICE_COLORS[svc]) return node;
-      const colors = SERVICE_COLORS[svc];
+      const colors = svc && SERVICE_COLORS[svc] ? SERVICE_COLORS[svc] : null;
+      const isEditing = editingNodeId === node.id;
+
       return {
         ...node,
-        style: {
-          ...node.style,
-          background: colors.bg,
-          borderColor: colors.border,
-          borderWidth: 2,
-          color: colors.text,
+        data: {
+          ...node.data,
+          label: isEditing ? (
+            <input
+              autoFocus
+              defaultValue={node.data.label || ''}
+              className="w-full bg-transparent text-center text-sm outline-none border-b border-blue-500"
+              onClick={(e) => e.stopPropagation()}
+              onBlur={(e) => {
+                updateNodeLabel(node.id, e.target.value);
+                setEditingNodeId(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  updateNodeLabel(node.id, (e.target as HTMLInputElement).value);
+                  setEditingNodeId(null);
+                }
+                if (e.key === 'Escape') {
+                  setEditingNodeId(null);
+                }
+              }}
+            />
+          ) : (node.data.label || node.id),
         },
+        ...(colors ? {
+          style: {
+            ...node.style,
+            background: colors.bg,
+            borderColor: colors.border,
+            borderWidth: 2,
+            color: colors.text,
+          },
+        } : {}),
       };
     });
-  }, [nodes]);
+  }, [nodes, editingNodeId]);
 
   // サービス別カラーをエッジに適用（キャンバス上のラベルは非表示）
   const styledEdges = useMemo(() => {
@@ -1349,6 +1384,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={onNodeClick}
+            onNodeDoubleClick={onNodeDoubleClick}
             onPaneClick={onPaneClick}
             onNodeDragStart={onNodeDragStart}
             onNodeDrag={onNodeDrag}
