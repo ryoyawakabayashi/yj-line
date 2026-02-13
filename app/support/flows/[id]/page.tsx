@@ -457,7 +457,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  // ノードラベル更新
+  // ノードラベル更新（親ノードのエッジラベルにも同期）
   const updateNodeLabel = (nodeId: string, newLabel: string) => {
     setNodes((nds) =>
       nds.map((node) => {
@@ -471,6 +471,16 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           };
         }
         return node;
+      })
+    );
+
+    // このノードをターゲットとするエッジのラベルも同期
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.target === nodeId) {
+          return { ...edge, label: newLabel };
+        }
+        return edge;
       })
     );
 
@@ -1003,16 +1013,20 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     });
   }, [nodes]);
 
-  // サービス別カラーをエッジに適用
+  // サービス別カラーをエッジに適用（キャンバス上のラベルは非表示）
   const styledEdges = useMemo(() => {
     return edges.map((edge) => {
       const sourceNode = nodes.find((n) => n.id === edge.source);
       const targetNode = nodes.find((n) => n.id === edge.target);
       const svc = sourceNode?.data.service || targetNode?.data.service;
-      if (!svc || !SERVICE_COLORS[svc]) return edge;
+      const baseStyle = {
+        ...edge,
+        label: undefined, // キャンバス上のエッジラベルを非表示
+      };
+      if (!svc || !SERVICE_COLORS[svc]) return baseStyle;
       const colors = SERVICE_COLORS[svc];
       return {
-        ...edge,
+        ...baseStyle,
         style: {
           ...edge.style,
           stroke: colors.border,
