@@ -237,7 +237,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         const data = await res.json();
         const flow = data.flow;
 
-        // 下書きチェック: サーバーデータより新しい下書きがあれば復元を提案
+        // 下書きチェック: サーバーデータより新しい下書きがあれば自動復元
         const saved = localStorage.getItem(DRAFT_KEY);
         if (saved) {
           try {
@@ -245,12 +245,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             const draftTime = new Date(draft.savedAt);
             const serverTime = new Date(flow.updatedAt);
             if (draftTime > serverTime) {
-              const savedTimeStr = draftTime.toLocaleString('ja-JP');
-              if (confirm(`未保存の下書きが見つかりました（${savedTimeStr}）\n復元しますか？（「キャンセル」でサーバーのデータを使用）`)) {
-                restoreDraft();
-                isInitializedRef.current = true;
-                return;
-              }
+              restoreDraft();
+              isInitializedRef.current = true;
+              return;
             }
             clearDraft();
           } catch {

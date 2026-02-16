@@ -142,18 +142,12 @@ export default function NewFlowPage() {
     setDraftSavedAt(null);
   }, []);
 
-  // 初回マウント時: 下書きがあれば復元を提案
+  // 初回マウント時: 下書きがあれば自動復元
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) {
       try {
-        const draft: DraftData = JSON.parse(saved);
-        const savedTime = new Date(draft.savedAt).toLocaleString('ja-JP');
-        if (confirm(`前回の下書きが見つかりました（${savedTime}）\n復元しますか？`)) {
-          restoreDraft();
-        } else {
-          clearDraft();
-        }
+        restoreDraft();
       } catch {
         clearDraft();
       }
