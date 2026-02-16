@@ -62,6 +62,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const isInitializedRef = useRef(false);
+  const clipboardRef = useRef<Node | null>(null);
 
   // Undo/Redo 履歴管理
   const historyRef = useRef<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
@@ -564,6 +565,65 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setNodes((nds) => [...nds, newNode]);
     setEdges((eds) => [...eds, newEdge]);
   };
+
+  // ノード複製
+  const duplicateNode = useCallback((node: Node) => {
+    pushHistory();
+    const nodeType = node.data.nodeType || node.id.split('-')[0];
+    const newId = `${nodeType}-${Date.now()}`;
+    const newNode: Node = {
+      id: newId,
+      type: 'flowNode',
+      position: { x: node.position.x + 50, y: node.position.y + 50 },
+      data: {
+        ...node.data,
+        label: `${node.data.label || nodeType} (コピー)`,
+        _style: undefined, // styledNodesで再計算される
+      },
+    };
+    setNodes((nds) => [...nds, newNode]);
+    setSelectedNode(newNode);
+  }, [pushHistory, setNodes]);
+
+  // コピー（クリップボードに保持）
+  const copyNode = useCallback(() => {
+    if (selectedNode) {
+      clipboardRef.current = selectedNode;
+    }
+  }, [selectedNode]);
+
+  // ペースト（クリップボードからビューポート中央に貼り付け）
+  const pasteNode = useCallback(() => {
+    const src = clipboardRef.current;
+    if (!src) return;
+    pushHistory();
+    const nodeType = src.data.nodeType || src.id.split('-')[0];
+    const newId = `${nodeType}-${Date.now()}`;
+
+    let position = { x: src.position.x + 80, y: src.position.y + 80 };
+    if (reactFlowInstance.current) {
+      const rfBounds = document.querySelector('.react-flow')?.getBoundingClientRect();
+      if (rfBounds) {
+        position = reactFlowInstance.current.screenToFlowPosition({
+          x: rfBounds.x + rfBounds.width / 2,
+          y: rfBounds.y + rfBounds.height / 2,
+        });
+      }
+    }
+
+    const newNode: Node = {
+      id: newId,
+      type: 'flowNode',
+      position,
+      data: {
+        ...src.data,
+        label: `${src.data.label || nodeType} (コピー)`,
+        _style: undefined,
+      },
+    };
+    setNodes((nds) => [...nds, newNode]);
+    setSelectedNode(newNode);
+  }, [pushHistory, setNodes]);
 
   // ノードタイプのラベル取得
   const getNodeLabel = (nodeType: string): string => {
@@ -1282,7 +1342,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     onEdgesChange(changes);
   }, [onEdgesChange, pushHistory]);
 
-  // キーボードショートカット: Ctrl+Z = undo, Ctrl+Shift+Z / Ctrl+Y = redo
+  // キーボードショートカット: Ctrl+Z=undo, Ctrl+Shift+Z/Ctrl+Y=redo, Ctrl+C=copy, Ctrl+V=paste, Ctrl+D=duplicate
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
@@ -1294,10 +1354,21 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         e.preventDefault();
         redo();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        copyNode();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
+        e.preventDefault();
+        pasteNode();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        e.preventDefault();
+        if (selectedNode) duplicateNode(selectedNode);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [undo, redo]);
+  }, [undo, redo, copyNode, pasteNode, duplicateNode, selectedNode]);
 
   if (loading) {
     return (
@@ -1561,9 +1632,18 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           <aside className="w-80 bg-white border-l p-4 overflow-y-auto relative flex flex-col">
             <h2 className="font-bold text-lg mb-4">ノード設定</h2>
 
-            <div className="mb-4 p-2 bg-gray-50 rounded">
-              <div className="text-xs text-gray-500">ノードID</div>
-              <div className="text-sm font-mono">{selectedNode.id}</div>
+            <div className="mb-4 p-2 bg-gray-50 rounded flex items-center justify-between">
+              <div>
+                <div className="text-xs text-gray-500">ノードID</div>
+                <div className="text-sm font-mono">{selectedNode.id}</div>
+              </div>
+              <button
+                onClick={() => duplicateNode(selectedNode)}
+                className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
+                title="複製 (Ctrl+D)"
+              >
+                複製
+              </button>
             </div>
 
             <div className="mb-4">
