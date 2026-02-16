@@ -6,6 +6,7 @@ import ReactFlow, {
   Node,
   Edge,
   Connection,
+  ConnectionMode,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -193,12 +194,11 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         setNodes(normalizedNodes);
       }
       if (draft.edges) {
-        // 旧エッジにデフォルトハンドルIDを付与
-        const vh = ['bottom-source', 'top-source', 'bottom-target', 'top-target'];
+        // ハンドルIDを正規化（旧ID→新IDに変換）
         const normalizedEdges = draft.edges.map((e: any) => ({
           ...e,
-          sourceHandle: vh.includes(e.sourceHandle) ? e.sourceHandle : 'bottom-source',
-          targetHandle: vh.includes(e.targetHandle) ? e.targetHandle : 'top-target',
+          sourceHandle: (e.sourceHandle && String(e.sourceHandle).includes('bottom')) ? 'bottom' : (e.sourceHandle === 'top' || (e.sourceHandle && String(e.sourceHandle).includes('top'))) ? 'top' : 'bottom',
+          targetHandle: (e.targetHandle && String(e.targetHandle).includes('top')) ? 'top' : (e.targetHandle === 'bottom' || (e.targetHandle && String(e.targetHandle).includes('bottom'))) ? 'bottom' : 'top',
         }));
         setEdges(normalizedEdges);
       }
@@ -275,13 +275,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         }));
 
 
-        const validHandles = ['bottom-source', 'top-source', 'bottom-target', 'top-target'];
         const loadedEdges = flow.flowDefinition.edges.map((edge: any) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
-          sourceHandle: validHandles.includes(edge.sourceHandle) ? edge.sourceHandle : 'bottom-source',
-          targetHandle: validHandles.includes(edge.targetHandle) ? edge.targetHandle : 'top-target',
+          sourceHandle: (edge.sourceHandle && String(edge.sourceHandle).includes('bottom')) ? 'bottom' : (edge.sourceHandle && String(edge.sourceHandle).includes('top')) ? 'top' : 'bottom',
+          targetHandle: (edge.targetHandle && String(edge.targetHandle).includes('top')) ? 'top' : (edge.targetHandle && String(edge.targetHandle).includes('bottom')) ? 'bottom' : 'top',
           label: edge.label,
           labels: edge.labels,
           text: edge.text,
@@ -346,15 +345,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           ...params,
           source: params.target,
           target: params.source,
-          sourceHandle: params.targetHandle || 'bottom-source',
-          targetHandle: params.sourceHandle || 'top-target',
+          sourceHandle: params.targetHandle || 'bottom',
+          targetHandle: params.sourceHandle || 'top',
         };
       } else {
         // ハンドルIDが未設定の場合デフォルトを設定
         finalParams = {
           ...params,
-          sourceHandle: params.sourceHandle || 'bottom-source',
-          targetHandle: params.targetHandle || 'top-target',
+          sourceHandle: params.sourceHandle || 'bottom',
+          targetHandle: params.targetHandle || 'top',
         };
       }
 
@@ -556,8 +555,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       id: `e-${parentId}-${newNodeId}`,
       source: parentId,
       target: newNodeId,
-      sourceHandle: 'bottom-source',
-      targetHandle: 'top-target',
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
       label: `選択肢${offsetIndex + 1}`,
       order: offsetIndex,
     };
@@ -855,8 +854,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       id: `edge-faq-${faq.id}-${Date.now()}-${index}`,
       source: selectedNode.id,
       target: '', // ユーザーが後で接続する
-      sourceHandle: 'bottom-source',
-      targetHandle: 'top-target',
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
       label: faq.question,
       order: maxOrder + index + 1,
     } as Edge));
@@ -1530,6 +1529,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             nodes={styledNodes}
             edges={styledEdges}
             nodeTypes={nodeTypes}
+            connectionMode={ConnectionMode.Loose}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}

@@ -6,6 +6,7 @@ import ReactFlow, {
   Node,
   Edge,
   Connection,
+  ConnectionMode,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -181,8 +182,8 @@ export default function NewFlowPage() {
     (params: Connection) => {
       const finalParams = {
         ...params,
-        sourceHandle: params.sourceHandle || 'bottom-source',
-        targetHandle: params.targetHandle || 'top-target',
+        sourceHandle: params.sourceHandle || 'bottom',
+        targetHandle: params.targetHandle || 'top',
       };
       setEdges((eds) => {
         // 同じソースから出ているエッジの数を取得
@@ -492,8 +493,8 @@ export default function NewFlowPage() {
       id: `edge-faq-${faq.id}-${Date.now()}-${index}`,
       source: selectedNode.id,
       target: '', // ユーザーが後で接続する
-      sourceHandle: 'bottom-source',
-      targetHandle: 'top-target',
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
       label: faq.question,
       order: maxOrder + index + 1,
     } as Edge));
@@ -714,8 +715,8 @@ export default function NewFlowPage() {
         id: e.id,
         source: e.source,
         target: e.target,
-        sourceHandle: e.sourceHandle || 'bottom-source',
-        targetHandle: e.targetHandle || 'top-target',
+        sourceHandle: e.sourceHandle || 'bottom',
+        targetHandle: e.targetHandle || 'top',
         label: e.label,
         labels: e.labels,
         order: e.order,
@@ -1075,6 +1076,7 @@ export default function NewFlowPage() {
             nodes={styledNodes}
             edges={styledEdges}
             nodeTypes={nodeTypes}
+            connectionMode={ConnectionMode.Loose}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}

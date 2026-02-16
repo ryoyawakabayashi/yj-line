@@ -5,8 +5,8 @@ import { Handle, Position, NodeProps } from 'reactflow';
 
 /**
  * カスタムフローノード
- * 上下両方に source/target ハンドルを配置し、
- * ユーザーがドラッグした方向に自然にエッジが接続される。
+ * 上下に1つずつハンドルを配置。
+ * connectionMode="loose" と組み合わせて、どの方向からでも接続可能。
  */
 function FlowNodeComponent({ data, selected }: NodeProps) {
   return (
@@ -16,34 +16,22 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
       }`}
       style={data._style || undefined}
     >
-      {/* 上ハンドル: target（入力）+ source（出力） */}
+      {/* 上ハンドル */}
       <Handle
         type="target"
         position={Position.Top}
-        id="top-target"
-        style={{ background: '#94a3b8', width: 8, height: 8 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        id="top-source"
+        id="top"
         style={{ background: '#94a3b8', width: 8, height: 8 }}
       />
 
       {/* ラベル（JSX or テキスト） */}
       <div>{data.label || data.nodeType || 'ノード'}</div>
 
-      {/* 下ハンドル: source（出力）+ target（入力） */}
+      {/* 下ハンドル */}
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom-source"
-        style={{ background: '#94a3b8', width: 8, height: 8 }}
-      />
-      <Handle
-        type="target"
-        position={Position.Bottom}
-        id="bottom-target"
+        id="bottom"
         style={{ background: '#94a3b8', width: 8, height: 8 }}
       />
     </div>
