@@ -212,19 +212,27 @@ export default function NewFlowPage() {
     descendants: Array<{ id: string; startPos: { x: number; y: number } }>;
   } | null>(null);
 
-  // エッジから子孫ノードIDを再帰的に取得
-  const getDescendants = useCallback((nodeId: string, edgeList: Edge[]): string[] => {
-    const children = edgeList.filter((e) => e.source === nodeId).map((e) => e.target);
+  // エッジから子孫ノードIDを再帰的に取得（下方向のみ辿る）
+  const getDescendants = useCallback((nodeId: string, edgeList: Edge[], nodeList: Node[]): string[] => {
+    const thisNode = nodeList.find((n) => n.id === nodeId);
+    if (!thisNode) return [];
+    const children = edgeList
+      .filter((e) => e.source === nodeId)
+      .map((e) => e.target)
+      .filter((targetId) => {
+        const targetNode = nodeList.find((n) => n.id === targetId);
+        return targetNode && targetNode.position.y >= thisNode.position.y;
+      });
     const all: string[] = [...children];
     for (const child of children) {
-      all.push(...getDescendants(child, edgeList));
+      all.push(...getDescendants(child, edgeList, nodeList));
     }
     return [...new Set(all)]; // 重複除去
   }, []);
 
   const onNodeDragStart = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      const descendants = getDescendants(node.id, edges);
+      const descendants = getDescendants(node.id, edges, nodes);
       dragState.current = {
         startPos: { x: node.position.x, y: node.position.y },
         descendants: descendants.map((id) => {

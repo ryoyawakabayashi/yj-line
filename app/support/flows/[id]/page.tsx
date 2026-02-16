@@ -422,12 +422,21 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     descendants: Array<{ id: string; startPos: { x: number; y: number } }>;
   } | null>(null);
 
-  // エッジから子孫ノードIDを再帰的に取得
-  const getDescendants = useCallback((nodeId: string, edgeList: Edge[]): string[] => {
-    const children = edgeList.filter((e) => e.source === nodeId).map((e) => e.target);
+  // エッジから子孫ノードIDを再帰的に取得（下方向のみ辿る）
+  const getDescendants = useCallback((nodeId: string, edgeList: Edge[], nodeList: Node[]): string[] => {
+    const thisNode = nodeList.find((n) => n.id === nodeId);
+    if (!thisNode) return [];
+    const children = edgeList
+      .filter((e) => e.source === nodeId)
+      .map((e) => e.target)
+      .filter((targetId) => {
+        // 上方向のエッジ（逆方向）は辿らない → 親が引っ張られるのを防止
+        const targetNode = nodeList.find((n) => n.id === targetId);
+        return targetNode && targetNode.position.y >= thisNode.position.y;
+      });
     const all: string[] = [...children];
     for (const child of children) {
-      all.push(...getDescendants(child, edgeList));
+      all.push(...getDescendants(child, edgeList, nodeList));
     }
     return [...new Set(all)]; // 重複除去
   }, []);
@@ -435,7 +444,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const onNodeDragStart = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       pushHistory();
-      const descendants = getDescendants(node.id, edges);
+      const descendants = getDescendants(node.id, edges, nodes);
       dragState.current = {
         startPos: { x: node.position.x, y: node.position.y },
         descendants: descendants.map((id) => {
