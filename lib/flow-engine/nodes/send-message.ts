@@ -53,7 +53,7 @@ export class SendMessageHandler implements NodeHandler {
 
       switch (config.messageType) {
         case 'text':
-          message = createTextMessage(expandedContent, config.quickReply);
+          message = createTextMessage(expandedContent);
           break;
 
         case 'flex':
