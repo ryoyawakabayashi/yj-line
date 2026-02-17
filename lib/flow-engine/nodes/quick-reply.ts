@@ -62,12 +62,17 @@ export class QuickReplyHandler implements NodeHandler {
         ? (edge.labels[context.lang] || edge.labels.ja || edge.label || edge.target)
         : (edge.label || edge.target);
 
+      // 送信テキスト: edge.text/textsがあれば使用、なければラベルと同じ
+      const localizedText = edge.texts
+        ? (edge.texts[context.lang] || edge.texts.ja || edge.text || localizedLabel)
+        : (edge.text || localizedLabel);
+
       return {
         type: 'action' as const,
         action: {
           type: 'message' as const,
-          label: localizedLabel,  // エッジのラベルをボタンテキストとして使用
-          text: localizedLabel,   // ユーザーが選択したときに送信されるテキスト
+          label: localizedLabel,  // ボタンの表示テキスト
+          text: localizedText,    // ユーザーが選択したときに送信されるテキスト
         },
       };
     });
@@ -113,10 +118,18 @@ export function resolveQuickReplyChoice(
       return orderA - orderB;
     });
 
-  // ユーザーのメッセージとエッジのラベルが完全一致するものを探す
-  const matchedEdge = outgoingEdges.find(
-    (edge) => edge.label === userMessage
-  );
+  // ユーザーのメッセージとエッジのtext/label/labelsが一致するものを探す
+  const matchedEdge = outgoingEdges.find((edge) => {
+    // text フィールド（送信テキスト）で一致
+    if (edge.text && edge.text === userMessage) return true;
+    // texts（多言語送信テキスト）で一致
+    if (edge.texts && Object.values(edge.texts).includes(userMessage)) return true;
+    // label で一致
+    if (edge.label === userMessage) return true;
+    // labels（多言語ラベル）で一致
+    if (edge.labels && Object.values(edge.labels).includes(userMessage)) return true;
+    return false;
+  });
 
   if (matchedEdge) {
     return matchedEdge.target;

@@ -97,7 +97,7 @@ export default function NewFlowPage() {
         nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
         edges: (edges as CustomEdge[]).map((e) => ({
           id: e.id, source: e.source, target: e.target,
-          sourceHandle: e.sourceHandle, label: e.label, labels: (e as any).labels, order: e.order,
+          sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, label: e.label, labels: (e as any).labels, order: e.order,
         })),
         savedAt: new Date().toISOString(),
       };
@@ -124,10 +124,21 @@ export default function NewFlowPage() {
       setUrlSourceType(draft.urlSourceType || 'flow');
 
       if (draft.nodes && draft.nodes.length > 0) {
-        setNodes(draft.nodes);
+        // 旧下書きの type: 'default' を 'flowNode' に変換
+        const normalizedNodes = draft.nodes.map((n: any) => ({
+          ...n,
+          type: n.type === 'default' ? 'flowNode' : (n.type || 'flowNode'),
+        }));
+        setNodes(normalizedNodes);
       }
       if (draft.edges) {
-        setEdges(draft.edges);
+        // ハンドルIDを正規化
+        const normalizedEdges = draft.edges.map((e: any) => ({
+          ...e,
+          sourceHandle: (e.sourceHandle && String(e.sourceHandle).includes('bottom')) ? 'bottom' : (e.sourceHandle && String(e.sourceHandle).includes('top')) ? 'top' : 'bottom',
+          targetHandle: (e.targetHandle && String(e.targetHandle).includes('top')) ? 'top' : (e.targetHandle && String(e.targetHandle).includes('bottom')) ? 'bottom' : 'top',
+        }));
+        setEdges(normalizedEdges);
       }
       setDraftSavedAt(draft.savedAt);
       return true;
@@ -180,10 +191,15 @@ export default function NewFlowPage() {
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
     (params: Connection) => {
+      // ノードのY座標に基づいてハンドルを正規化
+      const srcNode = nodes.find((n) => n.id === params.source);
+      const tgtNode = nodes.find((n) => n.id === params.target);
+      const srcY = srcNode?.position.y ?? 0;
+      const tgtY = tgtNode?.position.y ?? 0;
       const finalParams = {
         ...params,
-        sourceHandle: params.sourceHandle || 'bottom',
-        targetHandle: params.targetHandle || 'top',
+        sourceHandle: srcY <= tgtY ? 'bottom' : 'top',
+        targetHandle: srcY <= tgtY ? 'top' : 'bottom',
       };
       setEdges((eds) => {
         // 同じソースから出ているエッジの数を取得
@@ -194,7 +210,7 @@ export default function NewFlowPage() {
         return addEdge({ ...finalParams, order: newOrder } as any, eds);
       });
     },
-    [setEdges]
+    [setEdges, nodes]
   );
 
   // ノードクリック時のハンドラー
@@ -304,6 +320,7 @@ export default function NewFlowPage() {
     const labels: Record<string, string> = {
       send_message: 'メッセージ送信',
       quick_reply: 'クイックリプライ',
+      card: 'カード',
       wait_user_input: 'ユーザー入力待機',
       faq_search: 'FAQ検索',
       end: '終了',
@@ -322,6 +339,11 @@ export default function NewFlowPage() {
       case 'quick_reply':
         return {
           message: 'どちらを選択しますか？',
+        };
+      case 'card':
+        return {
+          text: '',
+          columns: [{ title: '', text: '', imageUrl: '', buttons: [{ label: '回答を見る', text: '回答を見る' }] }],
         };
       case 'wait_user_input':
         return {
@@ -405,6 +427,8 @@ export default function NewFlowPage() {
       text = typeof config.content === 'object' ? (config.content.ja || '') : config.content;
     } else if (nodeType === 'quick_reply' && config.message) {
       text = typeof config.message === 'object' ? (config.message.ja || '') : config.message;
+    } else if (nodeType === 'card' && config.text) {
+      text = typeof config.text === 'object' ? (config.text.ja || '') : config.text;
     }
     if (!text) return null;
     return text.length > 25 ? text.substring(0, 25) + '...' : text;
@@ -774,6 +798,7 @@ export default function NewFlowPage() {
           source: edge.source,
           target: edge.target,
           sourceHandle: edge.sourceHandle,
+          targetHandle: edge.targetHandle,
           label: edge.label,
           labels: (edge as any).labels,
           order: edge.order,
@@ -1048,6 +1073,12 @@ export default function NewFlowPage() {
                   + クイックリプライ
                 </button>
                 <button
+                  onClick={() => addNode('card')}
+                  className="w-full px-3 py-2 bg-orange-50 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition"
+                >
+                  + カード (Q&A)
+                </button>
+                <button
                   onClick={() => addNode('wait_user_input')}
                   className="w-full px-3 py-2 bg-purple-50 text-purple-700 rounded-md text-sm hover:bg-purple-100 transition"
                 >
@@ -1071,7 +1102,7 @@ export default function NewFlowPage() {
         </aside>
 
         {/* Main Canvas */}
-        <main className="flex-1">
+        <main className="flex-1 h-full">
           <ReactFlow
             nodes={styledNodes}
             edges={styledEdges}
@@ -1088,6 +1119,8 @@ export default function NewFlowPage() {
             minZoom={0.05}
             maxZoom={2}
             fitView
+            zoomOnScroll
+            zoomOnPinch
           >
             <Background />
             <Controls />

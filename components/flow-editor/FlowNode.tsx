@@ -9,9 +9,14 @@ import { Handle, Position, NodeProps } from 'reactflow';
  * connectionMode="loose" と組み合わせて、どの方向からでも接続可能。
  */
 function FlowNodeComponent({ data, selected }: NodeProps) {
+  const nodeType = data.nodeType || '';
+  const isMessageNode = nodeType === 'send_message';
+
   return (
     <div
-      className={`px-4 py-2 rounded-md border-2 bg-white text-sm text-center min-w-[120px] ${
+      className={`px-4 py-2 rounded-md border-2 bg-white text-sm min-w-[120px] ${
+        isMessageNode ? 'text-left max-w-[280px]' : 'text-center'
+      } ${
         selected ? 'border-blue-500 shadow-md' : 'border-gray-300'
       }`}
       style={data._style || undefined}
@@ -25,7 +30,9 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
       />
 
       {/* ラベル（JSX or テキスト） */}
-      <div>{data.label || data.nodeType || 'ノード'}</div>
+      <div className={isMessageNode ? 'whitespace-pre-wrap break-words' : ''}>
+        {data.label || data.nodeType || 'ノード'}
+      </div>
 
       {/* 下ハンドル */}
       <Handle

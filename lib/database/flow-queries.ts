@@ -26,6 +26,7 @@ export type NodeType =
   | 'trigger'
   | 'send_message'
   | 'quick_reply'
+  | 'card'
   | 'wait_user_input'
   | 'condition'
   | 'faq_search'
@@ -47,6 +48,8 @@ export interface FlowEdge {
   sourceHandle?: string;
   label?: string;
   labels?: Record<string, string>;  // 多言語対応ラベル: { ja: "...", en: "...", ko: "..." }
+  text?: string;  // クイックリプライで実際に送信されるテキスト（例: "AI_MODE"）。未設定時はlabelと同じ
+  texts?: Record<string, string>;  // 多言語対応送信テキスト
   order?: number;  // クイックリプライの表示順序（数値が小さいほど先に表示）
 }
 
@@ -434,6 +437,37 @@ export async function updateFlowExecution(
     console.error('❌ updateFlowExecution error:', error);
     throw error;
   }
+}
+
+// =====================================================
+// カード選択イベント追跡（fire-and-forget）
+// =====================================================
+
+/**
+ * カードボタン選択イベントを記録（fire-and-forget）
+ * レスポンス遅延を避けるためawaitせずに呼び出すこと
+ */
+export function recordCardSelection(params: {
+  flowId: string;
+  cardNodeId: string;
+  userId: string;
+  buttonLabel?: string;
+  displayText?: string;
+}): void {
+  supabase
+    .from('card_selection_events')
+    .insert({
+      flow_id: params.flowId,
+      card_node_id: params.cardNodeId,
+      user_id: params.userId,
+      button_label: params.buttonLabel || null,
+      display_text: params.displayText || null,
+    })
+    .then(({ error }) => {
+      if (error) {
+        console.error('❌ recordCardSelection error:', error);
+      }
+    });
 }
 
 /**

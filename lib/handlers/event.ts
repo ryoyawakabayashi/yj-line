@@ -14,7 +14,7 @@ import {
   exitSupportMode,
 } from './support';
 import { detectUserIntentAdvanced } from './intent';
-import { getActiveFlows } from '../database/flow-queries';
+import { getActiveFlows, recordCardSelection } from '../database/flow-queries';
 import { flowExecutor } from '../flow-engine/executor';
 
 export async function handleEvent(event: LineEvent): Promise<void> {
@@ -32,10 +32,63 @@ export async function handleEvent(event: LineEvent): Promise<void> {
       return;
     }
 
-    // Postbackイベントの処理（サポート関連）
+    // Postbackイベントの処理
     if (type === 'postback') {
       const postbackData = event.postback?.data || '';
       console.log('📮 Postback受信:', postbackData);
+
+      // カードカルーセルのボタン選択（フローエンジン）
+      const params = new URLSearchParams(postbackData);
+      if (params.get('action') === 'card_choice') {
+        const cardId = params.get('cardId') || '';
+        const displayText = decodeURIComponent(params.get('text') || '');
+        console.log('🃏 カード選択:', cardId, 'テキスト:', displayText);
+
+        const currentState = await getConversationState(userId);
+        if (currentState?.mode === 'flow' && currentState.flowId && currentState.waitingNodeId) {
+          // fire-and-forget: カード選択イベントを記録（awaitしない）
+          recordCardSelection({
+            flowId: currentState.flowId,
+            cardNodeId: cardId,
+            userId,
+            displayText,
+          });
+
+          const lang = await getUserLang(userId);
+          try {
+            const result = await flowExecutor.execute(
+              currentState.flowId,
+              userId,
+              displayText,
+              {
+                lang,
+                replyToken: event.replyToken,
+                variables: { ...(currentState.variables || {}), _selectedCardId: cardId },
+              },
+              currentState.waitingNodeId
+            );
+
+            if (result.responseMessages && result.responseMessages.length > 0) {
+              await replyMessage(event.replyToken, result.responseMessages);
+            }
+
+            if (result.shouldWaitForInput && result.waitNodeId) {
+              await saveConversationState(userId, {
+                mode: 'flow',
+                flowId: currentState.flowId,
+                waitingNodeId: result.waitNodeId,
+                variables: result.variables || {},
+              });
+            } else {
+              await clearConversationState(userId);
+            }
+          } catch (error) {
+            console.error('❌ カード選択フロー実行エラー:', error);
+            await clearConversationState(userId);
+          }
+        }
+        return;
+      }
 
       // サポート関連のPostback処理
       const handled = await handleSupportPostback(userId, event.replyToken, postbackData);
@@ -226,9 +279,20 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             // フロー完了、状態をクリア
             console.log('✅ フロー完了、状態クリア');
             await clearConversationState(userId);
-          }
 
-          return;
+            // ユーザーのメッセージがリッチメニューボタン（AI_MODE等）の場合、
+            // 通常ハンドラーに引き継ぐ（returnしない）
+            const reDispatchButtons = [
+              'AI_MODE', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
+              'VIEW_FEATURES', 'CONTACT', 'LANG_CHANGE', 'YOLO_DISCOVER',
+            ];
+            if (reDispatchButtons.includes(messageText)) {
+              console.log('🔄 フロー完了後、通常ハンドラーに引き継ぎ:', messageText);
+              // returnしない → 下のリッチメニューボタン処理に流れる
+            } else {
+              return;
+            }
+          }
         } catch (error) {
           console.error('❌ フロー継続エラー:', error);
           // エラー時は状態をクリアして通常処理へ

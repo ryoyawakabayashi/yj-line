@@ -53,6 +53,13 @@ const SERVICE_LABELS: Record<string, string> = {
   YOLO_HOME: 'YOLO HOME',
 };
 
+interface ReplyTemplate {
+  id: string;
+  name: string;
+  message: string;
+  quickReplies: { label: string; text: string }[];
+}
+
 export default function SupportTicketDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,12 +72,14 @@ export default function SupportTicketDetailPage() {
   const [sending, setSending] = useState(false);
   const [isHumanMode, setIsHumanMode] = useState(false);
   const [operatorName, setOperatorName] = useState('サポート担当');
+  const [templates, setTemplates] = useState<ReplyTemplate[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchTicketData();
+    fetchTemplates();
 
     // ポーリング開始（5秒間隔）
     pollingRef.current = setInterval(() => {
@@ -125,6 +134,44 @@ export default function SupportTicketDetailPage() {
       }
     } catch (error) {
       console.error('Failed to fetch messages:', error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const res = await fetch('/api/dashboard/templates');
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data.templates || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    }
+  };
+
+  const sendTemplate = async (tpl: ReplyTemplate) => {
+    if (!isHumanMode) return;
+
+    setSending(true);
+    try {
+      const res = await fetch('/api/support/send-message', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          ticketId,
+          message: tpl.message,
+          operatorName,
+          quickReplies: tpl.quickReplies,
+        }),
+      });
+
+      if (res.ok) {
+        fetchMessages();
+      }
+    } catch (error) {
+      console.error('Failed to send template:', error);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -294,6 +341,21 @@ export default function SupportTicketDetailPage() {
               <p className="text-sm text-amber-600 mb-2">
                 メッセージを送信するには「有人対応」に切り替えてください
               </p>
+            )}
+            {isHumanMode && templates.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {templates.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => sendTemplate(tpl)}
+                    disabled={sending}
+                    className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full hover:bg-indigo-100 disabled:opacity-50 transition"
+                    title={`${tpl.message}\n${tpl.quickReplies.map((q) => q.label).join(' / ')}`}
+                  >
+                    {tpl.name}
+                  </button>
+                ))}
+              </div>
             )}
             <div className="flex gap-2">
               <input

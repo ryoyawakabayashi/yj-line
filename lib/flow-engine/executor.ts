@@ -20,6 +20,7 @@ import { SendMessageHandler } from './nodes/send-message';
 import { WaitUserInputHandler } from './nodes/wait-user-input';
 import { FAQSearchHandler } from './nodes/faq-search';
 import { QuickReplyHandler, resolveQuickReplyChoice } from './nodes/quick-reply';
+import { CardHandler, resolveCardChoice } from './nodes/card';
 
 /**
  * フロー実行エンジン
@@ -84,7 +85,7 @@ export class FlowExecutor {
           };
         }
 
-        // quick_replyノードから再開する場合、ユーザーの選択に基づいて次のノードを決定
+        // quick_reply / card ノードから再開する場合、ユーザーの選択に基づいて次のノードを決定
         if (resumeNode.type === 'quick_reply') {
           const nextNodeId = resolveQuickReplyChoice(
             resumeNode,
@@ -97,6 +98,25 @@ export class FlowExecutor {
               success: false,
               handled: false,
               error: 'No matching choice found for quick_reply',
+            };
+          }
+
+          startNodeId = nextNodeId;
+        } else if (resumeNode.type === 'card') {
+          const selectedCardId = context.variables?._selectedCardId as string | undefined;
+          const nextNodeId = resolveCardChoice(
+            resumeNode,
+            userMessage,
+            flow.flowDefinition.edges,
+            flow.flowDefinition.nodes,
+            selectedCardId
+          );
+
+          if (!nextNodeId) {
+            return {
+              success: false,
+              handled: false,
+              error: 'No matching choice found for card',
             };
           }
 
@@ -142,9 +162,19 @@ export class FlowExecutor {
 
         console.log(`📍 ノード実行: ${currentNode.type} (${currentNode.id})`);
 
+        // カードノードの場合: 兄弟cardを自動マージしてカルーセルを生成
+        let nodeToExecute = currentNode;
+        if (currentNode.type === 'card') {
+          nodeToExecute = this.mergeCardSiblings(
+            currentNode,
+            flow.flowDefinition.nodes,
+            flow.flowDefinition.edges
+          );
+        }
+
         // ノードを実行
         const result = await this.executeNode(
-          currentNode,
+          nodeToExecute,
           flow.flowDefinition.edges,
           context
         );
@@ -313,6 +343,9 @@ export class FlowExecutor {
       case 'quick_reply':
         return new QuickReplyHandler(edges);
 
+      case 'card':
+        return new CardHandler(edges);
+
       case 'wait_user_input':
         return new WaitUserInputHandler();
 
@@ -333,6 +366,62 @@ export class FlowExecutor {
         console.warn('Unsupported node type:', nodeType);
         return null;
     }
+  }
+
+  /**
+   * 兄弟cardノードをマージして1つのカルーセルカードノードを生成
+   * 親ノードから複数のcardノードが接続されている場合、各cardのcolumns[0]を集約
+   */
+  private mergeCardSiblings(
+    currentCard: FlowNode,
+    allNodes: FlowNode[],
+    allEdges: FlowEdge[]
+  ): FlowNode {
+    // この card の親を探す
+    const parentEdge = allEdges.find((e) => e.target === currentCard.id);
+    if (!parentEdge) return currentCard;
+
+    // 親から出ている全エッジのうち card ノードを取得（order順）
+    const siblingCardEdges = allEdges
+      .filter((e) => e.source === parentEdge.source)
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+    const siblingCards = siblingCardEdges
+      .map((e) => allNodes.find((n) => n.id === e.target))
+      .filter((n): n is FlowNode => !!n && n.type === 'card');
+
+    // 兄弟が1つだけなら元のノードをそのまま返す
+    if (siblingCards.length <= 1) return currentCard;
+
+    console.log(`🃏 カルーセルマージ: ${siblingCards.length}枚のカードを統合`);
+
+    // 各兄弟cardのcolumns[0]（または単体カード設定）をカラムとして集約
+    const mergedColumns = siblingCards.map((card) => {
+      const config = card.data.config || {};
+      if (config.columns && config.columns.length > 0) {
+        return config.columns[0];
+      }
+      // 単体カードモードの場合: text/title/imageUrl からカラムを生成
+      return {
+        title: config.title || '',
+        text: config.text || '',
+        imageUrl: config.imageUrl || '',
+        buttons: [{ label: '', text: '' }],
+      };
+    });
+
+    // マージしたカードノードを返す（最大10枚）
+    return {
+      ...currentCard,
+      data: {
+        ...currentCard.data,
+        config: {
+          ...currentCard.data.config,
+          columns: mergedColumns.slice(0, 10),
+          _siblingCardIds: siblingCards.map((c) => c.id), // resolveCardChoice用
+        },
+      },
+    };
   }
 }
 

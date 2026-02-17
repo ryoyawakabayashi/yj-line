@@ -139,3 +139,30 @@ export interface QuickReplyConfig {
   // エッジのlabelがボタンのテキストになります
   // エッジのtargetが選択後の遷移先ノードIDになります
 }
+
+/**
+ * カルーセルカラム（1枚分のカード）
+ */
+export interface CardColumn {
+  title?: string | Record<string, string>;    // カードタイトル（任意） / 多言語対応
+  text: string | Record<string, string>;      // カード本文（質問テキスト） / 多言語対応
+  imageUrl?: string;                           // カード画像URL（任意）
+  buttons: Array<{                             // ボタン（最大3つ）
+    label: string | Record<string, string>;    // ボタンラベル / 多言語対応
+    text: string;                              // ボタン押下時に送信されるテキスト
+  }>;
+}
+
+/**
+ * card ノードの設定
+ * 1枚: LINEボタンテンプレート / 複数枚: LINEカルーセルテンプレート（最大10枚）
+ * 本文にQ（質問）を表示し、ボタンを押すとA（回答）が送信される
+ */
+export interface CardConfig {
+  // --- 単体カードモード（エッジをボタンとして使用） ---
+  title?: string | Record<string, string>;
+  text: string | Record<string, string>;
+  imageUrl?: string;
+  // --- カルーセルモード（columns配列がある場合はこちらを優先） ---
+  columns?: CardColumn[];                      // 複数枚カード（最大10枚）
+}

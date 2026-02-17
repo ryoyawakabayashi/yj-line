@@ -333,30 +333,18 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const onConnect = useCallback(
     (params: Connection) => {
       pushHistory();
-      // ターゲットがquick_replyノードの場合、エッジの向きを反転
-      // （子→親へドラッグした場合に親→子に補正）
-      const targetNode = nodes.find((n) => n.id === params.target);
-      const sourceNode = nodes.find((n) => n.id === params.source);
-      const targetType = targetNode?.data?.nodeType || targetNode?.id?.split('-')[0];
-      const sourceType = sourceNode?.data?.nodeType || sourceNode?.id?.split('-')[0];
 
-      let finalParams = params;
-      if (targetType === 'quick_reply' && sourceType !== 'trigger') {
-        finalParams = {
-          ...params,
-          source: params.target,
-          target: params.source,
-          sourceHandle: params.targetHandle || 'bottom',
-          targetHandle: params.sourceHandle || 'top',
-        };
-      } else {
-        // ハンドルIDが未設定の場合デフォルトを設定
-        finalParams = {
-          ...params,
-          sourceHandle: params.sourceHandle || 'bottom',
-          targetHandle: params.targetHandle || 'top',
-        };
-      }
+      // ノードのY座標に基づいてハンドルを正規化
+      // 上のノード→下のノード = bottom→top、下→上 = top→bottom
+      const srcNode = nodes.find((n) => n.id === params.source);
+      const tgtNode = nodes.find((n) => n.id === params.target);
+      const srcY = srcNode?.position.y ?? 0;
+      const tgtY = tgtNode?.position.y ?? 0;
+      const finalParams = {
+        ...params,
+        sourceHandle: srcY <= tgtY ? 'bottom' : 'top',
+        targetHandle: srcY <= tgtY ? 'top' : 'bottom',
+      };
 
       // 子ノードのノード名・送信テキストをエッジに自動セット
       const childNode = nodes.find((n) => n.id === finalParams.target);
@@ -394,8 +382,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           );
         }
       }
+
+      // カルーセルは兄弟cardノードの数で自動決定されるため、onConnectでのカラム追加は不要
     },
-    [setEdges, setNodes, nodes]
+    [setEdges, setNodes, nodes, edges]
   );
 
   // ノードクリック時のハンドラー
@@ -409,9 +399,11 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setEditingNodeId(null);
   }, []);
 
-  // ノードダブルクリック → インライン編集開始
+  // ノードダブルクリック → インライン編集開始（カードノードは質問テキストから自動生成のため除外）
   const onNodeDoubleClick: NodeMouseHandler = useCallback((event, node) => {
     event.preventDefault();
+    const nodeType = node.data.nodeType || node.id.split('-')[0];
+    if (nodeType === 'card') return;
     setEditingNodeId(node.id);
   }, []);
 
@@ -630,6 +622,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     const labels: Record<string, string> = {
       send_message: 'メッセージ送信',
       quick_reply: 'クイックリプライ',
+      card: 'カード',
       wait_user_input: 'ユーザー入力待機',
       faq_search: 'FAQ検索',
       end: '終了',
@@ -648,6 +641,11 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       case 'quick_reply':
         return {
           message: 'どちらを選択しますか？',
+        };
+      case 'card':
+        return {
+          text: '',
+          columns: [{ title: '', text: '', imageUrl: '', buttons: [{ label: '回答を見る', text: '回答を見る' }] }],
         };
       case 'wait_user_input':
         return {
@@ -673,13 +671,20 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              label: newLabel,
-            },
-          };
+          const updatedData = { ...node.data, label: newLabel };
+          // カードノードの場合: 質問テキストも同期
+          if (node.data.nodeType === 'card' && node.data.config) {
+            const config = { ...node.data.config };
+            if (config.columns && config.columns.length > 0) {
+              const cols = [...config.columns];
+              cols[0] = { ...cols[0], text: newLabel };
+              config.columns = cols;
+            } else {
+              config.text = newLabel;
+            }
+            updatedData.config = config;
+          }
+          return { ...node, data: updatedData };
         }
         return node;
       })
@@ -696,13 +701,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     );
 
     if (selectedNode?.id === nodeId) {
-      setSelectedNode({
-        ...selectedNode,
-        data: {
-          ...selectedNode.data,
-          label: newLabel,
-        },
-      });
+      const updatedData = { ...selectedNode.data, label: newLabel };
+      if (selectedNode.data.nodeType === 'card' && selectedNode.data.config) {
+        const config = { ...selectedNode.data.config };
+        if (config.columns && config.columns.length > 0) {
+          const cols = [...config.columns];
+          cols[0] = { ...cols[0], text: newLabel };
+          config.columns = cols;
+        } else {
+          config.text = newLabel;
+        }
+        updatedData.config = config;
+      }
+      setSelectedNode({ ...selectedNode, data: updatedData });
     }
   };
 
@@ -755,9 +766,16 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       text = typeof config.content === 'object' ? (config.content.ja || '') : config.content;
     } else if (nodeType === 'quick_reply' && config.message) {
       text = typeof config.message === 'object' ? (config.message.ja || '') : config.message;
+    } else if (nodeType === 'card') {
+      if (config.columns && config.columns.length > 0 && config.columns[0].text) {
+        const colText = config.columns[0].text;
+        text = typeof colText === 'object' ? (colText.ja || '') : colText;
+      } else if (config.text) {
+        text = typeof config.text === 'object' ? (config.text.ja || '') : config.text;
+      }
     }
     if (!text) return null;
-    return text.length > 25 ? text.substring(0, 25) + '...' : text;
+    return text;
   };
 
   // テンプレート読み込み
@@ -1076,6 +1094,24 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             textSources.push({ type: 'node_message', id: node.id });
           }
         }
+        if (nodeType === 'card') {
+          const cardText = typeof node.data.config.text === 'object'
+            ? node.data.config.text.ja
+            : node.data.config.text;
+          if (cardText) {
+            texts.push(cardText);
+            textSources.push({ type: 'node_card_text', id: node.id });
+          }
+          if (node.data.config.title) {
+            const cardTitle = typeof node.data.config.title === 'object'
+              ? node.data.config.title.ja
+              : node.data.config.title;
+            if (cardTitle) {
+              texts.push(cardTitle);
+              textSources.push({ type: 'node_card_title', id: node.id });
+            }
+          }
+        }
       });
 
       edges.forEach((edge) => {
@@ -1103,25 +1139,36 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       setNodes((prevNodes) =>
         prevNodes.map((node) => {
-          const source = textSources.find(
-            (s) => s.id === node.id && (s.type === 'node_content' || s.type === 'node_message')
-          );
-          if (!source) return node;
-          const idx = textSources.indexOf(source);
-          const t = translations[idx];
-          if (!t) return node;
+          let updatedConfig = { ...node.data.config };
+          let changed = false;
 
-          const configKey = source.type === 'node_content' ? 'content' : 'message';
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              config: {
-                ...node.data.config,
-                [configKey]: { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi },
-              },
-            },
-          };
+          // send_message content
+          const contentSource = textSources.find((s) => s.id === node.id && s.type === 'node_content');
+          if (contentSource) {
+            const t = translations[textSources.indexOf(contentSource)];
+            if (t) { updatedConfig.content = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
+          }
+          // quick_reply message
+          const msgSource = textSources.find((s) => s.id === node.id && s.type === 'node_message');
+          if (msgSource) {
+            const t = translations[textSources.indexOf(msgSource)];
+            if (t) { updatedConfig.message = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
+          }
+          // card text
+          const cardTextSource = textSources.find((s) => s.id === node.id && s.type === 'node_card_text');
+          if (cardTextSource) {
+            const t = translations[textSources.indexOf(cardTextSource)];
+            if (t) { updatedConfig.text = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
+          }
+          // card title
+          const cardTitleSource = textSources.find((s) => s.id === node.id && s.type === 'node_card_title');
+          if (cardTitleSource) {
+            const t = translations[textSources.indexOf(cardTitleSource)];
+            if (t) { updatedConfig.title = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
+          }
+
+          if (!changed) return node;
+          return { ...node, data: { ...node.data, config: updatedConfig } };
         })
       );
 
@@ -1141,23 +1188,22 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       // selectedNode も更新
       if (selectedNode) {
-        const source = textSources.find((s) => s.id === selectedNode.id);
-        if (source) {
-          const idx = textSources.indexOf(source);
-          const t = translations[idx];
-          if (t) {
-            const configKey = source.type === 'node_content' ? 'content' : 'message';
-            setSelectedNode({
-              ...selectedNode,
-              data: {
-                ...selectedNode.data,
-                config: {
-                  ...selectedNode.data.config,
-                  [configKey]: { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi },
-                },
-              },
-            });
+        const sources = textSources.filter((s) => s.id === selectedNode.id);
+        if (sources.length > 0) {
+          let updatedConfig = { ...selectedNode.data.config };
+          for (const source of sources) {
+            const t = translations[textSources.indexOf(source)];
+            if (!t) continue;
+            const val = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi };
+            if (source.type === 'node_content') updatedConfig.content = val;
+            else if (source.type === 'node_message') updatedConfig.message = val;
+            else if (source.type === 'node_card_text') updatedConfig.text = val;
+            else if (source.type === 'node_card_title') updatedConfig.title = val;
           }
+          setSelectedNode({
+            ...selectedNode,
+            data: { ...selectedNode.data, config: updatedConfig },
+          });
         }
       }
 
@@ -1572,6 +1618,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   + クイックリプライ
                 </button>
                 <button
+                  onClick={() => addNode('card')}
+                  className="w-full px-3 py-2 bg-orange-50 text-orange-700 rounded-md text-sm hover:bg-orange-100 transition"
+                >
+                  + カード (Q&A)
+                </button>
+                <button
                   onClick={() => addNode('wait_user_input')}
                   className="w-full px-3 py-2 bg-purple-50 text-purple-700 rounded-md text-sm hover:bg-purple-100 transition"
                 >
@@ -1595,7 +1647,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         </aside>
 
         {/* Main Canvas */}
-        <main className="flex-1">
+        <main className="flex-1 h-full">
           <ReactFlow
             nodes={styledNodes}
             edges={styledEdges}
@@ -1614,6 +1666,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             minZoom={0.05}
             maxZoom={2}
             fitView
+            zoomOnScroll
+            zoomOnPinch
           >
             <Background />
             <Controls />
@@ -1646,6 +1700,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </button>
             </div>
 
+            {getSelectedNodeType() !== 'card' && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 ノード名
@@ -1658,6 +1713,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               />
             </div>
+            )}
 
             {getSelectedNodeType() !== 'trigger' && edges.some((e) => e.target === selectedNode.id) && (
               <div className="mb-4">
@@ -2027,6 +2083,201 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {getSelectedNodeType() === 'card' && (
+              <div className="space-y-4">
+                {/* --- カード設定（1ノード = 1カード。親に複数繋げるとカルーセルになる） --- */}
+                {(() => {
+                  // このカードの親ノードに繋がっている兄弟カード数を算出
+                  const parentEdge = edges.find((e) => e.target === selectedNode.id);
+                  const siblingCardCount = parentEdge
+                    ? edges.filter((e) => e.source === parentEdge.source).filter((e) => {
+                        const n = nodes.find((nd) => nd.id === e.target);
+                        return (n?.data?.nodeType || n?.id?.split('-')[0]) === 'card';
+                      }).length
+                    : 1;
+                  // columns[0] から読み書き（後方互換）
+                  const col = selectedNode.data.config.columns?.[0] || { title: '', text: selectedNode.data.config.text || '', imageUrl: selectedNode.data.config.imageUrl || '', buttons: [{ label: '', text: '' }] };
+                  const updateCol = (patch: any) => {
+                    const newCol = { ...col, ...patch };
+                    updateNodeConfig(selectedNode.id, { ...selectedNode.data.config, columns: [newCol] });
+                  };
+                  return (
+                    <>
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
+                        <p className="text-xs text-orange-700">
+                          カルーセル枚数: <span className="font-bold">{siblingCardCount}/10</span>
+                          {siblingCardCount > 1 ? ` （親ノードにカード${siblingCardCount}枚接続中）` : ' （親に複数カードを繋げるとカルーセルになります）'}
+                        </p>
+                      </div>
+
+                      {/* カルーセル並び順 */}
+                      {siblingCardCount > 1 && parentEdge && (() => {
+                        const siblingEdges = (edges as CustomEdge[])
+                          .filter((e) => e.source === parentEdge.source)
+                          .filter((e) => {
+                            const n = nodes.find((nd) => nd.id === e.target);
+                            return (n?.data?.nodeType || n?.id?.split('-')[0]) === 'card';
+                          })
+                          .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+                        const swapOrder = (idx: number, dir: -1 | 1) => {
+                          const targetIdx = idx + dir;
+                          if (targetIdx < 0 || targetIdx >= siblingEdges.length) return;
+                          const edgeA = siblingEdges[idx];
+                          const edgeB = siblingEdges[targetIdx];
+                          const orderA = edgeA.order ?? idx;
+                          const orderB = edgeB.order ?? targetIdx;
+                          setEdges((eds) => eds.map((e) => {
+                            if (e.id === edgeA.id) return { ...e, order: orderB } as CustomEdge;
+                            if (e.id === edgeB.id) return { ...e, order: orderA } as CustomEdge;
+                            return e;
+                          }));
+                        };
+
+                        return (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">カルーセル順序</label>
+                            <div className="space-y-1">
+                              {siblingEdges.map((edge, idx) => {
+                                const cardNode = nodes.find((n) => n.id === edge.target);
+                                const label = cardNode?.data?.label || edge.target;
+                                const isCurrent = edge.target === selectedNode.id;
+                                return (
+                                  <div key={edge.id} className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${isCurrent ? 'bg-orange-100 border border-orange-300 font-bold' : 'bg-gray-50 border border-gray-200'}`}>
+                                    <span className="text-gray-400 w-4 text-center">{idx + 1}</span>
+                                    <span className="flex-1 min-w-0 truncate">{label}</span>
+                                    <button
+                                      onClick={() => swapOrder(idx, -1)}
+                                      disabled={idx === 0}
+                                      className="px-1 text-gray-500 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    >↑</button>
+                                    <button
+                                      onClick={() => swapOrder(idx, 1)}
+                                      disabled={idx === siblingEdges.length - 1}
+                                      className="px-1 text-gray-500 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    >↓</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">タイトル（任意）</label>
+                        <input
+                          type="text"
+                          value={typeof col.title === 'object' ? (col.title[activeLang] || col.title.ja || '') : (col.title || '')}
+                          onChange={(e) => updateCol({ title: e.target.value })}
+                          placeholder="カードのタイトル（40文字以内）"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">質問テキスト <span className="text-red-500">*</span></label>
+                        <textarea
+                          value={typeof col.text === 'object' ? (col.text[activeLang] || col.text.ja || '') : (col.text || '')}
+                          onChange={(e) => updateCol({ text: e.target.value })}
+                          placeholder="カードに表示する質問テキスト"
+                          rows={3}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">画像URL（任意）</label>
+                        <input
+                          type="text"
+                          value={col.imageUrl || ''}
+                          onChange={(e) => updateCol({ imageUrl: e.target.value })}
+                          placeholder="https://example.com/image.jpg"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        />
+                      </div>
+
+                      {/* ボタン */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-gray-700">ボタン（最大3つ）</label>
+                          {(col.buttons || []).length < 3 && (
+                            <button
+                              onClick={() => updateCol({ buttons: [...(col.buttons || []), { label: '', text: '' }] })}
+                              className="px-2 py-1 text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 rounded"
+                            >
+                              + 追加
+                            </button>
+                          )}
+                        </div>
+                        {(col.buttons || []).map((btn: any, btnIdx: number) => (
+                          <div key={btnIdx} className="flex gap-1 items-center min-w-0">
+                            <input
+                              type="text"
+                              value={typeof btn.label === 'object' ? (btn.label[activeLang] || btn.label.ja || '') : (btn.label || '')}
+                              onChange={(e) => {
+                                const btns = [...(col.buttons || [])];
+                                const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
+                                const oldText = btns[btnIdx].text || '';
+                                const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
+                                btns[btnIdx] = { ...btns[btnIdx], label: e.target.value, ...(shouldSync ? { text: e.target.value } : {}) };
+                                updateCol({ buttons: btns });
+                              }}
+                              placeholder="ラベル"
+                              className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
+                            />
+                            <input
+                              type="text"
+                              value={btn.text || ''}
+                              onChange={(e) => {
+                                const btns = [...(col.buttons || [])];
+                                btns[btnIdx] = { ...btns[btnIdx], text: e.target.value };
+                                updateCol({ buttons: btns });
+                              }}
+                              placeholder="送信テキスト"
+                              className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
+                            />
+                            <button
+                              onClick={() => {
+                                const btns = [...(col.buttons || [])];
+                                btns.splice(btnIdx, 1);
+                                updateCol({ buttons: btns });
+                              }}
+                              className="text-red-400 hover:text-red-600 text-sm px-1"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 遷移先エッジ */}
+                      <div className="text-sm text-gray-600">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium">遷移先エッジ:</p>
+                          <button onClick={addQuickReplyChoice} className="px-2 py-1 text-xs bg-orange-50 text-orange-700 hover:bg-orange-100 rounded">+ 追加</button>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mb-2">ボタンの「送信テキスト」とエッジの「送信テキスト」が一致すると、そのエッジ先のノードへ遷移します。</p>
+                        <div className="space-y-1">
+                          {(edges as CustomEdge[])
+                            .filter((edge) => edge.source === selectedNode.id)
+                            .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+                            .map((edge) => (
+                              <div key={edge.id} className="flex gap-1 items-center min-w-0 bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                                <input type="text" value={edge.label as string || ''} readOnly
+                                  className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-gray-100 text-gray-500" />
+                                <input type="text" value={getEdgeTextForLang(edge, 'ja')}
+                                  onChange={(e) => { updateEdgeTextForLang(edge.id, e.target.value, 'ja'); }}
+                                  placeholder="送信テキスト" className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-white" />
+                                <button onClick={() => deleteEdgeAndTarget(edge.id)} className="text-red-400 hover:text-red-600 text-sm px-1">×</button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 

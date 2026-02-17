@@ -11,6 +11,7 @@ declare global {
       init: (config: { liffId: string }) => Promise<void>;
       isInClient: () => boolean;
       openWindow: (params: { url: string; external?: boolean }) => void;
+      getProfile: () => Promise<{ userId: string; displayName: string; pictureUrl?: string }>;
       ready: Promise<void>;
     };
   }
@@ -93,6 +94,16 @@ function LiffRedirectContent() {
       await window.liff.init({ liffId });
       console.log('LIFF init success, isInClient:', window.liff.isInClient());
 
+      // ユーザーID取得（トラッキング用）
+      let uid = '';
+      try {
+        const profile = await window.liff.getProfile();
+        uid = profile.userId;
+        console.log('LIFF getProfile success, userId:', uid.slice(0, 8) + '...');
+      } catch (e) {
+        console.warn('getProfile failed, continuing without uid:', e);
+      }
+
       // URLパラメータを取得
       const urlParam = getUrlParam();
       console.log('URL param:', urlParam);
@@ -109,7 +120,13 @@ function LiffRedirectContent() {
         return;
       }
 
-      const finalUrl = buildTargetUrl(urlParam);
+      // uidをリダイレクトURLに付与（/api/r/ 経由の場合）
+      let finalUrl = buildTargetUrl(urlParam);
+      if (uid && finalUrl.includes('/api/r/')) {
+        const separator = finalUrl.includes('?') ? '&' : '?';
+        finalUrl = `${finalUrl}${separator}uid=${uid}`;
+      }
+
       setTargetUrl(finalUrl);
       setStatus('redirecting');
 

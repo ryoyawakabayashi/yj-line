@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { ticketId, message, operatorName } = await request.json();
+    const { ticketId, message, operatorName, quickReplies } = await request.json();
 
     if (!ticketId || !message) {
       return NextResponse.json(
@@ -38,10 +38,16 @@ export async function POST(request: NextRequest) {
     }
 
     // LINEにメッセージを送信
-    const success = await pushMessage(ticket.userId, [{
-      type: 'text',
-      text: message,
-    }]);
+    const lineMessage: any = { type: 'text', text: message };
+    if (Array.isArray(quickReplies) && quickReplies.length > 0) {
+      lineMessage.quickReply = {
+        items: quickReplies.map((qr: { label: string; text: string }) => ({
+          type: 'action',
+          action: { type: 'message', label: qr.label, text: qr.text },
+        })),
+      };
+    }
+    const success = await pushMessage(ticket.userId, [lineMessage]);
 
     if (!success) {
       return NextResponse.json(

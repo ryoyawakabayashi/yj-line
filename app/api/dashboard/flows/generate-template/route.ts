@@ -295,6 +295,7 @@ export async function POST(request: NextRequest) {
         data: {
           label: `${svcLabel} ガイド`,
           nodeType: 'send_message',
+          service: svc,
           config: {
             messageType: 'text',
             content: categoryNames.length > 1
@@ -323,6 +324,7 @@ export async function POST(request: NextRequest) {
           data: {
             label: '終了',
             nodeType: 'end',
+            service: svc,
             config: {},
           },
         });
@@ -346,6 +348,7 @@ export async function POST(request: NextRequest) {
           data: {
             label: `${svcLabel} FAQ選択`,
             nodeType: 'quick_reply',
+            service: svc,
             config: {
               message: '知りたい内容を選んでください',
             },
@@ -360,7 +363,7 @@ export async function POST(request: NextRequest) {
         // FAQ回答ノード生成（縦に積む）
         generateFaqAnswerNodes(
           catFaqs, faqSelectId, svcX, faqSelectY + ROW_GAP,
-          nodes, edges, makeId
+          nodes, edges, makeId, svc
         );
         return;
       }
@@ -377,6 +380,7 @@ export async function POST(request: NextRequest) {
         data: {
           label: `${svcLabel} カテゴリ選択`,
           nodeType: 'quick_reply',
+          service: svc,
           config: {
             message: 'どのカテゴリについてお困りですか？',
           },
@@ -408,6 +412,7 @@ export async function POST(request: NextRequest) {
           data: {
             label: `${catName}`,
             nodeType: 'send_message',
+            service: svc,
             config: {
               messageType: 'text',
               content: `「${catName}」に関する質問です。\n以下から選んでください。`,
@@ -434,6 +439,7 @@ export async function POST(request: NextRequest) {
           data: {
             label: `${catName} FAQ選択`,
             nodeType: 'quick_reply',
+            service: svc,
             config: {
               message: '知りたい内容を選んでください',
             },
@@ -448,7 +454,7 @@ export async function POST(request: NextRequest) {
         // FAQ回答ノード生成（縦に積む）
         generateFaqAnswerNodes(
           catFaqs, faqSelectId, catX, faqSelectY + ROW_GAP,
-          nodes, edges, makeId
+          nodes, edges, makeId, svc
         );
       });
     });
@@ -485,7 +491,8 @@ function generateFaqAnswerNodes(
   baseY: number,
   nodes: any[],
   edges: any[],
-  makeId: (prefix: string) => string
+  makeId: (prefix: string) => string,
+  service?: string
 ) {
   faqs.forEach((faq, faqIndex) => {
     const jaTranslation = faq.faq_translations.find((t) => t.lang === 'ja');
@@ -511,6 +518,7 @@ function generateFaqAnswerNodes(
       data: {
         label: question.length > 20 ? question.substring(0, 20) + '...' : question,
         nodeType: 'send_message',
+        ...(service ? { service } : {}),
         config: {
           messageType: 'text',
           content: Object.keys(contentObj).length > 1 ? contentObj : answer,
@@ -537,6 +545,7 @@ function generateFaqAnswerNodes(
       data: {
         label: '終了',
         nodeType: 'end',
+        ...(service ? { service } : {}),
         config: {},
       },
     });
