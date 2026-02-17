@@ -55,6 +55,11 @@ export class QuickReplyHandler implements NodeHandler {
     const sourceType = (context.variables?.urlSourceType as UrlSourceType) || 'flow';
     message = await processUrlsInText(message, context.userId, sourceType);
 
+    // LINE APIはtextが空だと400エラーになるためフォールバック
+    if (!message.trim()) {
+      message = '選択してください';
+    }
+
     // クイックリプライアイテムを作成（多言語対応）
     const quickReplyItems = outgoingEdges.map((edge) => {
       // 多言語ラベル: edge.labelsがあればユーザー言語のラベルを使用
