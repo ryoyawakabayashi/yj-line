@@ -2251,42 +2251,71 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                           )}
                         </div>
                         {(col.buttons || []).map((btn: any, btnIdx: number) => (
-                          <div key={btnIdx} className="flex gap-1 items-center min-w-0">
-                            <input
-                              type="text"
-                              value={typeof btn.label === 'object' ? (btn.label[activeLang] || btn.label.ja || '') : (btn.label || '')}
-                              onChange={(e) => {
-                                const btns = [...(col.buttons || [])];
-                                const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
-                                const oldText = btns[btnIdx].text || '';
-                                const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
-                                btns[btnIdx] = { ...btns[btnIdx], label: e.target.value, ...(shouldSync ? { text: e.target.value } : {}) };
-                                updateCol({ buttons: btns });
-                              }}
-                              placeholder="ラベル"
-                              className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
-                            />
-                            <input
-                              type="text"
-                              value={btn.text || ''}
-                              onChange={(e) => {
-                                const btns = [...(col.buttons || [])];
-                                btns[btnIdx] = { ...btns[btnIdx], text: e.target.value };
-                                updateCol({ buttons: btns });
-                              }}
-                              placeholder="送信テキスト"
-                              className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
-                            />
-                            <button
-                              onClick={() => {
-                                const btns = [...(col.buttons || [])];
-                                btns.splice(btnIdx, 1);
-                                updateCol({ buttons: btns });
-                              }}
-                              className="text-red-400 hover:text-red-600 text-sm px-1"
-                            >
-                              ×
-                            </button>
+                          <div key={btnIdx} className="space-y-1">
+                            <div className="flex gap-1 items-center min-w-0">
+                              <select
+                                value={btn.type || 'postback'}
+                                onChange={(e) => {
+                                  const btns = [...(col.buttons || [])];
+                                  btns[btnIdx] = { ...btns[btnIdx], type: e.target.value };
+                                  updateCol({ buttons: btns });
+                                }}
+                                className="px-1 py-1 text-xs border border-gray-300 rounded bg-white"
+                              >
+                                <option value="postback">回答</option>
+                                <option value="uri">URL</option>
+                              </select>
+                              <input
+                                type="text"
+                                value={typeof btn.label === 'object' ? (btn.label[activeLang] || btn.label.ja || '') : (btn.label || '')}
+                                onChange={(e) => {
+                                  const btns = [...(col.buttons || [])];
+                                  const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
+                                  const oldText = btns[btnIdx].text || '';
+                                  const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
+                                  btns[btnIdx] = { ...btns[btnIdx], label: e.target.value, ...(shouldSync ? { text: e.target.value } : {}) };
+                                  updateCol({ buttons: btns });
+                                }}
+                                placeholder="ラベル"
+                                className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
+                              />
+                              {btn.type !== 'uri' && (
+                                <input
+                                  type="text"
+                                  value={btn.text || ''}
+                                  onChange={(e) => {
+                                    const btns = [...(col.buttons || [])];
+                                    btns[btnIdx] = { ...btns[btnIdx], text: e.target.value };
+                                    updateCol({ buttons: btns });
+                                  }}
+                                  placeholder="送信テキスト"
+                                  className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
+                                />
+                              )}
+                              <button
+                                onClick={() => {
+                                  const btns = [...(col.buttons || [])];
+                                  btns.splice(btnIdx, 1);
+                                  updateCol({ buttons: btns });
+                                }}
+                                className="text-red-400 hover:text-red-600 text-sm px-1"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            {btn.type === 'uri' && (
+                              <input
+                                type="text"
+                                value={btn.url || ''}
+                                onChange={(e) => {
+                                  const btns = [...(col.buttons || [])];
+                                  btns[btnIdx] = { ...btns[btnIdx], url: e.target.value };
+                                  updateCol({ buttons: btns });
+                                }}
+                                placeholder="https://..."
+                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                              />
+                            )}
                           </div>
                         ))}
                       </div>

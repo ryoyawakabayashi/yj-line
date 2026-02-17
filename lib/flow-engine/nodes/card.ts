@@ -76,6 +76,12 @@ export class CardHandler implements NodeHandler {
       return { type: 'message' as const, label, text: sendText };
     });
 
+    // LINE API制限: titleは40文字、textはtitle/画像ありで60文字、なしで160文字
+    if (title && title.length > 40) title = title.slice(0, 39) + '…';
+    const hasExtra = !!(title || config.imageUrl);
+    const maxTextLen = hasExtra ? 60 : 160;
+    if (text.length > maxTextLen) text = text.slice(0, maxTextLen - 1) + '…';
+
     const template: any = { type: 'buttons', text, actions };
     if (title) template.title = title;
     if (config.imageUrl) {
@@ -136,7 +142,7 @@ export class CardHandler implements NodeHandler {
         // ボタンアクション（足りない分はダミーで埋める）
         const buttons = (col.buttons || []).slice(0, maxButtons);
         const colText = expandVariables(localize(col.text, context.lang), context);
-        const actions = buttons.map((btn) => {
+        const actions = await Promise.all(buttons.map(async (btn) => {
           let label = localize(btn.label, context.lang);
           // LINE APIはlabelが空だとメッセージ全体を拒否するためフォールバック
           if (!label) {
@@ -144,15 +150,26 @@ export class CardHandler implements NodeHandler {
           }
           // labelは最大20文字
           if (label.length > 20) label = label.slice(0, 20);
-          const displayText = btn.text || label;
+
+          // URIアクション: URLボタン
+          if (btn.type === 'uri' && btn.url) {
+            let uri = await processUrlsInText(btn.url, context.userId, sourceType);
+            return {
+              type: 'uri' as const,
+              label,
+              uri,
+            };
+          }
+
           // postbackアクション: cardNodeIdでどのカードのボタンか識別
+          const displayText = btn.text || label;
           return {
             type: 'postback' as const,
             label,
             data: `action=card_choice&cardId=${cardNodeId}&text=${encodeURIComponent(displayText)}`,
             displayText,
           };
-        });
+        }));
 
         // アクション数を統一（足りない分は最後のボタンを繰り返す）
         while (actions.length < maxButtons && actions.length > 0) {
@@ -177,6 +194,14 @@ export class CardHandler implements NodeHandler {
       for (const col of carouselColumns) {
         if (!col.title) col.title = ' ';
       }
+    }
+
+    // LINE API制限: titleは40文字、textはタイトル/画像ありで60文字、なしで120文字
+    for (const col of carouselColumns) {
+      if (col.title && col.title.length > 40) col.title = col.title.slice(0, 39) + '…';
+      const hasExtra = !!(col.title || col.thumbnailImageUrl);
+      const maxTextLen = hasExtra ? 60 : 120;
+      if (col.text && col.text.length > maxTextLen) col.text = col.text.slice(0, maxTextLen - 1) + '…';
     }
 
     const altText = carouselColumns[0]?.title || carouselColumns[0]?.text || 'カード';

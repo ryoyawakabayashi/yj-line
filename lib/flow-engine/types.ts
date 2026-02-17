@@ -149,7 +149,9 @@ export interface CardColumn {
   imageUrl?: string;                           // カード画像URL（任意）
   buttons: Array<{                             // ボタン（最大3つ）
     label: string | Record<string, string>;    // ボタンラベル / 多言語対応
-    text: string;                              // ボタン押下時に送信されるテキスト
+    text: string;                              // ボタン押下時に送信されるテキスト（postback用）
+    type?: 'postback' | 'uri';                 // ボタンタイプ（デフォルト: postback）
+    url?: string;                              // URI action用のURL
   }>;
 }
 
