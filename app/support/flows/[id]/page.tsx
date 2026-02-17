@@ -1719,6 +1719,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           <aside className="w-80 bg-white border-l p-4 overflow-y-auto relative flex flex-col">
             <h2 className="font-bold text-lg mb-4">ノード設定</h2>
 
+            <div className="mb-2 text-xs text-gray-400 select-all">ID: {selectedNode.id}</div>
+
             <div className="mb-4 flex items-center justify-between">
               <button
                 onClick={() => setShowNodeName((v) => !v)}
