@@ -116,14 +116,14 @@ export async function getReminderTargetUsers(
       continue;
     }
 
-    // ユーザーの言語設定を取得（conversation_stateから）
-    const { data: stateData } = await supabase
-      .from('conversation_state')
-      .select('state')
+    // ユーザーの言語設定を取得（user_statusから）
+    const { data: statusData } = await supabase
+      .from('user_status')
+      .select('lang')
       .eq('user_id', userId)
       .maybeSingle();
 
-    const lang = stateData?.state?.lang || 'ja';
+    const lang = statusData?.lang || 'ja';
 
     targetUsers.push({
       userId,
@@ -226,6 +226,7 @@ export async function getReminderStats(): Promise<{
 export async function getUserDiagnosisAnswers(
   userId: string
 ): Promise<{ lang: string; answers: DiagnosisAnswers } | null> {
+  // conversation_stateから診断回答を取得
   const { data, error } = await supabase
     .from('conversation_state')
     .select('state')
@@ -244,10 +245,17 @@ export async function getUserDiagnosisAnswers(
 
   console.log(`Found conversation_state for ${userId}:`, JSON.stringify(data.state));
 
-  const state = data.state as { lang?: string; answers?: DiagnosisAnswers } | null;
+  const state = data.state as { answers?: DiagnosisAnswers } | null;
+
+  // 言語はuser_statusから取得（conversation_stateの言語は古い場合がある）
+  const { data: statusData } = await supabase
+    .from('user_status')
+    .select('lang')
+    .eq('user_id', userId)
+    .maybeSingle();
 
   return {
-    lang: state?.lang || 'ja',
+    lang: statusData?.lang || 'ja',
     answers: state?.answers || {},
   };
 }
