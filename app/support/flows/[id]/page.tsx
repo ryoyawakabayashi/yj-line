@@ -61,6 +61,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; message: string; quickReplies: { label: string; text: string }[] }>>([]);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [showNodeName, setShowNodeName] = useState(false);
   const isInitializedRef = useRef(false);
   const clipboardRef = useRef<Node | null>(null);
 
@@ -1704,7 +1705,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           <aside className="w-80 bg-white border-l p-4 overflow-y-auto relative flex flex-col">
             <h2 className="font-bold text-lg mb-4">ノード設定</h2>
 
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex items-center justify-between">
+              <button
+                onClick={() => setShowNodeName((v) => !v)}
+                className={`px-2 py-1 text-xs rounded transition ${
+                  showNodeName ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {showNodeName ? 'ノード名 ▲' : 'ノード名 ▼'}
+              </button>
               <button
                 onClick={() => duplicateNode(selectedNode)}
                 className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
@@ -1713,6 +1722,21 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 複製
               </button>
             </div>
+
+            {showNodeName && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ノード名
+                </label>
+                <input
+                  type="text"
+                  value={selectedNode.data.label || ''}
+                  onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
+                  placeholder="ノードの表示名"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            )}
 
             {getSelectedNodeType() !== 'trigger' && edges.some((e) => e.target === selectedNode.id) && (
               <div className="mb-4">
