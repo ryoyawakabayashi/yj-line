@@ -14,7 +14,8 @@ import {
   exitSupportMode,
 } from './support';
 import { detectUserIntentAdvanced } from './intent';
-import { getActiveFlows, recordCardSelection } from '../database/flow-queries';
+import { getActiveFlows, getFlowById, recordCardSelection } from '../database/flow-queries';
+import type { FlowNode as FlowNodeType } from '../database/flow-queries';
 import { flowExecutor } from '../flow-engine/executor';
 
 export async function handleEvent(event: LineEvent): Promise<void> {
@@ -54,34 +55,93 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             displayText,
           });
 
-          // カード選択はフロー状態を変えず、対応するsend_messageの内容をpushで返す
+          // カード選択はフロー状態を変えず、ノードチェーンをたどってメッセージをpushで返す
           try {
-            const { getFlowById } = await import('../database/flow-queries');
             const flow = await getFlowById(currentState.flowId);
             if (flow) {
-              // cardId から出ているエッジのターゲットノード（send_message）を取得
-              const targetEdge = flow.flowDefinition.edges.find(
-                (e) => e.source === cardId
-              );
+              const lang = await getUserLang(userId);
+              const { nodes, edges } = flow.flowDefinition;
+
+              // cardIdから出ているエッジのターゲットからチェーンをたどる
+              const targetEdge = edges.find((e) => e.source === cardId);
               if (targetEdge) {
-                const targetNode = flow.flowDefinition.nodes.find(
-                  (n) => n.id === targetEdge.target
-                );
-                if (targetNode && targetNode.type === 'send_message' && targetNode.data.config) {
-                  const lang = await getUserLang(userId);
-                  const content = targetNode.data.config.content;
-                  const rawText = content
-                    ? (typeof content === 'object'
-                      ? ((content as Record<string, string>)[lang] || (content as Record<string, string>).ja || Object.values(content)[0])
-                      : content)
-                    : '';
-                  if (rawText) {
-                    await pushMessage(userId, [{ type: 'text', text: String(rawText) }]);
+                const messages: any[] = [];
+                let currentNodeId: string | undefined = targetEdge.target;
+                const context = {
+                  userId,
+                  userMessage: '',
+                  lang,
+                  variables: flow.flowDefinition.variables || {},
+                  conversationHistory: [] as Array<{ role: string; content: string }>,
+                };
+                const maxSteps = 20;
+                let step = 0;
+
+                while (currentNodeId && step < maxSteps) {
+                  step++;
+                  const node = nodes.find((n) => n.id === currentNodeId);
+                  if (!node) break;
+
+                  if (node.type === 'send_message') {
+                    const { SendMessageHandler } = await import('../flow-engine/nodes/send-message');
+                    const handler = new SendMessageHandler(edges);
+                    const result = await handler.execute(node, context);
+                    if (result.responseMessages) messages.push(...result.responseMessages);
+                    currentNodeId = result.nextNodeId;
+                  } else if (node.type === 'card') {
+                    const { CardHandler } = await import('../flow-engine/nodes/card');
+                    // 兄弟cardノードをマージしてカルーセルを生成
+                    let cardNode: FlowNodeType = node;
+                    const parentEdge = edges.find((e) => e.target === node.id);
+                    if (parentEdge) {
+                      const siblingCardEdges = edges
+                        .filter((e) => e.source === parentEdge.source)
+                        .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+                      const siblingCards = siblingCardEdges
+                        .map((e) => nodes.find((n) => n.id === e.target))
+                        .filter((n): n is FlowNodeType => !!n && n.type === 'card');
+                      if (siblingCards.length > 1) {
+                        const mergedColumns = siblingCards.map((card) => {
+                          const cfg = card.data.config || {};
+                          if (cfg.columns && cfg.columns.length > 0) return cfg.columns[0];
+                          return { title: cfg.title || '', text: cfg.text || '', imageUrl: cfg.imageUrl || '', buttons: [{ label: '', text: '' }] };
+                        });
+                        cardNode = {
+                          ...node,
+                          data: {
+                            ...node.data,
+                            config: {
+                              ...node.data.config,
+                              columns: mergedColumns.slice(0, 10),
+                              _siblingCardIds: siblingCards.map((c) => c.id),
+                            },
+                          },
+                        };
+                      }
+                    }
+                    const handler = new CardHandler(edges);
+                    const result = await handler.execute(cardNode, context);
+                    if (result.responseMessages) messages.push(...result.responseMessages);
+                    break; // cardは入力待ちなので停止
+                  } else if (node.type === 'quick_reply') {
+                    const { QuickReplyHandler } = await import('../flow-engine/nodes/quick-reply');
+                    const handler = new QuickReplyHandler(edges);
+                    const result = await handler.execute(node, context);
+                    if (result.responseMessages) messages.push(...result.responseMessages);
+                    break; // quick_replyは入力待ちなので停止
+                  } else if (node.type === 'end') {
+                    break;
+                  } else {
+                    const nextEdge = edges.find((e) => e.source === node.id);
+                    currentNodeId = nextEdge?.target;
                   }
+                }
+
+                if (messages.length > 0) {
+                  await pushMessage(userId, messages);
                 }
               }
             }
-            // フロー状態はカードノードのまま（変更しない）
           } catch (error) {
             console.error('❌ カード選択push送信エラー:', error);
           }
