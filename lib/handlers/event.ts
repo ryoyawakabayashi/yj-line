@@ -64,6 +64,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
               // cardIdから出ているエッジのターゲットからチェーンをたどる
               const targetEdge = edges.find((e) => e.source === cardId);
+              console.log('🔗 card_choice チェーン開始:', { cardId, targetNodeId: targetEdge?.target || 'エッジなし' });
               if (targetEdge) {
                 const messages: any[] = [];
                 let currentNodeId: string | undefined = targetEdge.target;
@@ -80,12 +81,17 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                 while (currentNodeId && step < maxSteps) {
                   step++;
                   const node = nodes.find((n) => n.id === currentNodeId);
-                  if (!node) break;
+                  if (!node) {
+                    console.log('⚠️ チェーン: ノード見つからず:', currentNodeId);
+                    break;
+                  }
+                  console.log(`🔗 チェーン step${step}: ${node.type} (${node.id})`);
 
                   if (node.type === 'send_message') {
                     const { SendMessageHandler } = await import('../flow-engine/nodes/send-message');
                     const handler = new SendMessageHandler(edges);
                     const result = await handler.execute(node, context);
+                    console.log('🔗 send_message結果:', { success: result.success, nextNodeId: result.nextNodeId, msgCount: result.responseMessages?.length });
                     if (result.responseMessages) messages.push(...result.responseMessages);
                     currentNodeId = result.nextNodeId;
                   } else if (node.type === 'card') {
@@ -100,6 +106,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                       const siblingCards = siblingCardEdges
                         .map((e) => nodes.find((n) => n.id === e.target))
                         .filter((n): n is FlowNodeType => !!n && n.type === 'card');
+                      console.log('🔗 card兄弟マージ:', { parent: parentEdge.source, siblingCount: siblingCards.length, ids: siblingCards.map(c => c.id) });
                       if (siblingCards.length > 1) {
                         const mergedColumns = siblingCards.map((card) => {
                           const cfg = card.data.config || {};
@@ -121,6 +128,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     }
                     const handler = new CardHandler(edges);
                     const result = await handler.execute(cardNode, context);
+                    console.log('🔗 card結果:', { success: result.success, error: result.error, msgCount: result.responseMessages?.length });
                     if (result.responseMessages) messages.push(...result.responseMessages);
                     break; // cardは入力待ちなので停止
                   } else if (node.type === 'quick_reply') {
@@ -132,14 +140,18 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                   } else if (node.type === 'end') {
                     break;
                   } else {
+                    console.log('🔗 チェーン: 未対応ノードタイプ:', node.type, '→ 次へ');
                     const nextEdge = edges.find((e) => e.source === node.id);
                     currentNodeId = nextEdge?.target;
                   }
                 }
 
+                console.log('🔗 チェーン完了: メッセージ数:', messages.length);
                 if (messages.length > 0) {
                   await pushMessage(userId, messages);
                 }
+              } else {
+                console.log('⚠️ card_choice: cardId からのエッジが見つかりません:', cardId);
               }
             }
           } catch (error) {
