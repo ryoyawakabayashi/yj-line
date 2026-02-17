@@ -1704,11 +1704,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           <aside className="w-80 bg-white border-l p-4 overflow-y-auto relative flex flex-col">
             <h2 className="font-bold text-lg mb-4">ノード設定</h2>
 
-            <div className="mb-4 p-2 bg-gray-50 rounded flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-500">ノードID</div>
-                <div className="text-sm font-mono">{selectedNode.id}</div>
-              </div>
+            <div className="mb-4 flex justify-end">
               <button
                 onClick={() => duplicateNode(selectedNode)}
                 className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
@@ -1717,21 +1713,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 複製
               </button>
             </div>
-
-            {getSelectedNodeType() !== 'card' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                ノード名
-              </label>
-              <input
-                type="text"
-                value={selectedNode.data.label || ''}
-                onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
-                placeholder="ノードの表示名"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-            )}
 
             {getSelectedNodeType() !== 'trigger' && edges.some((e) => e.target === selectedNode.id) && (
               <div className="mb-4">
@@ -1742,7 +1723,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   type="text"
                   value={selectedNode.data.sendText || ''}
                   onChange={(e) => updateNodeSendText(selectedNode.id, e.target.value)}
-                  placeholder="未入力=ノード名と同じ"
+                  placeholder="未入力=ラベルと同じ"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
                 <div className="flex flex-wrap gap-1 mt-1">
