@@ -264,16 +264,34 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         setPriority(flow.priority);
         setUrlSourceType(flow.flowDefinition.variables?.urlSourceType || 'flow');
 
-        // ノードとエッジを復元
-        const loadedNodes = flow.flowDefinition.nodes.map((node: any) => ({
-          id: node.id,
-          type: 'flowNode',
-          position: node.position,
-          data: {
-            ...node.data,
-            nodeType: node.type, // ノードタイプを data に保存
-          },
-        }));
+        // ノードとエッジを復元（ラベルをコンテンツから自動生成）
+        const loadedNodes = flow.flowDefinition.nodes.map((node: any) => {
+          const config = node.data?.config || {};
+          const nodeType = node.type;
+          let autoLabel = '';
+          if (nodeType === 'send_message' && config.content) {
+            autoLabel = typeof config.content === 'object' ? (config.content.ja || '') : config.content;
+          } else if (nodeType === 'quick_reply' && config.message) {
+            autoLabel = typeof config.message === 'object' ? (config.message.ja || '') : config.message;
+          } else if (nodeType === 'card') {
+            if (config.columns?.length > 0 && config.columns[0].text) {
+              const colText = config.columns[0].text;
+              autoLabel = typeof colText === 'object' ? (colText.ja || '') : colText;
+            } else if (config.text) {
+              autoLabel = typeof config.text === 'object' ? (config.text.ja || '') : config.text;
+            }
+          }
+          return {
+            id: node.id,
+            type: 'flowNode',
+            position: node.position,
+            data: {
+              ...node.data,
+              nodeType, // ノードタイプを data に保存
+              label: autoLabel || node.data?.label || node.id,
+            },
+          };
+        });
 
 
         const loadedEdges = flow.flowDefinition.edges.map((edge: any) => ({
