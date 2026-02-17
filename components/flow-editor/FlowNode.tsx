@@ -8,7 +8,7 @@ import { Handle, Position, NodeProps } from 'reactflow';
  * 上下に1つずつハンドルを配置。
  * connectionMode="loose" と組み合わせて、どの方向からでも接続可能。
  */
-function FlowNodeComponent({ data, selected }: NodeProps) {
+function FlowNodeComponent({ id, data, selected }: NodeProps) {
   const nodeType = data.nodeType || '';
   const isMessageNode = nodeType === 'send_message';
 
@@ -28,6 +28,9 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
         id="top"
         style={{ background: '#94a3b8', width: 8, height: 8 }}
       />
+
+      {/* ノードID */}
+      <div className="text-[10px] text-gray-400 mb-0.5">{id}</div>
 
       {/* ラベル（JSX or テキスト） */}
       <div className={isMessageNode ? 'whitespace-pre-wrap break-words' : ''}>
