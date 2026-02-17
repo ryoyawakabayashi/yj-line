@@ -71,7 +71,7 @@ export class QuickReplyHandler implements NodeHandler {
         type: 'action' as const,
         action: {
           type: 'message' as const,
-          label: localizedLabel,  // ボタンの表示テキスト
+          label: localizedLabel.length > 20 ? localizedLabel.slice(0, 20) : localizedLabel,  // ボタンの表示テキスト（LINE API上限20文字）
           text: localizedText,    // ユーザーが選択したときに送信されるテキスト
         },
       };
