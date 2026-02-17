@@ -1754,36 +1754,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
-            {getSelectedNodeType() !== 'trigger' && edges.some((e) => e.target === selectedNode.id) && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  送信テキスト
-                </label>
-                <input
-                  type="text"
-                  value={selectedNode.data.sendText || ''}
-                  onChange={(e) => updateNodeSendText(selectedNode.id, e.target.value)}
-                  placeholder="未入力=ラベルと同じ"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                />
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {SEND_TEXT_PRESETS.map((preset) => (
-                    <button
-                      key={preset.text}
-                      onClick={() => updateNodeSendText(selectedNode.id, preset.text)}
-                      className={`px-2 py-0.5 text-xs rounded transition ${
-                        selectedNode.data.sendText === preset.text
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* サービス */}
             {getSelectedNodeType() !== 'trigger' && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1813,6 +1784,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
+            {/* メッセージタイプ */}
             {getSelectedNodeType() === 'send_message' && SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
                 このノードは「{SEND_TEXT_PRESETS.find(p => p.text === selectedNode.data.sendText)?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
@@ -1820,27 +1792,70 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             )}
 
             {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    メッセージタイプ
-                  </label>
-                  <select
-                    value={selectedNode.data.config.messageType || 'text'}
-                    onChange={(e) =>
-                      updateNodeConfig(selectedNode.id, {
-                        ...selectedNode.data.config,
-                        messageType: e.target.value,
-                      })
-                    }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  >
-                    <option value="text">テキスト</option>
-                    <option value="flex">Flex Message</option>
-                    <option value="template">Template</option>
-                  </select>
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  メッセージタイプ
+                </label>
+                <select
+                  value={selectedNode.data.config.messageType || 'text'}
+                  onChange={(e) =>
+                    updateNodeConfig(selectedNode.id, {
+                      ...selectedNode.data.config,
+                      messageType: e.target.value,
+                    })
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="text">テキスト</option>
+                  <option value="flex">Flex Message</option>
+                  <option value="template">Template</option>
+                </select>
+              </div>
+            )}
 
+            {/* 送信テキスト: 親ノードに応じてラベル変更、card親なら非表示 */}
+            {(() => {
+              if (getSelectedNodeType() === 'trigger') return null;
+              if (!edges.some((e) => e.target === selectedNode.id)) return null;
+              const incomingEdge = edges.find((e) => e.target === selectedNode.id);
+              const parentNode = incomingEdge ? nodes.find((n) => n.id === incomingEdge.source) : null;
+              const parentType = parentNode?.data?.nodeType || parentNode?.id?.split('-')[0] || '';
+              if (parentType === 'card') return null;
+              const sendTextLabel = parentType === 'quick_reply' ? '送信クイックリプライ' : '送信テキスト';
+              return (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {sendTextLabel}
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedNode.data.sendText || ''}
+                    onChange={(e) => updateNodeSendText(selectedNode.id, e.target.value)}
+                    placeholder="未入力=ラベルと同じ"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {SEND_TEXT_PRESETS.map((preset) => (
+                      <button
+                        key={preset.text}
+                        onClick={() => updateNodeSendText(selectedNode.id, preset.text)}
+                        className={`px-2 py-0.5 text-xs rounded transition ${
+                          selectedNode.data.sendText === preset.text
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* メッセージ内容 */}
+            {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     メッセージ内容 <span className="text-red-500">*</span>
