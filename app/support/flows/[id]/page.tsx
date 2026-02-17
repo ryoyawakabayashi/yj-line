@@ -63,6 +63,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [showNodeName, setShowNodeName] = useState(false);
   const [compactNodeView, setCompactNodeView] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const isInitializedRef = useRef(false);
   const clipboardRef = useRef<Node | null>(null);
 
@@ -1582,22 +1583,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                サービス
-              </label>
-              <select
-                value={service}
-                onChange={(e) => setService(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              >
-                <option value="">全サービス</option>
-                <option value="YOLO_JAPAN">YOLO JAPAN</option>
-                <option value="YOLO_DISCOVER">YOLO DISCOVER</option>
-                <option value="YOLO_HOME">YOLO HOME</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 優先度
               </label>
               <input
@@ -1730,13 +1715,31 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               >
                 {showNodeName ? 'ノード名 ▲' : 'ノード名 ▼'}
               </button>
-              <button
-                onClick={() => duplicateNode(selectedNode)}
-                className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
-                title="複製 (Ctrl+D)"
-              >
-                複製
-              </button>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => duplicateNode(selectedNode)}
+                  className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
+                  title="複製 (Ctrl+D)"
+                >
+                  複製
+                </button>
+                {getSelectedNodeType() !== 'trigger' && (
+                  <button
+                    onClick={() => {
+                      if (!confirm('このノードを削除しますか？')) return;
+                      pushHistory();
+                      const nodeId = selectedNode.id;
+                      setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+                      setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+                      setSelectedNode(null);
+                    }}
+                    className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
+                    title="削除"
+                  >
+                    削除
+                  </button>
+                )}
+              </div>
             </div>
 
             {showNodeName && (
@@ -1751,30 +1754,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   placeholder="ノードの表示名"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
-              </div>
-            )}
-
-            {/* サービス */}
-            {getSelectedNodeType() !== 'trigger' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  サービス
-                </label>
-                <select
-                  value={selectedNode.data.service || ''}
-                  onChange={(e) => updateNodeService(selectedNode.id, e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  style={
-                    selectedNode.data.service && SERVICE_COLORS[selectedNode.data.service]
-                      ? { borderColor: SERVICE_COLORS[selectedNode.data.service].border, borderWidth: 2 }
-                      : {}
-                  }
-                >
-                  <option value="">なし</option>
-                  <option value="YOLO_JAPAN">YOLO JAPAN</option>
-                  <option value="YOLO_DISCOVER">YOLO DISCOVER</option>
-                  <option value="YOLO_HOME">YOLO HOME</option>
-                </select>
               </div>
             )}
 
@@ -1816,6 +1795,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             {/* 送信テキスト: 親ノードに応じてラベル変更、card親なら非表示 */}
             {(() => {
               if (getSelectedNodeType() === 'trigger') return null;
+              if (getSelectedNodeType() === 'card') return null;
               if (!edges.some((e) => e.target === selectedNode.id)) return null;
               const incomingEdge = edges.find((e) => e.target === selectedNode.id);
               const parentNode = incomingEdge ? nodes.find((n) => n.id === incomingEdge.source) : null;
@@ -2242,14 +2222,71 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">画像URL（任意）</label>
-                        <input
-                          type="text"
-                          value={col.imageUrl || ''}
-                          onChange={(e) => updateCol({ imageUrl: e.target.value })}
-                          placeholder="https://example.com/image.jpg"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                        />
+                        <label className="block text-sm font-medium text-gray-700 mb-1">画像（任意）</label>
+                        {col.imageUrl ? (
+                          <div className="space-y-2">
+                            <div className="relative group">
+                              <img
+                                src={col.imageUrl}
+                                alt="カード画像"
+                                className="w-full h-32 object-cover rounded-md border border-gray-200"
+                              />
+                              <button
+                                onClick={() => updateCol({ imageUrl: '' })}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-md transition-colors ${uploadingImage ? 'border-orange-300 bg-orange-50 cursor-wait' : 'border-gray-300 cursor-pointer hover:border-orange-400 hover:bg-orange-50'}`}>
+                            {uploadingImage ? (
+                              <>
+                                <svg className="w-6 h-6 text-orange-400 mb-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                <span className="text-xs text-orange-600">アップロード中...</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-xs text-gray-500">クリックして画像をアップロード</span>
+                                <span className="text-[10px] text-gray-400">JPEG, PNG, WebP, GIF（最大5MB）</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif"
+                              className="hidden"
+                              disabled={uploadingImage}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setUploadingImage(true);
+                                const formData = new FormData();
+                                formData.append('file', file);
+                                try {
+                                  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                  const data = await res.json();
+                                  if (res.ok && data.url) {
+                                    updateCol({ imageUrl: data.url });
+                                  } else {
+                                    alert(data.error || 'アップロードに失敗しました');
+                                  }
+                                } catch {
+                                  alert('アップロードに失敗しました');
+                                } finally {
+                                  setUploadingImage(false);
+                                }
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        )}
                       </div>
 
                       {/* ボタン */}
