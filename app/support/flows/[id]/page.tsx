@@ -62,6 +62,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [showNodeName, setShowNodeName] = useState(false);
+  const [compactNodeView, setCompactNodeView] = useState(false);
   const isInitializedRef = useRef(false);
   const clipboardRef = useRef<Node | null>(null);
 
@@ -1365,11 +1366,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 }
               }}
             />
-          ) : (node.data.label || node.id),
+          ) : compactNodeView
+            ? getNodeLabel(node.data.nodeType || node.id.split('-')[0])
+            : (node.data.label || node.id),
         },
       };
     });
-  }, [nodes, editingNodeId]);
+  }, [nodes, editingNodeId, compactNodeView]);
 
   // サービス別カラーをエッジに適用（キャンバス上のラベルは非表示）
   const styledEdges = useMemo(() => {
@@ -1478,6 +1481,17 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               title="やり直す (Ctrl+Shift+Z)"
             >
               ↪
+            </button>
+            <button
+              onClick={() => setCompactNodeView((v) => !v)}
+              className={`px-3 py-2 rounded-lg transition text-sm ${
+                compactNodeView
+                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-300'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title="ノード名表示の切り替え"
+            >
+              {compactNodeView ? 'ノード名' : 'メッセージ'}
             </button>
             <button
               onClick={() => { saveDraft(); alert('一時保存しました'); }}
