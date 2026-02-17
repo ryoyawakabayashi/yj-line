@@ -1,7 +1,7 @@
 import { LineEvent } from '@/types/line';
 import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile, saveConversationState } from '../database/queries';
 import { getActiveTicketByUserId, saveMessage } from '../database/support-queries';
-import { replyMessage, linkRichMenu } from '../line/client';
+import { replyMessage, pushMessage, linkRichMenu } from '../line/client';
 import { config } from '../config';
 import { CONSTANTS } from '../constants';
 import { handleConversation } from './conversation';
@@ -45,7 +45,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         console.log('🃏 カード選択:', cardId, 'テキスト:', displayText);
 
         const currentState = await getConversationState(userId);
-        if (currentState?.mode === 'flow' && currentState.flowId && currentState.waitingNodeId) {
+        if (currentState?.mode === 'flow' && currentState.flowId) {
           // fire-and-forget: カード選択イベントを記録（awaitしない）
           recordCardSelection({
             flowId: currentState.flowId,
@@ -54,37 +54,36 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             displayText,
           });
 
-          const lang = await getUserLang(userId);
+          // カード選択はフロー状態を変えず、対応するsend_messageの内容をpushで返す
           try {
-            const result = await flowExecutor.execute(
-              currentState.flowId,
-              userId,
-              displayText,
-              {
-                lang,
-                replyToken: event.replyToken,
-                variables: { ...(currentState.variables || {}), _selectedCardId: cardId },
-              },
-              currentState.waitingNodeId
-            );
-
-            if (result.responseMessages && result.responseMessages.length > 0) {
-              await replyMessage(event.replyToken, result.responseMessages);
+            const { getFlowById } = await import('../database/flow-queries');
+            const flow = await getFlowById(currentState.flowId);
+            if (flow) {
+              // cardId から出ているエッジのターゲットノード（send_message）を取得
+              const targetEdge = flow.flowDefinition.edges.find(
+                (e) => e.source === cardId
+              );
+              if (targetEdge) {
+                const targetNode = flow.flowDefinition.nodes.find(
+                  (n) => n.id === targetEdge.target
+                );
+                if (targetNode && targetNode.type === 'send_message' && targetNode.data.config) {
+                  const lang = await getUserLang(userId);
+                  const content = targetNode.data.config.content;
+                  const rawText = content
+                    ? (typeof content === 'object'
+                      ? ((content as Record<string, string>)[lang] || (content as Record<string, string>).ja || Object.values(content)[0])
+                      : content)
+                    : '';
+                  if (rawText) {
+                    await pushMessage(userId, [{ type: 'text', text: String(rawText) }]);
+                  }
+                }
+              }
             }
-
-            if (result.shouldWaitForInput && result.waitNodeId) {
-              await saveConversationState(userId, {
-                mode: 'flow',
-                flowId: currentState.flowId,
-                waitingNodeId: result.waitNodeId,
-                variables: result.variables || {},
-              });
-            } else {
-              await clearConversationState(userId);
-            }
+            // フロー状態はカードノードのまま（変更しない）
           } catch (error) {
-            console.error('❌ カード選択フロー実行エラー:', error);
-            await clearConversationState(userId);
+            console.error('❌ カード選択push送信エラー:', error);
           }
         }
         return;
