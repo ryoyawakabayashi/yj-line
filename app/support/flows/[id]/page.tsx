@@ -1874,6 +1874,45 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   </p>
                 </div>
 
+                {/* クイックリプライ設定 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    クイックリプライ（任意）
+                  </label>
+                  <p className="text-[10px] text-gray-400 mb-2">メッセージ下部にボタンを表示します。押すとテキストが送信され通常のハンドラーで処理されます。</p>
+
+                  {(selectedNode.data.config.quickReply?.items || []).map((item: any, idx: number) => (
+                    <div key={idx} className="flex gap-1 mb-2 items-center min-w-0">
+                      <input
+                        type="text"
+                        value={item.action?.label || ''}
+                        onChange={(e) => updateQuickReplyItem(idx, 'label', e.target.value)}
+                        placeholder="ラベル"
+                        className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={item.action?.text || ''}
+                        onChange={(e) => updateQuickReplyItem(idx, 'text', e.target.value)}
+                        placeholder="送信テキスト"
+                        className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs"
+                      />
+                      <button
+                        onClick={() => removeQuickReplyItem(idx)}
+                        className="text-red-400 hover:text-red-600 text-sm px-1"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={addQuickReplyItem}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    + アイテム追加
+                  </button>
+                </div>
               </div>
             )}
 

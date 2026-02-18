@@ -90,6 +90,24 @@ export class SendMessageHandler implements NodeHandler {
           message = createTextMessage(expandedContent);
       }
 
+      // クイックリプライが設定されている場合、メッセージに付与
+      if (config.quickReply?.items && config.quickReply.items.length > 0) {
+        message.quickReply = {
+          items: config.quickReply.items
+            .filter((item) => item.action?.label)
+            .map((item) => ({
+              type: 'action',
+              action: {
+                type: item.action.type || 'message',
+                label: item.action.label.length > 20 ? item.action.label.slice(0, 20) : item.action.label,
+                ...(item.action.type === 'postback'
+                  ? { data: item.action.data || item.action.text || item.action.label }
+                  : { text: item.action.text || item.action.label }),
+              },
+            })),
+        };
+      }
+
       // 次のノードを探す
       const nextEdge = this.edges.find((e) => e.source === node.id);
       const nextNodeId = nextEdge?.target;
