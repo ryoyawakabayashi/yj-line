@@ -130,7 +130,7 @@ export class FlowExecutor {
                 handled: true,
                 responseMessages: [{
                   type: 'text',
-                  text: '選択肢以外が入力されました。フローを終了しますか？',
+                  text: '選択肢以外が入力されました。\nフローを終了しますか？',
                   quickReply: {
                     items: [
                       { type: 'action', action: { type: 'message', label: '続ける', text: '続ける' } },
