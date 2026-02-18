@@ -7,6 +7,7 @@ import ReactFlow, {
   Edge,
   Connection,
   ConnectionMode,
+  SelectionMode,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -1883,10 +1884,14 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
             onInit={(instance) => { reactFlowInstance.current = instance; }}
+            selectionOnDrag
+            selectionMode={SelectionMode.Partial}
+            panOnDrag={[1, 2]}
+            panOnScroll
             minZoom={0.05}
             maxZoom={2}
             fitView
-            zoomOnScroll
+            zoomOnScroll={false}
             zoomOnPinch
           >
             <Background />
