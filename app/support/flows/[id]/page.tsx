@@ -65,6 +65,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [showNodeName, setShowNodeName] = useState(false);
   const [compactNodeView, setCompactNodeView] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const isInitializedRef = useRef(false);
   const clipboardRef = useRef<Node | null>(null);
 
@@ -136,12 +137,25 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const nodeType = node.data.nodeType;
       const config = node.data.config || {};
 
-      // send_message: 複数のoutgoing edge (最初のみ実行される)
+      // send_message: 複数のoutgoing edge (カード=カルーセルは例外)
       if (nodeType === 'send_message' && outgoing.length > 1) {
-        warnings.push({
-          nodeId: node.id, level: 'error',
-          message: 'メッセージノードから複数のエッジが出ています。最初の接続のみ実行されます。不要な接続を削除してください。',
+        const allChildrenCards = outgoing.every((e) => {
+          const target = nodes.find((n) => n.id === e.target);
+          return target?.data.nodeType === 'card';
         });
+        if (allChildrenCards) {
+          if (outgoing.length > 10) {
+            warnings.push({
+              nodeId: node.id, level: 'error',
+              message: `カルーセルは最大10枚です（現在${outgoing.length}枚）`,
+            });
+          }
+        } else {
+          warnings.push({
+            nodeId: node.id, level: 'error',
+            message: 'メッセージノードから複数のエッジが出ています。最初の接続のみ実行されます。不要な接続を削除してください。',
+          });
+        }
       }
 
       // send_message: インラインquickReply + quick_replyノード子が同時設定
@@ -242,9 +256,24 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     const srcType = srcNode.data.nodeType;
     const existingOutgoing = edges.filter((e) => e.source === sourceId);
 
-    // send_message: 既に子がいる場合は接続不可
+    // send_message: 既に子がいる場合 (カード=カルーセルは例外)
     if (srcType === 'send_message' && existingOutgoing.length >= 1) {
-      return 'メッセージノードからは1つのノードにのみ接続できます。既存の接続を削除してから再接続してください。';
+      const allExistingAreCards = existingOutgoing.every((e) => {
+        const target = nodes.find((n) => n.id === e.target);
+        return target?.data.nodeType === 'card';
+      });
+      const newIsCard = childType === 'card' || (() => {
+        const target = nodes.find((n) => n.id === targetId);
+        return target?.data.nodeType === 'card';
+      })();
+      if (allExistingAreCards && newIsCard) {
+        if (existingOutgoing.length >= 10) {
+          return 'カルーセルは最大10枚です（LINE API制限）';
+        }
+        // カルーセル: OK
+      } else {
+        return 'メッセージノードからは1つのノードにのみ接続できます。既存の接続を削除してから再接続してください。';
+      }
     }
 
     // quick_reply: 13個以上は接続不可
@@ -1729,7 +1758,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Flow Settings */}
-        <aside className="w-80 bg-white border-r p-4 overflow-y-auto">
+        <aside className={`bg-white border-r overflow-y-auto transition-all duration-200 ${leftSidebarOpen ? 'w-80 p-4' : 'w-0 p-0 overflow-hidden'}`}>
+          {leftSidebarOpen && (
+            <>
           <h2 className="font-bold text-lg mb-4">フロー設定</h2>
 
           <div className="space-y-4">
@@ -1865,7 +1896,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             </div>
           </div>
+            </>
+          )}
         </aside>
+
+        {/* Left Sidebar toggle */}
+        <button
+          onClick={() => setLeftSidebarOpen((v) => !v)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white border border-l-0 border-gray-300 rounded-r-md px-1 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition shadow-sm"
+          style={{ left: leftSidebarOpen ? '320px' : '0px' }}
+          title={leftSidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
+        >
+          {leftSidebarOpen ? '◀' : '▶'}
+        </button>
 
         {/* Main Canvas */}
         <main className="flex-1 h-full">
