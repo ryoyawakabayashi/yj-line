@@ -66,6 +66,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [compactNodeView, setCompactNodeView] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
+  const [expandedSendText, setExpandedSendText] = useState<Record<string, boolean>>({});
   const isInitializedRef = useRef(false);
   const clipboardRef = useRef<Node | null>(null);
 
@@ -2514,34 +2515,60 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               </button>
                             </div>
                           </div>
-                          <input
-                            type="text"
-                            value={getEdgeTextForLang(edge, activeLang)}
-                            onChange={(e) => {
-                              updateEdgeTextForLang(edge.id, e.target.value, activeLang);
-                              if (activeLang === 'ja') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
-                            }}
-                            placeholder="送信テキスト（例: AI_MODE）未入力=ラベルと同じ"
-                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                          />
-                          <div className="flex flex-wrap gap-1 mb-1">
-                            {SEND_TEXT_PRESETS.map((preset) => (
+                          {/* 送信テキスト: 値がある場合は常に表示、なければトグルで展開 */}
+                          {(() => {
+                            const hasText = !!getEdgeTextForLang(edge, activeLang);
+                            const edgeExpandKey = `sendtext-${edge.id}`;
+                            const isExpanded = hasText || expandedSendText[edge.id];
+                            return isExpanded ? (
+                              <>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    value={getEdgeTextForLang(edge, activeLang)}
+                                    onChange={(e) => {
+                                      updateEdgeTextForLang(edge.id, e.target.value, activeLang);
+                                      if (activeLang === 'ja') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
+                                    }}
+                                    placeholder="送信テキスト（例: AI_MODE）空=ラベルと同じ"
+                                    className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                  />
+                                  {!hasText && (
+                                    <button
+                                      onClick={() => setExpandedSendText((prev) => ({ ...prev, [edge.id]: false }))}
+                                      className="text-gray-400 hover:text-gray-600 text-xs px-1"
+                                      title="閉じる"
+                                    >×</button>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-1 mb-1">
+                                  {SEND_TEXT_PRESETS.map((preset) => (
+                                    <button
+                                      key={preset.text}
+                                      onClick={() => {
+                                        updateEdgeTextForLang(edge.id, preset.text, 'ja');
+                                        syncTargetNodeSendTextFromEdge(edge.id, preset.text);
+                                      }}
+                                      className={`px-1.5 py-0.5 text-[10px] rounded transition ${
+                                        getEdgeTextForLang(edge, 'ja') === preset.text
+                                          ? 'bg-blue-600 text-white'
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {preset.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
                               <button
-                                key={preset.text}
-                                onClick={() => {
-                                  updateEdgeTextForLang(edge.id, preset.text, 'ja');
-                                  syncTargetNodeSendTextFromEdge(edge.id, preset.text);
-                                }}
-                                className={`px-1.5 py-0.5 text-[10px] rounded transition ${
-                                  getEdgeTextForLang(edge, 'ja') === preset.text
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
+                                onClick={() => setExpandedSendText((prev) => ({ ...prev, [edge.id]: true }))}
+                                className="text-[10px] text-gray-400 hover:text-blue-500 self-start"
                               >
-                                {preset.label}
+                                + 送信テキストを設定
                               </button>
-                            ))}
-                          </div>
+                            );
+                          })()}
                         </div>
                         );
                       })}
