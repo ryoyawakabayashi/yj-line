@@ -152,6 +152,7 @@ export interface CardColumn {
     text: string;                              // ボタン押下時に送信されるテキスト（postback用）
     type?: 'postback' | 'uri';                 // ボタンタイプ（デフォルト: postback）
     url?: string;                              // URI action用のURL
+    openExternal?: boolean;                    // 外部ブラウザで開く（LIFFリダイレクト）
   }>;
 }
 

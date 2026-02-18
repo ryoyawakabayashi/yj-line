@@ -13,7 +13,7 @@ import {
   CardColumn,
 } from '../types';
 import { expandVariables } from '../utils';
-import { processUrlsInText, UrlSourceType } from '@/lib/tracking/url-processor';
+import { processUrlsInText, UrlSourceType, LIFF_URL_BASE } from '@/lib/tracking/url-processor';
 
 /** 多言語テキストから適切な言語のテキストを取得 */
 function localize(
@@ -154,6 +154,10 @@ export class CardHandler implements NodeHandler {
           // URIアクション: URLボタン
           if (btn.type === 'uri' && btn.url) {
             let uri = await processUrlsInText(btn.url, context.userId, sourceType);
+            // openExternal: トラッキング対象外URLでも外部ブラウザで開く
+            if (btn.openExternal && !uri.includes('liff.line.me')) {
+              uri = `${LIFF_URL_BASE}#url=${encodeURIComponent(uri)}`;
+            }
             return {
               type: 'uri' as const,
               label,

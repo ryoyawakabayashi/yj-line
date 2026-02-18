@@ -19,7 +19,7 @@ const TRACKABLE_DOMAINS = [
  * エンドポイント直開きではなく、liff.line.me 経由で開く必要がある
  */
 const LIFF_ID = '2006973060-cAgpaZ0y';
-const LIFF_URL_BASE = `https://liff.line.me/${LIFF_ID}`;
+export const LIFF_URL_BASE = `https://liff.line.me/${LIFF_ID}`;
 
 /**
  * LIFFリダイレクトを有効にするかどうか

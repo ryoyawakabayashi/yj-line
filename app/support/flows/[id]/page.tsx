@@ -2845,17 +2845,32 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               </button>
                             </div>
                             {btn.type === 'uri' && (
-                              <input
-                                type="text"
-                                value={btn.url || ''}
-                                onChange={(e) => {
-                                  const btns = [...(col.buttons || [])];
-                                  btns[btnIdx] = { ...btns[btnIdx], url: e.target.value };
-                                  updateCol({ buttons: btns });
-                                }}
-                                placeholder="https://..."
-                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                              />
+                              <>
+                                <input
+                                  type="text"
+                                  value={btn.url || ''}
+                                  onChange={(e) => {
+                                    const btns = [...(col.buttons || [])];
+                                    btns[btnIdx] = { ...btns[btnIdx], url: e.target.value };
+                                    updateCol({ buttons: btns });
+                                  }}
+                                  placeholder="https://..."
+                                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                                />
+                                <label className="flex items-center gap-1 mt-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!btn.openExternal}
+                                    onChange={(e) => {
+                                      const btns = [...(col.buttons || [])];
+                                      btns[btnIdx] = { ...btns[btnIdx], openExternal: e.target.checked };
+                                      updateCol({ buttons: btns });
+                                    }}
+                                    className="w-3 h-3"
+                                  />
+                                  <span className="text-[10px] text-gray-500">外部ブラウザで開く</span>
+                                </label>
+                              </>
                             )}
                           </div>
                         ))}
