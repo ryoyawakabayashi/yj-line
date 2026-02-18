@@ -222,9 +222,9 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         if (matchingFlow) {
           console.log('📞 キーワードトリガー発動:', messageText, '→ フロー:', matchingFlow.name);
 
-          // 診断モード中ならリセット
-          if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
-            console.log('🔄 診断モード中 → フローモード → 診断リセット');
+          // 既存モード中ならリセット（診断・フロー問わず）
+          if (currentState?.mode) {
+            console.log('🔄 既存モードリセット:', currentState.mode, '→ キーワードフロー開始');
             await clearConversationState(userId);
           }
 
@@ -316,6 +316,35 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
       // === フローモード中の処理（クイックリプライへの応答） ===
       if (currentState?.mode === 'flow' && currentState.flowId && currentState.waitingNodeId) {
+        // トリガー優先: フロー待機中でも別のフローのトリガーに一致すれば現在のフローを中断
+        const keywordFlowsForOverride = await getActiveFlows('keyword');
+        const overrideFlow = keywordFlowsForOverride.find(f =>
+          f.triggerValue?.toLowerCase() === messageText.toLowerCase()
+        );
+        if (overrideFlow && overrideFlow.id !== currentState.flowId) {
+          console.log('🔄 フロー中断 → トリガー優先:', messageText, '→', overrideFlow.name);
+          await clearConversationState(userId);
+          const lang = await getUserLang(userId);
+          try {
+            const result = await flowExecutor.execute(
+              overrideFlow.id, userId, messageText,
+              { lang, replyToken: event.replyToken, service: overrideFlow.service }
+            );
+            if (result.responseMessages && result.responseMessages.length > 0) {
+              await replyMessage(event.replyToken, result.responseMessages);
+            }
+            if (result.shouldWaitForInput && result.waitNodeId) {
+              await saveConversationState(userId, {
+                mode: 'flow', flowId: overrideFlow.id,
+                waitingNodeId: result.waitNodeId, variables: result.variables || {},
+              });
+            }
+            return;
+          } catch (error) {
+            console.error('❌ トリガー優先フロー実行エラー:', error);
+          }
+        }
+
         console.log('🔄 フロー継続:', currentState.flowId, 'ノード:', currentState.waitingNodeId);
         const lang = await getUserLang(userId);
 
