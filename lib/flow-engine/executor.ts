@@ -86,49 +86,64 @@ export class FlowExecutor {
         }
 
         // quick_reply / card ノードから再開する場合、ユーザーの選択に基づいて次のノードを決定
-        if (resumeNode.type === 'quick_reply') {
-          const nextNodeId = resolveQuickReplyChoice(
-            resumeNode,
-            userMessage,
-            flow.flowDefinition.edges
-          );
-
-          if (!nextNodeId) {
-            // マッチしない入力 → 同じノードに留まって再入力を促す
+        if (resumeNode.type === 'quick_reply' || resumeNode.type === 'card') {
+          // 離脱確認の応答を先にチェック
+          if (userMessage === '続ける') {
+            // 同じノードを再実行 → 元のクイックリプライ/カードを再送
+            startNodeId = resumeFromNodeId;
+          } else if (userMessage === '終了する') {
+            // フロー終了
+            console.log('🛑 ユーザーがフローを終了しました');
             return {
               success: true,
               handled: true,
-              responseMessages: [{ type: 'text', text: '選択肢から選んでください。' }],
-              shouldWaitForInput: true,
-              waitNodeId: resumeFromNodeId,
-              variables: context.variables,
+              responseMessages: [{ type: 'text', text: 'フローを終了しました。' }],
+              // waitNodeId なし → フロー終了（event.ts側でconversationState がクリアされる）
             };
+          } else {
+            // 選択肢のマッチングを試行
+            let nextNodeId: string | undefined;
+
+            if (resumeNode.type === 'quick_reply') {
+              nextNodeId = resolveQuickReplyChoice(
+                resumeNode,
+                userMessage,
+                flow.flowDefinition.edges
+              );
+            } else {
+              const selectedCardId = context.variables?._selectedCardId as string | undefined;
+              nextNodeId = resolveCardChoice(
+                resumeNode,
+                userMessage,
+                flow.flowDefinition.edges,
+                flow.flowDefinition.nodes,
+                selectedCardId
+              );
+            }
+
+            if (nextNodeId) {
+              startNodeId = nextNodeId;
+            } else {
+              // マッチしない入力 → 離脱確認メッセージを送信
+              return {
+                success: true,
+                handled: true,
+                responseMessages: [{
+                  type: 'text',
+                  text: '選択肢以外が入力されました。フローを終了しますか？',
+                  quickReply: {
+                    items: [
+                      { type: 'action', action: { type: 'message', label: '続ける', text: '続ける' } },
+                      { type: 'action', action: { type: 'message', label: '終了する', text: '終了する' } },
+                    ],
+                  },
+                }],
+                shouldWaitForInput: true,
+                waitNodeId: resumeFromNodeId,
+                variables: context.variables,
+              };
+            }
           }
-
-          startNodeId = nextNodeId;
-        } else if (resumeNode.type === 'card') {
-          const selectedCardId = context.variables?._selectedCardId as string | undefined;
-          const nextNodeId = resolveCardChoice(
-            resumeNode,
-            userMessage,
-            flow.flowDefinition.edges,
-            flow.flowDefinition.nodes,
-            selectedCardId
-          );
-
-          if (!nextNodeId) {
-            // マッチしない入力 → 同じノードに留まって再入力を促す
-            return {
-              success: true,
-              handled: true,
-              responseMessages: [{ type: 'text', text: 'ボタンから選択してください。' }],
-              shouldWaitForInput: true,
-              waitNodeId: resumeFromNodeId,
-              variables: context.variables,
-            };
-          }
-
-          startNodeId = nextNodeId;
         } else {
           startNodeId = resumeFromNodeId;
         }
