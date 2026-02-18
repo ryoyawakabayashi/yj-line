@@ -2217,57 +2217,119 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   </button>
                 </div>
 
-                {/* 接続されたクイックリプライノード表示 */}
+                {/* 接続された子ノード表示 */}
                 {(() => {
-                  const connectedQRNodes = edges
+                  const connectedNodes = edges
                     .filter((e) => e.source === selectedNode.id)
                     .map((e) => nodes.find((n) => n.id === e.target))
-                    .filter((n): n is Node => !!n && n.data.nodeType === 'quick_reply');
-                  if (connectedQRNodes.length === 0) return null;
-                  return connectedQRNodes.map((qrNode) => {
-                    const qrEdges = (edges as CustomEdge[])
-                      .filter((e) => e.source === qrNode.id)
-                      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-                    return (
-                      <div key={qrNode.id} className="border border-blue-200 rounded-md bg-blue-50 p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="block text-sm font-medium text-blue-800">
-                            接続クイックリプライ
+                    .filter((n): n is Node => !!n);
+                  if (connectedNodes.length === 0) return null;
+
+                  const cardNodes = connectedNodes.filter((n) => n.data.nodeType === 'card');
+                  const qrNodes = connectedNodes.filter((n) => n.data.nodeType === 'quick_reply');
+                  const otherNodes = connectedNodes.filter((n) => n.data.nodeType !== 'card' && n.data.nodeType !== 'quick_reply');
+
+                  return (
+                    <>
+                      {/* カルーセルカード */}
+                      {cardNodes.length > 0 && (
+                        <div className="border border-orange-200 rounded-md bg-orange-50 p-3">
+                          <label className="block text-sm font-medium text-orange-800 mb-2">
+                            接続カード（{cardNodes.length}枚）
                           </label>
-                          <button
-                            onClick={() => {
-                              setSelectedNode(qrNode);
-                            }}
-                            className="text-[10px] text-blue-600 hover:text-blue-800 underline"
-                          >
-                            編集する →
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-blue-600 mb-2">{qrNode.data.label || qrNode.id}</p>
-                        {qrEdges.length > 0 ? (
                           <div className="space-y-1">
-                            {qrEdges.map((edge) => {
-                              const targetNode = nodes.find((n) => n.id === edge.target);
+                            {cardNodes.map((cardNode, idx) => {
+                              const colText = cardNode.data.config?.columns?.[0]?.text;
+                              const text = colText
+                                ? (typeof colText === 'object' ? (colText.ja || '') : colText)
+                                : (typeof cardNode.data.config?.text === 'object' ? (cardNode.data.config.text.ja || '') : (cardNode.data.config?.text || ''));
                               return (
-                                <div key={edge.id} className="flex items-center gap-2 bg-white rounded px-2 py-1 border border-blue-100">
-                                  <span className="text-xs font-medium text-gray-700 truncate">
-                                    {(typeof edge.label === 'string' ? edge.label : '') || '(未設定)'}
+                                <div key={cardNode.id} className="flex items-center gap-2 bg-white rounded px-2 py-1.5 border border-orange-100">
+                                  <span className="text-[10px] text-orange-500 shrink-0">{idx + 1}.</span>
+                                  <span className="text-xs text-gray-700 truncate flex-1">
+                                    {text || cardNode.data.label || '(未設定)'}
                                   </span>
-                                  {targetNode && (
-                                    <span className="text-[10px] text-gray-400 truncate ml-auto">
-                                      → {targetNode.data.label || targetNode.id}
-                                    </span>
-                                  )}
+                                  <button
+                                    onClick={() => setSelectedNode(cardNode)}
+                                    className="text-[10px] text-orange-600 hover:text-orange-800 underline shrink-0"
+                                  >
+                                    編集 →
+                                  </button>
                                 </div>
                               );
                             })}
                           </div>
-                        ) : (
-                          <p className="text-[10px] text-blue-500">選択肢がまだありません</p>
-                        )}
-                      </div>
-                    );
-                  });
+                        </div>
+                      )}
+
+                      {/* クイックリプライ */}
+                      {qrNodes.map((qrNode) => {
+                        const qrEdges = (edges as CustomEdge[])
+                          .filter((e) => e.source === qrNode.id)
+                          .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+                        return (
+                          <div key={qrNode.id} className="border border-blue-200 rounded-md bg-blue-50 p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-sm font-medium text-blue-800">
+                                接続クイックリプライ
+                              </label>
+                              <button
+                                onClick={() => setSelectedNode(qrNode)}
+                                className="text-[10px] text-blue-600 hover:text-blue-800 underline"
+                              >
+                                編集する →
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-blue-600 mb-2">{qrNode.data.label || qrNode.id}</p>
+                            {qrEdges.length > 0 ? (
+                              <div className="space-y-1">
+                                {qrEdges.map((edge) => {
+                                  const targetNode = nodes.find((n) => n.id === edge.target);
+                                  return (
+                                    <div key={edge.id} className="flex items-center gap-2 bg-white rounded px-2 py-1 border border-blue-100">
+                                      <span className="text-xs font-medium text-gray-700 truncate">
+                                        {(typeof edge.label === 'string' ? edge.label : '') || '(未設定)'}
+                                      </span>
+                                      {targetNode && (
+                                        <span className="text-[10px] text-gray-400 truncate ml-auto">
+                                          → {targetNode.data.label || targetNode.id}
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-blue-500">選択肢がまだありません</p>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* その他のノード */}
+                      {otherNodes.map((childNode) => {
+                        const childType = childNode.data.nodeType || '';
+                        const typeBg = childType === 'send_message' ? 'bg-blue-100 text-blue-700 border-blue-200'
+                          : 'bg-gray-100 text-gray-600 border-gray-200';
+                        return (
+                          <div key={childNode.id} className={`border rounded-md p-3 ${typeBg}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium">{getNodeLabel(childType)}</span>
+                                <span className="text-[10px] opacity-70 truncate">{childNode.data.label || childNode.id}</span>
+                              </div>
+                              <button
+                                onClick={() => setSelectedNode(childNode)}
+                                className="text-[10px] underline opacity-70 hover:opacity-100 shrink-0"
+                              >
+                                編集 →
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
                 })()}
               </div>
             )}
@@ -2858,16 +2920,27 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             )}
 
             {/* 直下にノード追加 */}
-            {getSelectedNodeType() !== 'end' && (
-              <div className="mt-4 pt-3 border-t">
-                <label className="block text-xs font-medium text-gray-500 mb-2">直下にノード追加</label>
-                <div className="flex flex-wrap gap-1">
-                  <button onClick={() => addChildNode('send_message')} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition">+ メッセージ</button>
-                  <button onClick={() => addChildNode('quick_reply')} className="px-2 py-1 text-xs bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100 transition">+ クイックリプライ</button>
-                  <button onClick={() => addChildNode('card')} className="px-2 py-1 text-xs bg-orange-50 text-orange-700 rounded hover:bg-orange-100 transition">+ カード</button>
+            {getSelectedNodeType() !== 'end' && (() => {
+              const childOptions = [
+                { type: 'send_message', label: 'メッセージ', bg: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
+                { type: 'quick_reply', label: 'クイックリプライ', bg: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' },
+                { type: 'card', label: 'カード', bg: 'bg-orange-50 text-orange-700 hover:bg-orange-100' },
+              ];
+              const available = childOptions.filter((opt) =>
+                !validateConnection(selectedNode.id, '', opt.type)
+              );
+              if (available.length === 0) return null;
+              return (
+                <div className="mt-4 pt-3 border-t">
+                  <label className="block text-xs font-medium text-gray-500 mb-2">直下にノード追加</label>
+                  <div className="flex flex-wrap gap-1">
+                    {available.map((opt) => (
+                      <button key={opt.type} onClick={() => addChildNode(opt.type)} className={`px-2 py-1 text-xs rounded transition ${opt.bg}`}>+ {opt.label}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 一時保存ボタン */}
             <div className="sticky bottom-0 pt-3 mt-auto -mx-4 px-4 pb-1 bg-white border-t">
