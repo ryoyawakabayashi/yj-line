@@ -34,7 +34,7 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
         type="target"
         position={Position.Top}
         id="top"
-        style={{ background: '#94a3b8', width: 8, height: 8 }}
+        style={{ background: '#94a3b8', width: 12, height: 12 }}
       />
 
       {/* 警告インジケーター */}
@@ -58,7 +58,7 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={{ background: '#94a3b8', width: 8, height: 8 }}
+        style={{ background: '#94a3b8', width: 12, height: 12 }}
       />
     </div>
   );

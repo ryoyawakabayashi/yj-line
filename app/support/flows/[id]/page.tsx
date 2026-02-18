@@ -1959,6 +1959,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             {...(savedViewport ? { defaultViewport: savedViewport } : { defaultViewport: { x: 0, y: 0, zoom: 1 }, fitView: true })}
             zoomOnScroll={false}
             zoomOnPinch
+            connectionRadius={30}
           >
             <Background />
             <Controls />
