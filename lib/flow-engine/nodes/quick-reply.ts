@@ -140,13 +140,9 @@ export function resolveQuickReplyChoice(
     return matchedEdge.target;
   }
 
-  // 完全一致しない場合、最初のエッジをデフォルトとして使用
-  if (outgoingEdges.length > 0) {
-    console.warn(
-      `quick_reply: ユーザーの選択 "${userMessage}" がどのエッジとも一致しませんでした。最初のエッジを使用します。`
-    );
-    return outgoingEdges[0].target;
-  }
-
+  // 一致しない場合 → undefined を返して同じノードに留まる
+  console.log(
+    `quick_reply: ユーザーの入力 "${userMessage}" がどの選択肢とも一致しませんでした。再入力を促します。`
+  );
   return undefined;
 }

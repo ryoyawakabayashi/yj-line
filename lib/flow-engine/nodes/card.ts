@@ -305,13 +305,9 @@ export function resolveCardChoice(
     }
   }
 
-  // 何もマッチしない → 最初のエッジにフォールバック
-  if (ownEdges.length > 0) {
-    console.warn(
-      `card: ユーザーの選択 "${userMessage}" がどのエッジとも一致しませんでした。最初のエッジを使用します。`
-    );
-    return ownEdges[0].target;
-  }
-
+  // 何もマッチしない → undefined を返して同じノードに留まる
+  console.log(
+    `card: ユーザーの入力 "${userMessage}" がどのボタンとも一致しませんでした。再入力を促します。`
+  );
   return undefined;
 }

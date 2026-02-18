@@ -94,10 +94,14 @@ export class FlowExecutor {
           );
 
           if (!nextNodeId) {
+            // マッチしない入力 → 同じノードに留まって再入力を促す
             return {
-              success: false,
-              handled: false,
-              error: 'No matching choice found for quick_reply',
+              success: true,
+              handled: true,
+              responseMessages: [{ type: 'text', text: '選択肢から選んでください。' }],
+              shouldWaitForInput: true,
+              waitNodeId: resumeFromNodeId,
+              variables: context.variables,
             };
           }
 
@@ -113,10 +117,14 @@ export class FlowExecutor {
           );
 
           if (!nextNodeId) {
+            // マッチしない入力 → 同じノードに留まって再入力を促す
             return {
-              success: false,
-              handled: false,
-              error: 'No matching choice found for card',
+              success: true,
+              handled: true,
+              responseMessages: [{ type: 'text', text: 'ボタンから選択してください。' }],
+              shouldWaitForInput: true,
+              waitNodeId: resumeFromNodeId,
+              variables: context.variables,
             };
           }
 
