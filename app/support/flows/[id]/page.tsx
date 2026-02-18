@@ -413,7 +413,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   }, [DRAFT_KEY]);
 
   const LANGS = [
-    { code: 'ja', name: '日本語' },
+    { code: 'ja', name: 'JA' },
     { code: 'en', name: 'EN' },
     { code: 'ko', name: 'KO' },
     { code: 'zh', name: 'ZH' },
