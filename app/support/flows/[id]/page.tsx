@@ -1147,14 +1147,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
 
-    // order を入れ替え
+    // 全兄弟エッジに連番orderを振ってからswap
+    const orderMap = new Map<string, number>();
+    outgoingEdges.forEach((e, i) => orderMap.set(e.id, i));
+    orderMap.set(outgoingEdges[currentIndex].id, targetIndex);
+    orderMap.set(outgoingEdges[targetIndex].id, currentIndex);
+
     const newEdges = edges.map((edge) => {
-      if (edge.id === outgoingEdges[currentIndex].id) {
-        return { ...edge, order: targetIndex };
-      }
-      if (edge.id === outgoingEdges[targetIndex].id) {
-        return { ...edge, order: currentIndex };
-      }
+      const newOrder = orderMap.get(edge.id);
+      if (newOrder !== undefined) return { ...edge, order: newOrder };
       return edge;
     });
 
@@ -2172,7 +2173,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   </div>
                 </div>
 
-                {/* クイックリプライ設定 */}
+                {/* クイックリプライ設定（カード接続時は非表示） */}
+                {!edges.some((e) => e.source === selectedNode.id && nodes.find((n) => n.id === e.target)?.data.nodeType === 'card') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     クイックリプライ（任意）
@@ -2216,6 +2218,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     + アイテム追加
                   </button>
                 </div>
+                )}
 
                 {/* 接続された子ノード表示 */}
                 {(() => {
@@ -2562,13 +2565,17 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         const swapOrder = (idx: number, dir: -1 | 1) => {
                           const targetIdx = idx + dir;
                           if (targetIdx < 0 || targetIdx >= siblingEdges.length) return;
-                          const edgeA = siblingEdges[idx];
-                          const edgeB = siblingEdges[targetIdx];
-                          const orderA = edgeA.order ?? idx;
-                          const orderB = edgeB.order ?? targetIdx;
+                          // 全兄弟エッジに連番orderを振ってからswap
+                          const orderMap = new Map<string, number>();
+                          siblingEdges.forEach((e, i) => orderMap.set(e.id, i));
+                          // swap
+                          const edgeAId = siblingEdges[idx].id;
+                          const edgeBId = siblingEdges[targetIdx].id;
+                          orderMap.set(edgeAId, targetIdx);
+                          orderMap.set(edgeBId, idx);
                           setEdges((eds) => eds.map((e) => {
-                            if (e.id === edgeA.id) return { ...e, order: orderB } as CustomEdge;
-                            if (e.id === edgeB.id) return { ...e, order: orderA } as CustomEdge;
+                            const newOrder = orderMap.get(e.id);
+                            if (newOrder !== undefined) return { ...e, order: newOrder } as CustomEdge;
                             return e;
                           }));
                         };
