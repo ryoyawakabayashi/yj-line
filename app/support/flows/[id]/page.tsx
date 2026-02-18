@@ -31,6 +31,14 @@ const SEND_TEXT_PRESETS = [
   { label: 'サイト(AIトーク経由)', text: 'SITE_MODE_AUTOCHAT' },
 ];
 
+// 変数挿入プリセット
+const VARIABLE_PRESETS = [
+  { label: 'LINE名', variable: '{{user.name}}' },
+  { label: 'ユーザー入力', variable: '{{userMessage}}' },
+  { label: '言語', variable: '{{lang}}' },
+  { label: 'サービス', variable: '{{service}}' },
+];
+
 // カスタムノードタイプ（コンポーネント外で定義して再レンダリング防止）
 const nodeTypes = { flowNode: FlowNode };
 
@@ -68,6 +76,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [expandedSendText, setExpandedSendText] = useState<Record<string, boolean>>({});
+  const activeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isInitializedRef = useRef(false);
   const viewportKey = `flow-viewport-${id}`;
   const [savedViewport, setSavedViewport] = useState<Viewport | null>(null);
@@ -2168,6 +2177,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     ))}
                   </div>
                   <textarea
+                    ref={(el) => { if (el) activeTextareaRef.current = el; }}
                     value={getContentForLang(selectedNode.data.config.content, activeLang)}
                     onChange={(e) =>
                       updateNodeConfig(selectedNode.id, {
@@ -2179,10 +2189,34 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     rows={6}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
                   />
-                  <div className="flex justify-between mt-1">
-                    <p className="text-xs text-gray-500">
-                      変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
-                    </p>
+                  <div className="flex items-center justify-between mt-1 gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      {VARIABLE_PRESETS.map((v) => (
+                        <button
+                          key={v.variable}
+                          type="button"
+                          onClick={() => {
+                            const ta = activeTextareaRef.current;
+                            if (!ta) return;
+                            const start = ta.selectionStart ?? ta.value.length;
+                            const end = ta.selectionEnd ?? start;
+                            const newVal = ta.value.slice(0, start) + v.variable + ta.value.slice(end);
+                            updateNodeConfig(selectedNode.id, {
+                              ...selectedNode.data.config,
+                              content: setContentForLang(selectedNode.data.config.content, activeLang, newVal),
+                            });
+                            requestAnimationFrame(() => {
+                              ta.focus();
+                              const pos = start + v.variable.length;
+                              ta.setSelectionRange(pos, pos);
+                            });
+                          }}
+                          className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 rounded border border-blue-200"
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
                     <CharCount current={getContentForLang(selectedNode.data.config.content, activeLang).length} max={5000} />
                   </div>
                 </div>
@@ -2411,6 +2445,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     ))}
                   </div>
                   <textarea
+                    ref={(el) => { if (el) activeTextareaRef.current = el; }}
                     value={getContentForLang(selectedNode.data.config.message, activeLang)}
                     onChange={(e) =>
                       updateNodeConfig(selectedNode.id, {
@@ -2422,10 +2457,34 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     rows={4}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
-                  <div className="flex justify-between mt-1">
-                    <p className="text-xs text-gray-500">
-                      変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
-                    </p>
+                  <div className="flex items-center justify-between mt-1 gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      {VARIABLE_PRESETS.map((v) => (
+                        <button
+                          key={v.variable}
+                          type="button"
+                          onClick={() => {
+                            const ta = activeTextareaRef.current;
+                            if (!ta) return;
+                            const start = ta.selectionStart ?? ta.value.length;
+                            const end = ta.selectionEnd ?? start;
+                            const newVal = ta.value.slice(0, start) + v.variable + ta.value.slice(end);
+                            updateNodeConfig(selectedNode.id, {
+                              ...selectedNode.data.config,
+                              message: setContentForLang(selectedNode.data.config.message, activeLang, newVal),
+                            });
+                            requestAnimationFrame(() => {
+                              ta.focus();
+                              const pos = start + v.variable.length;
+                              ta.setSelectionRange(pos, pos);
+                            });
+                          }}
+                          className="px-1.5 py-0.5 text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 rounded border border-blue-200"
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
                     <CharCount current={getContentForLang(selectedNode.data.config.message, activeLang).length} max={5000} />
                   </div>
                 </div>
