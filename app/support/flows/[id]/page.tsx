@@ -1794,6 +1794,30 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
+            {/* サービス */}
+            {getSelectedNodeType() !== 'trigger' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  サービス
+                </label>
+                <select
+                  value={selectedNode.data.service || ''}
+                  onChange={(e) => updateNodeService(selectedNode.id, e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  style={
+                    selectedNode.data.service && SERVICE_COLORS[selectedNode.data.service]
+                      ? { borderColor: SERVICE_COLORS[selectedNode.data.service].border, borderWidth: 2 }
+                      : {}
+                  }
+                >
+                  <option value="">なし</option>
+                  <option value="YOLO_JAPAN">YOLO JAPAN</option>
+                  <option value="YOLO_DISCOVER">YOLO DISCOVER</option>
+                  <option value="YOLO_HOME">YOLO HOME</option>
+                </select>
+              </div>
+            )}
+
             {/* メッセージタイプ */}
             {getSelectedNodeType() === 'send_message' && SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
