@@ -1690,12 +1690,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 >
                   + FAQ検索
                 </button>
-                <button
-                  onClick={() => addNode('end')}
-                  className="w-full px-3 py-2 bg-gray-50 text-gray-700 rounded-md text-sm hover:bg-gray-100 transition"
-                >
-                  + 終了
-                </button>
               </div>
             </div>
           </div>
@@ -2509,7 +2503,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   <button onClick={() => addChildNode('send_message')} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition">+ メッセージ</button>
                   <button onClick={() => addChildNode('quick_reply')} className="px-2 py-1 text-xs bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100 transition">+ クイックリプライ</button>
                   <button onClick={() => addChildNode('card')} className="px-2 py-1 text-xs bg-orange-50 text-orange-700 rounded hover:bg-orange-100 transition">+ カード</button>
-                  <button onClick={() => addChildNode('end')} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition">+ 終了</button>
                 </div>
               </div>
             )}
