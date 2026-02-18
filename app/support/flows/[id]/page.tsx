@@ -579,6 +579,43 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setEdges((eds) => [...eds, newEdge]);
   };
 
+  // 選択ノードの直下に子ノードを追加（エッジ付き）
+  const addChildNode = (childType: string) => {
+    if (!selectedNode) return;
+    pushHistory();
+    const parentId = selectedNode.id;
+    const existingEdges = edges.filter((e) => e.source === parentId);
+    const offsetIndex = existingEdges.length;
+    const newNodeId = `${childType}-${Date.now()}`;
+    const label = getNodeLabel(childType);
+    const newNode: Node = {
+      id: newNodeId,
+      type: 'flowNode',
+      position: {
+        x: selectedNode.position.x + 250,
+        y: selectedNode.position.y + offsetIndex * 120,
+      },
+      data: {
+        label,
+        config: getDefaultConfig(childType),
+        nodeType: childType,
+      },
+    };
+
+    const newEdge = {
+      id: `e-${parentId}-${newNodeId}`,
+      source: parentId,
+      target: newNodeId,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+      label,
+    };
+
+    setNodes((nds) => [...nds, newNode]);
+    setEdges((eds) => [...eds, newEdge]);
+    setSelectedNode(newNode);
+  };
+
   // ノード複製
   const duplicateNode = useCallback((node: Node) => {
     pushHistory();
@@ -2461,6 +2498,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             {getSelectedNodeType() === 'end' && (
               <div className="text-sm text-gray-600">
                 終了ノードは設定不要です。フローを終了します。
+              </div>
+            )}
+
+            {/* 直下にノード追加 */}
+            {getSelectedNodeType() !== 'end' && (
+              <div className="mt-4 pt-3 border-t">
+                <label className="block text-xs font-medium text-gray-500 mb-2">直下にノード追加</label>
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => addChildNode('send_message')} className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition">+ メッセージ</button>
+                  <button onClick={() => addChildNode('quick_reply')} className="px-2 py-1 text-xs bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100 transition">+ クイックリプライ</button>
+                  <button onClick={() => addChildNode('card')} className="px-2 py-1 text-xs bg-orange-50 text-orange-700 rounded hover:bg-orange-100 transition">+ カード</button>
+                  <button onClick={() => addChildNode('end')} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition">+ 終了</button>
+                </div>
               </div>
             )}
 
