@@ -2257,7 +2257,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         return (
                         <div className="border border-orange-200 rounded-md bg-orange-50 p-3">
                           <label className="block text-sm font-medium text-orange-800 mb-2">
-                            接続カード（{cardNodes.length}枚）
+                            接続カード {cardNodes.length}/10
                           </label>
                           <div className="space-y-1">
                             {cardEdges.map((edge, idx) => {
