@@ -80,6 +80,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const isInitializedRef = useRef(false);
   const viewportKey = `flow-viewport-${id}`;
   const [savedViewport, setSavedViewport] = useState<Viewport | null>(null);
+  const [remoteUpdateAvailable, setRemoteUpdateAvailable] = useState(false);
+  const lastServerUpdatedAtRef = useRef<string | null>(null);
   // localStorage から保存済みビューポートを復元
   useEffect(() => {
     try {
@@ -514,6 +516,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
         setNodes(loadedNodes);
         setEdges(loadedEdges);
+        // サーバーの更新日時を記録（リモート変更検知用）
+        lastServerUpdatedAtRef.current = flow.updatedAt;
+        setRemoteUpdateAvailable(false);
         // 初期状態をhistoryに保存
         historyRef.current = [{ nodes: loadedNodes, edges: loadedEdges }];
         historyIndexRef.current = 0;
@@ -529,6 +534,32 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       isInitializedRef.current = true;
     }
   };
+
+  // サーバーから強制再読み込み（下書きを無視）
+  const reloadFromServer = useCallback(async () => {
+    clearDraft();
+    setRemoteUpdateAvailable(false);
+    isInitializedRef.current = false;
+    await loadFlow();
+  }, [id]);
+
+  // リモート更新検知ポーリング（30秒ごと）
+  useEffect(() => {
+    if (!id || loading) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/dashboard/flows/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          const serverUpdatedAt = data.flow.updatedAt;
+          if (lastServerUpdatedAtRef.current && serverUpdatedAt !== lastServerUpdatedAtRef.current) {
+            setRemoteUpdateAvailable(true);
+          }
+        }
+      } catch {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [id, loading]);
 
   // 自動一時保存（変更時にdebounce）
   useEffect(() => {
@@ -1566,6 +1597,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       if (res.ok) {
         clearDraft();
+        // サーバーの最新 updatedAt を取得して記録（他ユーザー検知用）
+        try {
+          const freshRes = await fetch(`/api/dashboard/flows/${id}`);
+          if (freshRes.ok) {
+            const freshData = await freshRes.json();
+            lastServerUpdatedAtRef.current = freshData.flow.updatedAt;
+          }
+        } catch {}
+        setRemoteUpdateAvailable(false);
         alert('フローを更新しました');
       } else {
         const error = await res.json();
@@ -1763,6 +1803,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               {compactNodeView ? 'ノード名' : 'メッセージ'}
             </button>
             <button
+              onClick={reloadFromServer}
+              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded transition text-sm"
+              title="サーバーから再読み込み"
+            >
+              ↻
+            </button>
+            <button
               onClick={() => { saveDraft(); alert('一時保存しました'); }}
               className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition text-sm"
             >
@@ -1785,6 +1832,29 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       </header>
+
+      {/* リモート更新通知バナー */}
+      {remoteUpdateAvailable && (
+        <div className="bg-amber-50 border-b border-amber-300 px-6 py-2 flex items-center justify-between">
+          <span className="text-sm text-amber-800">
+            他のユーザーがこのフローを更新しました。最新データを読み込みますか？
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setRemoteUpdateAvailable(false)}
+              className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-200 rounded transition"
+            >
+              閉じる
+            </button>
+            <button
+              onClick={reloadFromServer}
+              className="px-3 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 transition"
+            >
+              再読み込み
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Flow Settings */}
