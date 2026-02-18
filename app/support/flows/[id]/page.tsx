@@ -1692,6 +1692,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
+              onClick={() => setLeftSidebarOpen((v) => !v)}
+              className="p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded transition"
+              title={leftSidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button
               onClick={() => router.push('/support/flows')}
               className="text-gray-500 hover:text-gray-700"
             >
@@ -1899,16 +1908,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             </>
           )}
         </aside>
-
-        {/* Left Sidebar toggle */}
-        <button
-          onClick={() => setLeftSidebarOpen((v) => !v)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white border border-l-0 border-gray-300 rounded-r-md px-1 py-3 text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition shadow-sm"
-          style={{ left: leftSidebarOpen ? '320px' : '0px' }}
-          title={leftSidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
-        >
-          {leftSidebarOpen ? '◀' : '▶'}
-        </button>
 
         {/* Main Canvas */}
         <main className="flex-1 h-full">
@@ -2358,8 +2357,30 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     {(edges as CustomEdge[])
                       .filter((edge) => edge.source === selectedNode.id)
                       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
-                      .map((edge, index, array) => (
+                      .map((edge, index, array) => {
+                        const targetNode = nodes.find((n) => n.id === edge.target);
+                        const targetType = targetNode?.data.nodeType || '';
+                        const typeLabel = getNodeLabel(targetType);
+                        const typeBg = targetType === 'send_message' ? 'bg-blue-100 text-blue-700'
+                          : targetType === 'card' ? 'bg-orange-100 text-orange-700'
+                          : targetType === 'quick_reply' ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-gray-100 text-gray-600';
+                        return (
                         <div key={edge.id} className="bg-gray-50 px-2 py-2 rounded border border-gray-200">
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className={`px-1.5 py-0.5 text-[10px] rounded shrink-0 ${typeBg}`}>
+                              {typeLabel}
+                            </span>
+                            {targetNode && (
+                              <button
+                                onClick={() => setSelectedNode(targetNode)}
+                                className="text-[10px] text-gray-400 hover:text-blue-600 truncate"
+                                title={`${targetNode.data.label || edge.target} を選択`}
+                              >
+                                → {targetNode.data.label || edge.target}
+                              </button>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mb-1">
                             <input
                               type="text"
@@ -2427,7 +2448,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                             ))}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     {edges.filter((edge) => edge.source === selectedNode.id).length === 0 && (
                       <div className="text-xs text-gray-400">
                         エッジが接続されていません
