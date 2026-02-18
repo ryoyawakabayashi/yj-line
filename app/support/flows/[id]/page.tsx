@@ -120,6 +120,148 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setTimeout(() => { isUndoRedoRef.current = false; }, 0);
   }, [setNodes, setEdges]);
 
+  // ========== フローバリデーション ==========
+  interface FlowWarning {
+    nodeId: string;
+    level: 'error' | 'warning';
+    message: string;
+  }
+
+  const flowWarnings = useMemo<FlowWarning[]>(() => {
+    const warnings: FlowWarning[] = [];
+    for (const node of nodes) {
+      const outgoing = edges.filter((e) => e.source === node.id);
+      const incoming = edges.filter((e) => e.target === node.id);
+      const nodeType = node.data.nodeType;
+      const config = node.data.config || {};
+
+      // send_message: 複数のoutgoing edge (最初のみ実行される)
+      if (nodeType === 'send_message' && outgoing.length > 1) {
+        warnings.push({
+          nodeId: node.id, level: 'error',
+          message: 'メッセージノードから複数のエッジが出ています。最初の接続のみ実行されます。不要な接続を削除してください。',
+        });
+      }
+
+      // send_message: インラインquickReply + quick_replyノード子が同時設定
+      if (nodeType === 'send_message' && config.quickReply?.items?.length > 0) {
+        const hasQRChild = outgoing.some((e) => {
+          const target = nodes.find((n) => n.id === e.target);
+          return target?.data.nodeType === 'quick_reply';
+        });
+        if (hasQRChild) {
+          warnings.push({
+            nodeId: node.id, level: 'warning',
+            message: 'インラインクイックリプライとクイックリプライノードが両方設定されています。どちらか一方にしてください。',
+          });
+        }
+      }
+
+      // quick_reply: 選択肢なし
+      if (nodeType === 'quick_reply' && outgoing.length === 0) {
+        warnings.push({
+          nodeId: node.id, level: 'error',
+          message: 'クイックリプライに選択肢がありません。エッジを追加してください。',
+        });
+      }
+
+      // quick_reply: 14+ 選択肢 (LINE API上限13)
+      if (nodeType === 'quick_reply' && outgoing.length > 13) {
+        warnings.push({
+          nodeId: node.id, level: 'error',
+          message: `クイックリプライは最大13個です（現在${outgoing.length}個）`,
+        });
+      }
+
+      // card (単体モード): ボタンなし
+      if (nodeType === 'card' && (!config.columns || config.columns.length === 0) && outgoing.length === 0) {
+        warnings.push({
+          nodeId: node.id, level: 'error',
+          message: 'カードにボタン（エッジ）がありません。',
+        });
+      }
+
+      // card (単体モード): 5+ ボタン (LINE API上限4)
+      if (nodeType === 'card' && (!config.columns || config.columns.length === 0) && outgoing.length > 4) {
+        warnings.push({
+          nodeId: node.id, level: 'error',
+          message: `カードのボタンは最大4つです（現在${outgoing.length}個）`,
+        });
+      }
+
+      // card (カルーセル): 11+ カラム (LINE API上限10)
+      if (nodeType === 'card' && config.columns && config.columns.length > 10) {
+        warnings.push({
+          nodeId: node.id, level: 'error',
+          message: `カルーセルは最大10枚です（現在${config.columns.length}枚）`,
+        });
+      }
+
+      // card (カルーセル): ボタンなし
+      if (nodeType === 'card' && config.columns && config.columns.length > 0) {
+        const hasAnyButtons = config.columns.some((col: any) => col.buttons && col.buttons.length > 0);
+        if (!hasAnyButtons) {
+          warnings.push({
+            nodeId: node.id, level: 'error',
+            message: 'カルーセルのどのカードにもボタンがありません。',
+          });
+        }
+        // カルーセルの各カラムで4+ボタン (実際はLINEカルーセル制限3だが、コード上はmaxButtonsで制御)
+        for (let i = 0; i < config.columns.length; i++) {
+          const col = config.columns[i];
+          if (col.buttons && col.buttons.length > 3) {
+            warnings.push({
+              nodeId: node.id, level: 'warning',
+              message: `カード${i + 1}のボタンは最大3つです（現在${col.buttons.length}個、3つまで表示されます）`,
+            });
+          }
+        }
+      }
+
+      // 到達不能ノード（trigger以外で incoming なし）
+      if (nodeType !== 'trigger' && incoming.length === 0) {
+        warnings.push({
+          nodeId: node.id, level: 'warning',
+          message: 'このノードはどこからも接続されていません（到達不能）',
+        });
+      }
+    }
+    return warnings;
+  }, [nodes, edges]);
+
+  // 特定ノードの警告を取得
+  const getWarningsForNode = useCallback((nodeId: string) => {
+    return flowWarnings.filter((w) => w.nodeId === nodeId);
+  }, [flowWarnings]);
+
+  // 接続バリデーション: 接続可否を判定しエラーメッセージを返す (nullなら接続OK)
+  const validateConnection = useCallback((sourceId: string, targetId: string, childType?: string): string | null => {
+    const srcNode = nodes.find((n) => n.id === sourceId);
+    if (!srcNode) return null;
+    const srcType = srcNode.data.nodeType;
+    const existingOutgoing = edges.filter((e) => e.source === sourceId);
+
+    // send_message: 既に子がいる場合は接続不可
+    if (srcType === 'send_message' && existingOutgoing.length >= 1) {
+      return 'メッセージノードからは1つのノードにのみ接続できます。既存の接続を削除してから再接続してください。';
+    }
+
+    // quick_reply: 13個以上は接続不可
+    if (srcType === 'quick_reply' && existingOutgoing.length >= 13) {
+      return 'クイックリプライの選択肢は最大13個です（LINE API制限）';
+    }
+
+    // card (単体モード): 4個以上は接続不可
+    if (srcType === 'card') {
+      const config = srcNode.data.config || {};
+      if ((!config.columns || config.columns.length === 0) && existingOutgoing.length >= 4) {
+        return 'カードのボタンは最大4つです（LINE API制限）';
+      }
+    }
+
+    return null;
+  }, [nodes, edges]);
+
   const DRAFT_KEY = `flow-editor-draft-${id}`;
 
   // 下書きデータの型
@@ -353,6 +495,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // エッジ接続時のハンドラー
   const onConnect = useCallback(
     (params: Connection) => {
+      // 接続バリデーション
+      if (params.source) {
+        const error = validateConnection(params.source, params.target || '');
+        if (error) {
+          alert(error);
+          return;
+        }
+      }
+
       pushHistory();
 
       // ノードのY座標に基づいてハンドルを正規化
@@ -406,7 +557,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       // カルーセルは兄弟cardノードの数で自動決定されるため、onConnectでのカラム追加は不要
     },
-    [setEdges, setNodes, nodes, edges]
+    [setEdges, setNodes, nodes, edges, validateConnection]
   );
 
   // ノードクリック時のハンドラー
@@ -582,6 +733,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // 選択ノードの直下に子ノードを追加（エッジ付き）
   const addChildNode = (childType: string) => {
     if (!selectedNode) return;
+    // 接続バリデーション
+    const error = validateConnection(selectedNode.id, '', childType);
+    if (error) {
+      alert(error);
+      return;
+    }
     pushHistory();
     const parentId = selectedNode.id;
     const existingEdges = edges.filter((e) => e.source === parentId);
@@ -1009,6 +1166,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     );
   };
 
+  // 文字数カウンター表示
+  const CharCount = ({ current, max }: { current: number; max: number }) => (
+    <span className={`text-[10px] ${current > max ? 'text-red-500 font-bold' : current > max * 0.8 ? 'text-yellow-600' : 'text-gray-400'}`}>
+      {current}/{max}
+    </span>
+  );
+
   // 多言語コンテンツのヘルパー関数
   const getContentForLang = (content: string | Record<string, string> | undefined, lang: string): string => {
     if (!content) return '';
@@ -1379,11 +1543,18 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         color: colors.text,
       } : undefined;
 
+      // 警告レベル判定
+      const nodeWarnings = getWarningsForNode(node.id);
+      const hasError = nodeWarnings.some((w) => w.level === 'error');
+      const hasWarning = nodeWarnings.some((w) => w.level === 'warning');
+      const warningLevel = hasError ? 'error' : hasWarning ? 'warning' : null;
+
       return {
         ...node,
         data: {
           ...node.data,
           _style: nodeStyle,
+          _warningLevel: warningLevel,
           label: isEditing ? (
             <input
               autoFocus
@@ -1410,7 +1581,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         },
       };
     });
-  }, [nodes, editingNodeId, compactNodeView]);
+  }, [nodes, editingNodeId, compactNodeView, getWarningsForNode]);
 
   // サービス別カラーをエッジに適用（キャンバス上のラベルは非表示）
   const styledEdges = useMemo(() => {
@@ -1788,6 +1959,28 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
+            {/* バリデーション警告 */}
+            {(() => {
+              const warnings = getWarningsForNode(selectedNode.id);
+              if (warnings.length === 0) return null;
+              return (
+                <div className="mb-4 space-y-2">
+                  {warnings.map((w, i) => (
+                    <div
+                      key={i}
+                      className={`px-3 py-2 rounded-md text-xs ${
+                        w.level === 'error'
+                          ? 'bg-red-50 border border-red-200 text-red-700'
+                          : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+                      }`}
+                    >
+                      {w.level === 'error' ? '⚠ ' : '⚡ '}{w.message}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {getSelectedNodeType() === 'trigger' && (
               <div className="text-sm text-gray-600">
                 トリガーノードは設定不要です。フローの開始点として機能します。
@@ -1924,9 +2117,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     rows={6}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
-                  </p>
+                  <div className="flex justify-between mt-1">
+                    <p className="text-xs text-gray-500">
+                      変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
+                    </p>
+                    <CharCount current={getContentForLang(selectedNode.data.config.content, activeLang).length} max={5000} />
+                  </div>
                 </div>
 
                 {/* クイックリプライ設定 */}
@@ -1937,27 +2133,32 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   <p className="text-[10px] text-gray-400 mb-2">メッセージ下部にボタンを表示します。押すとテキストが送信され通常のハンドラーで処理されます。</p>
 
                   {(selectedNode.data.config.quickReply?.items || []).map((item: any, idx: number) => (
-                    <div key={idx} className="flex gap-1 mb-2 items-center min-w-0">
-                      <input
-                        type="text"
-                        value={item.action?.label || ''}
-                        onChange={(e) => updateQuickReplyItem(idx, 'label', e.target.value)}
-                        placeholder="ラベル"
-                        className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs"
-                      />
-                      <input
-                        type="text"
-                        value={item.action?.text || ''}
-                        onChange={(e) => updateQuickReplyItem(idx, 'text', e.target.value)}
-                        placeholder="送信テキスト"
-                        className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs"
-                      />
-                      <button
-                        onClick={() => removeQuickReplyItem(idx)}
-                        className="text-red-400 hover:text-red-600 text-sm px-1"
-                      >
-                        ×
-                      </button>
+                    <div key={idx} className="mb-2">
+                      <div className="flex gap-1 items-center min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <input
+                            type="text"
+                            value={item.action?.label || ''}
+                            onChange={(e) => updateQuickReplyItem(idx, 'label', e.target.value)}
+                            placeholder="ラベル"
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+                          />
+                          <div className="text-right"><CharCount current={(item.action?.label || '').length} max={20} /></div>
+                        </div>
+                        <input
+                          type="text"
+                          value={item.action?.text || ''}
+                          onChange={(e) => updateQuickReplyItem(idx, 'text', e.target.value)}
+                          placeholder="送信テキスト"
+                          className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs"
+                        />
+                        <button
+                          onClick={() => removeQuickReplyItem(idx)}
+                          className="text-red-400 hover:text-red-600 text-sm px-1"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
                   ))}
 
@@ -1968,6 +2169,59 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     + アイテム追加
                   </button>
                 </div>
+
+                {/* 接続されたクイックリプライノード表示 */}
+                {(() => {
+                  const connectedQRNodes = edges
+                    .filter((e) => e.source === selectedNode.id)
+                    .map((e) => nodes.find((n) => n.id === e.target))
+                    .filter((n): n is Node => !!n && n.data.nodeType === 'quick_reply');
+                  if (connectedQRNodes.length === 0) return null;
+                  return connectedQRNodes.map((qrNode) => {
+                    const qrEdges = (edges as CustomEdge[])
+                      .filter((e) => e.source === qrNode.id)
+                      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+                    return (
+                      <div key={qrNode.id} className="border border-blue-200 rounded-md bg-blue-50 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-blue-800">
+                            接続クイックリプライ
+                          </label>
+                          <button
+                            onClick={() => {
+                              setSelectedNode(qrNode);
+                            }}
+                            className="text-[10px] text-blue-600 hover:text-blue-800 underline"
+                          >
+                            編集する →
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-blue-600 mb-2">{qrNode.data.label || qrNode.id}</p>
+                        {qrEdges.length > 0 ? (
+                          <div className="space-y-1">
+                            {qrEdges.map((edge) => {
+                              const targetNode = nodes.find((n) => n.id === edge.target);
+                              return (
+                                <div key={edge.id} className="flex items-center gap-2 bg-white rounded px-2 py-1 border border-blue-100">
+                                  <span className="text-xs font-medium text-gray-700 truncate">
+                                    {(typeof edge.label === 'string' ? edge.label : '') || '(未設定)'}
+                                  </span>
+                                  {targetNode && (
+                                    <span className="text-[10px] text-gray-400 truncate ml-auto">
+                                      → {targetNode.data.label || targetNode.id}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-blue-500">選択肢がまだありません</p>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -2012,9 +2266,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                     rows={4}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
-                  </p>
+                  <div className="flex justify-between mt-1">
+                    <p className="text-xs text-gray-500">
+                      変数を使用できます: {'{{user.name}}'}, {'{{userMessage}}'}
+                    </p>
+                    <CharCount current={getContentForLang(selectedNode.data.config.message, activeLang).length} max={5000} />
+                  </div>
                 </div>
 
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
@@ -2066,6 +2323,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               placeholder={activeLang === 'ja' ? 'ボタンのラベル' : `${activeLang}のラベル`}
                               className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
+                            <CharCount current={getEdgeLabelForLang(edge, activeLang).length} max={20} />
                             <div className="flex gap-1">
                               <button
                                 onClick={() => moveEdgeOrder(edge.id, 'up')}
@@ -2219,9 +2477,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                           type="text"
                           value={typeof col.title === 'object' ? (col.title[activeLang] || col.title.ja || '') : (col.title || '')}
                           onChange={(e) => updateCol({ title: e.target.value })}
-                          placeholder="カードのタイトル（40文字以内）"
+                          placeholder="カードのタイトル"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
+                        <div className="text-right mt-0.5">
+                          <CharCount current={(typeof col.title === 'object' ? (col.title[activeLang] || col.title.ja || '') : (col.title || '')).length} max={40} />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">質問テキスト <span className="text-red-500">*</span></label>
@@ -2232,6 +2493,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                           rows={3}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
+                        <div className="text-right mt-0.5">
+                          <CharCount
+                            current={(typeof col.text === 'object' ? (col.text[activeLang] || col.text.ja || '') : (col.text || '')).length}
+                            max={(col.title || col.imageUrl) ? 60 : (siblingCardCount > 1 ? 120 : 160)}
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">画像（任意）</label>
@@ -2343,6 +2610,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                 placeholder="ラベル"
                                 className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
                               />
+                              <CharCount current={(typeof btn.label === 'object' ? (btn.label[activeLang] || btn.label.ja || '') : (btn.label || '')).length} max={20} />
                               {btn.type !== 'uri' && (
                                 <input
                                   type="text"

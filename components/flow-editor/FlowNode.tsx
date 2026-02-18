@@ -11,14 +11,22 @@ import { Handle, Position, NodeProps } from 'reactflow';
 function FlowNodeComponent({ data, selected }: NodeProps) {
   const nodeType = data.nodeType || '';
   const isMessageNode = nodeType === 'send_message';
+  const warningLevel = data._warningLevel as 'error' | 'warning' | null;
+
+  // 警告レベルに応じたボーダー色
+  const borderClass = selected
+    ? 'border-blue-500 shadow-md'
+    : warningLevel === 'error'
+      ? 'border-red-400'
+      : warningLevel === 'warning'
+        ? 'border-yellow-400'
+        : 'border-gray-300';
 
   return (
     <div
-      className={`px-4 py-2 rounded-md border-2 bg-white text-sm min-w-[120px] ${
+      className={`relative px-4 py-2 rounded-md border-2 bg-white text-sm min-w-[120px] ${
         isMessageNode ? 'text-left max-w-[280px]' : 'text-center'
-      } ${
-        selected ? 'border-blue-500 shadow-md' : 'border-gray-300'
-      }`}
+      } ${borderClass}`}
       style={data._style || undefined}
     >
       {/* 上ハンドル */}
@@ -28,6 +36,17 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
         id="top"
         style={{ background: '#94a3b8', width: 8, height: 8 }}
       />
+
+      {/* 警告インジケーター */}
+      {warningLevel && (
+        <div
+          className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+          style={{ background: warningLevel === 'error' ? '#ef4444' : '#f59e0b' }}
+          title={warningLevel === 'error' ? 'エラーあり' : '警告あり'}
+        >
+          !
+        </div>
+      )}
 
       {/* ラベル（JSX or テキスト） */}
       <div className={isMessageNode ? 'whitespace-pre-wrap break-words' : ''}>
