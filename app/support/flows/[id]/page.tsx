@@ -15,6 +15,7 @@ import ReactFlow, {
   Background,
   MiniMap,
   NodeMouseHandler,
+  Viewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { FlowNode } from '@/components/flow-editor/FlowNode';
@@ -68,6 +69,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [expandedSendText, setExpandedSendText] = useState<Record<string, boolean>>({});
   const isInitializedRef = useRef(false);
+  const viewportKey = `flow-viewport-${id}`;
+  const [savedViewport, setSavedViewport] = useState<Viewport | null>(null);
+  // localStorage から保存済みビューポートを復元
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(viewportKey);
+      if (stored) setSavedViewport(JSON.parse(stored));
+    } catch {}
+  }, [viewportKey]);
   const clipboardRef = useRef<Node | null>(null);
 
   // Undo/Redo 履歴管理
@@ -1928,13 +1938,16 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
             onInit={(instance) => { reactFlowInstance.current = instance; }}
+            onMoveEnd={(_, viewport) => {
+              try { localStorage.setItem(viewportKey, JSON.stringify(viewport)); } catch {}
+            }}
             selectionOnDrag
             selectionMode={SelectionMode.Partial}
             panOnDrag={[1, 2]}
             panOnScroll
             minZoom={0.05}
             maxZoom={2}
-            fitView
+            {...(savedViewport ? { defaultViewport: savedViewport } : { defaultViewport: { x: 0, y: 0, zoom: 1 }, fitView: true })}
             zoomOnScroll={false}
             zoomOnPinch
           >
