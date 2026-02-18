@@ -2235,35 +2235,65 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   return (
                     <>
                       {/* カルーセルカード */}
-                      {cardNodes.length > 0 && (
+                      {cardNodes.length > 0 && (() => {
+                        const cardEdges = (edges as CustomEdge[])
+                          .filter((e) => e.source === selectedNode.id && cardNodes.some((n) => n.id === e.target))
+                          .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+                        const swapCardOrder = (idx: number, dir: -1 | 1) => {
+                          const targetIdx = idx + dir;
+                          if (targetIdx < 0 || targetIdx >= cardEdges.length) return;
+                          const orderMap = new Map<string, number>();
+                          cardEdges.forEach((e, i) => orderMap.set(e.id, i));
+                          orderMap.set(cardEdges[idx].id, targetIdx);
+                          orderMap.set(cardEdges[targetIdx].id, idx);
+                          setEdges((eds) => eds.map((e) => {
+                            const newOrder = orderMap.get(e.id);
+                            if (newOrder !== undefined) return { ...e, order: newOrder } as CustomEdge;
+                            return e;
+                          }));
+                        };
+
+                        return (
                         <div className="border border-orange-200 rounded-md bg-orange-50 p-3">
                           <label className="block text-sm font-medium text-orange-800 mb-2">
                             接続カード（{cardNodes.length}枚）
                           </label>
                           <div className="space-y-1">
-                            {cardNodes.map((cardNode, idx) => {
+                            {cardEdges.map((edge, idx) => {
+                              const cardNode = nodes.find((n) => n.id === edge.target);
+                              if (!cardNode) return null;
                               const colText = cardNode.data.config?.columns?.[0]?.text;
                               const text = colText
                                 ? (typeof colText === 'object' ? (colText.ja || '') : colText)
                                 : (typeof cardNode.data.config?.text === 'object' ? (cardNode.data.config.text.ja || '') : (cardNode.data.config?.text || ''));
                               return (
-                                <div key={cardNode.id} className="flex items-center gap-2 bg-white rounded px-2 py-1.5 border border-orange-100">
+                                <div key={cardNode.id} className="flex items-center gap-1 bg-white rounded px-2 py-1.5 border border-orange-100">
                                   <span className="text-[10px] text-orange-500 shrink-0">{idx + 1}.</span>
-                                  <span className="text-xs text-gray-700 truncate flex-1">
-                                    {text || cardNode.data.label || '(未設定)'}
-                                  </span>
                                   <button
                                     onClick={() => setSelectedNode(cardNode)}
-                                    className="text-[10px] text-orange-600 hover:text-orange-800 underline shrink-0"
+                                    className="text-xs text-gray-700 truncate flex-1 text-left hover:text-orange-700"
+                                    title={`${text || cardNode.data.label || '(未設定)'} を選択`}
                                   >
-                                    編集 →
+                                    {text || cardNode.data.label || '(未設定)'}
                                   </button>
+                                  <button
+                                    onClick={() => swapCardOrder(idx, -1)}
+                                    disabled={idx === 0}
+                                    className="px-1 text-gray-500 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed text-xs"
+                                  >↑</button>
+                                  <button
+                                    onClick={() => swapCardOrder(idx, 1)}
+                                    disabled={idx === cardEdges.length - 1}
+                                    className="px-1 text-gray-500 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed text-xs"
+                                  >↓</button>
                                 </div>
                               );
                             })}
                           </div>
                         </div>
-                      )}
+                        );
+                      })()}
 
                       {/* クイックリプライ */}
                       {qrNodes.map((qrNode) => {
