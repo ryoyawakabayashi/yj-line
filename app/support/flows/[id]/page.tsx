@@ -3075,6 +3075,79 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         </p>
                       </div>
 
+                      {/* クイックリプライ設定 */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-sm font-medium text-gray-700">
+                            クイックリプライ
+                          </label>
+                          <button
+                            onClick={() => {
+                              const items = selectedNode.data.config.quickReplyItems || [];
+                              updateNodeConfig(selectedNode.id, {
+                                ...selectedNode.data.config,
+                                quickReplyItems: [...items, { label: '', text: '', targetNodeId: '' }],
+                              });
+                            }}
+                            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded"
+                          >
+                            + 追加
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-gray-400 mb-2">
+                          カードの下部に表示される小さいボタン。タップすると指定ノードへ遷移します。
+                        </p>
+                        <div className="space-y-2">
+                          {(selectedNode.data.config.quickReplyItems || []).map((item: any, idx: number) => (
+                            <div key={idx} className="bg-blue-50 p-2 rounded border border-blue-200 space-y-1">
+                              <div className="flex gap-1 items-center">
+                                <input
+                                  type="text"
+                                  value={item.label || ''}
+                                  onChange={(e) => {
+                                    const items = [...(selectedNode.data.config.quickReplyItems || [])];
+                                    items[idx] = { ...items[idx], label: e.target.value };
+                                    updateNodeConfig(selectedNode.id, { ...selectedNode.data.config, quickReplyItems: items });
+                                  }}
+                                  placeholder="ラベル（最大20文字）"
+                                  maxLength={20}
+                                  className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-white"
+                                />
+                                <button
+                                  onClick={() => {
+                                    const items = [...(selectedNode.data.config.quickReplyItems || [])];
+                                    items.splice(idx, 1);
+                                    updateNodeConfig(selectedNode.id, { ...selectedNode.data.config, quickReplyItems: items });
+                                  }}
+                                  className="text-red-400 hover:text-red-600 text-sm px-1"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                              <select
+                                value={item.targetNodeId || ''}
+                                onChange={(e) => {
+                                  const items = [...(selectedNode.data.config.quickReplyItems || [])];
+                                  items[idx] = { ...items[idx], targetNodeId: e.target.value };
+                                  updateNodeConfig(selectedNode.id, { ...selectedNode.data.config, quickReplyItems: items });
+                                }}
+                                className="w-full px-2 py-1 text-xs border border-gray-200 rounded bg-white"
+                              >
+                                <option value="">遷移先ノードを選択...</option>
+                                {nodes
+                                  .filter((n) => n.id !== selectedNode.id && (n.data?.nodeType || n.id?.split('-')[0]) !== 'trigger')
+                                  .map((n) => (
+                                    <option key={n.id} value={n.id}>
+                                      {(n.data?.nodeType || n.id?.split('-')[0])} - {(n.data?.config?.content || n.data?.config?.text || n.data?.config?.message || n.id)?.toString().slice(0, 30)}
+                                    </option>
+                                  ))
+                                }
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                       {/* 遷移先エッジ */}
                       <div className="text-sm text-gray-600">
                         <div className="flex items-center justify-between mb-2">

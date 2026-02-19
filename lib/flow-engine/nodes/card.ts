@@ -90,10 +90,26 @@ export class CardHandler implements NodeHandler {
       template.imageSize = 'cover';
     }
 
+    const message: any = { type: 'template', altText: title || text, template };
+
+    // クイックリプライが設定されている場合、メッセージに付与
+    if (config.quickReplyItems && config.quickReplyItems.length > 0) {
+      message.quickReply = {
+        items: config.quickReplyItems.map((item) => ({
+          type: 'action',
+          action: {
+            type: 'message',
+            label: (item.label || '').slice(0, 20) || '選択',
+            text: item.text || item.label,
+          },
+        })),
+      };
+    }
+
     return {
       success: true,
       shouldWaitForInput: true,
-      responseMessages: [{ type: 'template', altText: title || text, template }],
+      responseMessages: [message],
     };
   }
 
@@ -210,17 +226,33 @@ export class CardHandler implements NodeHandler {
 
     const altText = carouselColumns[0]?.title || carouselColumns[0]?.text || 'カード';
 
+    const message: any = {
+      type: 'template',
+      altText,
+      template: {
+        type: 'carousel',
+        columns: carouselColumns,
+      },
+    };
+
+    // クイックリプライが設定されている場合、メッセージに付与
+    if (config.quickReplyItems && config.quickReplyItems.length > 0) {
+      message.quickReply = {
+        items: config.quickReplyItems.map((item) => ({
+          type: 'action',
+          action: {
+            type: 'message',
+            label: (item.label || '').slice(0, 20) || '選択',
+            text: item.text || item.label,
+          },
+        })),
+      };
+    }
+
     return {
       success: true,
       shouldWaitForInput: true,
-      responseMessages: [{
-        type: 'template',
-        altText,
-        template: {
-          type: 'carousel',
-          columns: carouselColumns,
-        },
-      }],
+      responseMessages: [message],
     };
   }
 }
@@ -306,6 +338,18 @@ export function resolveCardChoice(
     }
     if (allButtonTexts.has(userMessage)) {
       if (ownEdges.length > 0) return ownEdges[0].target;
+    }
+  }
+
+  // --- クイックリプライアイテムでのマッチング ---
+  if (config.quickReplyItems && config.quickReplyItems.length > 0) {
+    const qrMatch = config.quickReplyItems.find((item) => {
+      const itemText = item.text || item.label;
+      return itemText === userMessage || item.label === userMessage;
+    });
+    if (qrMatch?.targetNodeId) {
+      console.log(`card: quickReplyアイテム "${userMessage}" にマッチ → ${qrMatch.targetNodeId}`);
+      return qrMatch.targetNodeId;
     }
   }
 

@@ -171,4 +171,10 @@ export interface CardConfig {
   delayAfter?: number;  // 送信前の遅延秒数（1〜30秒）。前のメッセージ送信後、この秒数待ってから表示
   // --- カルーセルモード（columns配列がある場合はこちらを優先） ---
   columns?: CardColumn[];                      // 複数枚カード（最大10枚）
+  // --- クイックリプライ（カードの下部に表示される小さいボタン） ---
+  quickReplyItems?: Array<{
+    label: string;                              // ボタン表示テキスト（最大20文字）
+    text?: string;                              // タップ時に送信されるテキスト（省略時はlabelと同じ）
+    targetNodeId: string;                       // 選択時の遷移先ノードID
+  }>;
 }

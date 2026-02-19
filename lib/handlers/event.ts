@@ -78,6 +78,8 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                 const maxSteps = 20;
                 let step = 0;
                 let chainPendingDelay = 0;  // 遅延送信用
+                let chainWaitingNodeId: string | undefined;  // チェーン内で入力待ちになったノード
+                let chainEnded = false;  // フロー終了フラグ
 
                 while (currentNodeId && step < maxSteps) {
                   step++;
@@ -162,6 +164,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                         messages.push(...result.responseMessages);
                       }
                     }
+                    chainWaitingNodeId = node.id;
                     break; // cardは入力待ちなので停止
                   } else if (node.type === 'quick_reply') {
                     // quick_reply delay処理
@@ -187,8 +190,10 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                         messages.push(...qrResult.responseMessages);
                       }
                     }
+                    chainWaitingNodeId = node.id;
                     break; // quick_replyは入力待ちなので停止
                   } else if (node.type === 'end') {
+                    chainEnded = true;
                     break;
                   } else {
                     console.log('🔗 チェーン: 未対応ノードタイプ:', node.type, '→ 次へ');
@@ -197,9 +202,24 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                   }
                 }
 
-                console.log('🔗 チェーン完了: メッセージ数:', messages.length);
+                console.log('🔗 チェーン完了: メッセージ数:', messages.length, 'waitingNode:', chainWaitingNodeId || 'なし');
                 if (messages.length > 0) {
                   await pushMessage(userId, messages);
+                }
+
+                // チェーンで入力待ちノードに到達した場合、会話状態を更新
+                if (chainWaitingNodeId) {
+                  await saveConversationState(userId, {
+                    mode: 'flow',
+                    flowId: currentState.flowId,
+                    waitingNodeId: chainWaitingNodeId,
+                    variables: context.variables || {},
+                  });
+                  console.log('💾 card_choiceチェーン: 会話状態を更新 →', chainWaitingNodeId);
+                } else if (chainEnded) {
+                  // endノードに到達した場合、フロー状態をクリア
+                  await clearConversationState(userId);
+                  console.log('✅ card_choiceチェーン: フロー終了、状態クリア');
                 }
               } else {
                 console.log('⚠️ card_choice: cardId からのエッジが見つかりません:', cardId);
