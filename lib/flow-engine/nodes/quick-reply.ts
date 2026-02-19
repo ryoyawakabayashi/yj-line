@@ -13,6 +13,14 @@ import {
 import { expandVariables } from '../utils';
 import { processUrlsInText, UrlSourceType } from '@/lib/tracking/url-processor';
 
+const FALLBACK_SELECT: Record<string, string> = {
+  ja: '選択してください',
+  en: 'Please select',
+  ko: '선택해 주세요',
+  zh: '请选择',
+  vi: 'Vui lòng chọn',
+};
+
 /**
  * quick_reply ノードハンドラークラス
  */
@@ -57,7 +65,7 @@ export class QuickReplyHandler implements NodeHandler {
 
     // LINE APIはtextが空だと400エラーになるためフォールバック
     if (!message.trim()) {
-      message = '選択してください';
+      message = FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja;
     }
 
     // クイックリプライアイテムを作成（多言語対応）

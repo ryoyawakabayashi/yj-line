@@ -120,9 +120,16 @@ export async function startDiagnosisMode(
   const questionObj = getQuestion(currentQuestion, lang);
 
   if (!questionObj) {
+    const errorMessages: Record<string, string> = {
+      ja: '申し訳ございません。エラーが発生しました。',
+      en: 'Sorry, an error occurred.',
+      ko: '죄송합니다. 오류가 발생했습니다.',
+      zh: '抱歉，发生了错误。',
+      vi: 'Xin lỗi, đã xảy ra lỗi.',
+    };
     await replyMessage(replyToken, {
       type: 'text',
-      text: '申し訳ございません。エラーが発生しました。',
+      text: errorMessages[lang] || errorMessages.ja,
     });
     return;
   }
@@ -349,9 +356,16 @@ async function askQuestion(
   const question = getQuestion(currentQ!, lang);
 
   if (!question) {
+    const retryMessages: Record<string, string> = {
+      ja: 'エラーが発生しました。もう一度お試しください。',
+      en: 'An error occurred. Please try again.',
+      ko: '오류가 발생했습니다. 다시 시도해 주세요.',
+      zh: '发生错误，请重试。',
+      vi: 'Đã xảy ra lỗi. Vui lòng thử lại.',
+    };
     await replyMessage(replyToken, {
       type: 'text',
-      text: 'エラーが発生しました。もう一度お試しください。',
+      text: retryMessages[lang] || retryMessages.ja,
     });
     return;
   }

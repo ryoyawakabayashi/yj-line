@@ -1372,61 +1372,194 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   };
 
   // 一括翻訳
+  // --- 翻訳ヘルパー ---
+
+  /** 原文（標準日本語）を取得。_source > ja > 文字列の優先順 */
+  const getSourceJa = (value: string | Record<string, string> | undefined): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return value._source || value.ja || '';
+  };
+
+  /** 翻訳結果を _source 付きの多言語オブジェクトに変換 */
+  const makeLangObj = (t: any, originalJa: string) => ({
+    _source: originalJa, ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi,
+  });
+
+  /** テキスト収集用の型 */
+  type TextSource = { type: string; id: string; originalJa: string; btnIdx?: number };
+
+  /** 指定ノード群からテキストとソースを収集（locked ノードはスキップ） */
+  const collectTexts = (targetNodes: Node[], targetEdges: typeof edges, skipLocked: boolean) => {
+    const texts: string[] = [];
+    const sources: TextSource[] = [];
+
+    targetNodes.forEach((node) => {
+      if (skipLocked && node.data.translationLocked) return;
+      const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
+
+      if (nodeType === 'send_message') {
+        const ja = getSourceJa(node.data.config.content);
+        if (ja) { texts.push(ja); sources.push({ type: 'node_content', id: node.id, originalJa: ja }); }
+      }
+      if (nodeType === 'quick_reply') {
+        const ja = getSourceJa(node.data.config.message);
+        if (ja) { texts.push(ja); sources.push({ type: 'node_message', id: node.id, originalJa: ja }); }
+      }
+      if (nodeType === 'card') {
+        const col = node.data.config.columns?.[0];
+        const cardText = getSourceJa(col?.text ?? node.data.config.text);
+        if (cardText) { texts.push(cardText); sources.push({ type: 'node_card_text', id: node.id, originalJa: cardText }); }
+        const cardTitle = getSourceJa(col?.title ?? node.data.config.title);
+        if (cardTitle) { texts.push(cardTitle); sources.push({ type: 'node_card_title', id: node.id, originalJa: cardTitle }); }
+        // カードボタンラベル
+        const buttons = col?.buttons || [];
+        buttons.forEach((btn: any, idx: number) => {
+          const ja = getSourceJa(btn.label);
+          if (ja) { texts.push(ja); sources.push({ type: 'node_card_btn', id: node.id, originalJa: ja, btnIdx: idx }); }
+        });
+      }
+    });
+
+    targetEdges.forEach((edge) => {
+      if (skipLocked) {
+        const srcNode = targetNodes.find((n) => n.id === edge.source);
+        if (srcNode?.data?.translationLocked) return;
+      }
+      const label = (edge as any).labels?._source || (edge.label as string);
+      if (label) { texts.push(label); sources.push({ type: 'edge_label', id: edge.id, originalJa: label }); }
+      const text = (edge as any).texts?._source || (edge as any).text;
+      if (text) { texts.push(text); sources.push({ type: 'edge_text', id: edge.id, originalJa: text }); }
+    });
+
+    return { texts, sources };
+  };
+
+  /** 翻訳結果をノード・エッジに適用 */
+  const applyTranslations = (
+    translations: any[],
+    sources: TextSource[],
+    nodeIds?: Set<string>,
+  ) => {
+    const translatedNodeIds = new Set<string>();
+
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => {
+        let updatedConfig = { ...node.data.config };
+        let changed = false;
+
+        const apply = (type: string, configKey: string) => {
+          const s = sources.find((s) => s.id === node.id && s.type === type);
+          if (!s) return;
+          const t = translations[sources.indexOf(s)];
+          if (!t) return;
+          updatedConfig[configKey] = makeLangObj(t, s.originalJa);
+          changed = true;
+        };
+
+        apply('node_content', 'content');
+        apply('node_message', 'message');
+
+        // card text / title（columns[0] 構造に対応）
+        const cardTextS = sources.find((s) => s.id === node.id && s.type === 'node_card_text');
+        const cardTitleS = sources.find((s) => s.id === node.id && s.type === 'node_card_title');
+        const cardBtnSources = sources.filter((s) => s.id === node.id && s.type === 'node_card_btn');
+
+        if (cardTextS || cardTitleS || cardBtnSources.length > 0) {
+          const col = { ...(updatedConfig.columns?.[0] || { title: updatedConfig.title || '', text: updatedConfig.text || '', imageUrl: updatedConfig.imageUrl || '', buttons: updatedConfig.buttons || [] }) };
+          if (cardTextS) {
+            const t = translations[sources.indexOf(cardTextS)];
+            if (t) { col.text = makeLangObj(t, cardTextS.originalJa); changed = true; }
+          }
+          if (cardTitleS) {
+            const t = translations[sources.indexOf(cardTitleS)];
+            if (t) { col.title = makeLangObj(t, cardTitleS.originalJa); changed = true; }
+          }
+          cardBtnSources.forEach((s) => {
+            const t = translations[sources.indexOf(s)];
+            if (!t || s.btnIdx === undefined) return;
+            const btns = [...(col.buttons || [])];
+            if (btns[s.btnIdx]) {
+              btns[s.btnIdx] = { ...btns[s.btnIdx], label: makeLangObj(t, s.originalJa) };
+              col.buttons = btns;
+              changed = true;
+            }
+          });
+          updatedConfig.columns = [col];
+        }
+
+        if (!changed) return node;
+        translatedNodeIds.add(node.id);
+        return { ...node, data: { ...node.data, config: updatedConfig, translationLocked: true } };
+      })
+    );
+
+    setEdges((prevEdges) =>
+      prevEdges.map((edge) => {
+        let updated: any = { ...edge };
+        let changed = false;
+
+        const labelS = sources.find((s) => s.id === edge.id && s.type === 'edge_label');
+        if (labelS) {
+          const t = translations[sources.indexOf(labelS)];
+          if (t) {
+            updated.label = t.ja; // ja（やさしい日本語）をメインラベルに
+            updated.labels = makeLangObj(t, labelS.originalJa);
+            changed = true;
+          }
+        }
+        const textS = sources.find((s) => s.id === edge.id && s.type === 'edge_text');
+        if (textS) {
+          const t = translations[sources.indexOf(textS)];
+          if (t) {
+            updated.text = t.ja;
+            updated.texts = makeLangObj(t, textS.originalJa);
+            changed = true;
+          }
+        }
+
+        return changed ? updated : edge;
+      })
+    );
+
+    // selectedNode も更新
+    if (selectedNode && translatedNodeIds.has(selectedNode.id)) {
+      const updatedNode = nodes.find((n) => n.id === selectedNode.id);
+      // nodes はまだ setState 前なので sources から再構築
+      let updatedConfig = { ...selectedNode.data.config };
+      for (const s of sources.filter((s) => s.id === selectedNode.id)) {
+        const t = translations[sources.indexOf(s)];
+        if (!t) continue;
+        const val = makeLangObj(t, s.originalJa);
+        if (s.type === 'node_content') updatedConfig.content = val;
+        else if (s.type === 'node_message') updatedConfig.message = val;
+        else if (s.type === 'node_card_text') {
+          const col = { ...(updatedConfig.columns?.[0] || {}) };
+          col.text = val;
+          updatedConfig.columns = [col];
+        } else if (s.type === 'node_card_title') {
+          const col = { ...(updatedConfig.columns?.[0] || {}) };
+          col.title = val;
+          updatedConfig.columns = [col];
+        }
+      }
+      setSelectedNode({
+        ...selectedNode,
+        data: { ...selectedNode.data, config: updatedConfig, translationLocked: true },
+      });
+    }
+
+    return translatedNodeIds;
+  };
+
+  // --- 一括翻訳 ---
   const handleTranslateAll = async () => {
     setTranslating(true);
     try {
-      const texts: string[] = [];
-      const textSources: Array<{ type: string; id: string }> = [];
-
-      nodes.forEach((node) => {
-        const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
-        if (nodeType === 'send_message') {
-          const content = typeof node.data.config.content === 'object'
-            ? node.data.config.content.ja
-            : node.data.config.content;
-          if (content) {
-            texts.push(content);
-            textSources.push({ type: 'node_content', id: node.id });
-          }
-        }
-        if (nodeType === 'quick_reply') {
-          const message = typeof node.data.config.message === 'object'
-            ? node.data.config.message.ja
-            : node.data.config.message;
-          if (message) {
-            texts.push(message);
-            textSources.push({ type: 'node_message', id: node.id });
-          }
-        }
-        if (nodeType === 'card') {
-          const cardText = typeof node.data.config.text === 'object'
-            ? node.data.config.text.ja
-            : node.data.config.text;
-          if (cardText) {
-            texts.push(cardText);
-            textSources.push({ type: 'node_card_text', id: node.id });
-          }
-          if (node.data.config.title) {
-            const cardTitle = typeof node.data.config.title === 'object'
-              ? node.data.config.title.ja
-              : node.data.config.title;
-            if (cardTitle) {
-              texts.push(cardTitle);
-              textSources.push({ type: 'node_card_title', id: node.id });
-            }
-          }
-        }
-      });
-
-      edges.forEach((edge) => {
-        if (edge.label) {
-          texts.push(edge.label as string);
-          textSources.push({ type: 'edge_label', id: edge.id });
-        }
-      });
+      const { texts, sources } = collectTexts(nodes, edges, true);
 
       if (texts.length === 0) {
-        alert('翻訳対象のテキストがありません');
+        alert('翻訳対象のテキストがありません（ロック済みノードはスキップ）');
         setTranslating(false);
         return;
       }
@@ -1439,77 +1572,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
       if (!res.ok) throw new Error('Translation API failed');
       const data = await res.json();
-      const translations = data.translations;
-
-      setNodes((prevNodes) =>
-        prevNodes.map((node) => {
-          let updatedConfig = { ...node.data.config };
-          let changed = false;
-
-          // send_message content
-          const contentSource = textSources.find((s) => s.id === node.id && s.type === 'node_content');
-          if (contentSource) {
-            const t = translations[textSources.indexOf(contentSource)];
-            if (t) { updatedConfig.content = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
-          }
-          // quick_reply message
-          const msgSource = textSources.find((s) => s.id === node.id && s.type === 'node_message');
-          if (msgSource) {
-            const t = translations[textSources.indexOf(msgSource)];
-            if (t) { updatedConfig.message = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
-          }
-          // card text
-          const cardTextSource = textSources.find((s) => s.id === node.id && s.type === 'node_card_text');
-          if (cardTextSource) {
-            const t = translations[textSources.indexOf(cardTextSource)];
-            if (t) { updatedConfig.text = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
-          }
-          // card title
-          const cardTitleSource = textSources.find((s) => s.id === node.id && s.type === 'node_card_title');
-          if (cardTitleSource) {
-            const t = translations[textSources.indexOf(cardTitleSource)];
-            if (t) { updatedConfig.title = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi }; changed = true; }
-          }
-
-          if (!changed) return node;
-          return { ...node, data: { ...node.data, config: updatedConfig } };
-        })
-      );
-
-      setEdges((prevEdges) =>
-        prevEdges.map((edge) => {
-          const source = textSources.find((s) => s.id === edge.id && s.type === 'edge_label');
-          if (!source) return edge;
-          const idx = textSources.indexOf(source);
-          const t = translations[idx];
-          if (!t) return edge;
-          return {
-            ...edge,
-            labels: { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi },
-          };
-        })
-      );
-
-      // selectedNode も更新
-      if (selectedNode) {
-        const sources = textSources.filter((s) => s.id === selectedNode.id);
-        if (sources.length > 0) {
-          let updatedConfig = { ...selectedNode.data.config };
-          for (const source of sources) {
-            const t = translations[textSources.indexOf(source)];
-            if (!t) continue;
-            const val = { ja: t.ja, en: t.en, ko: t.ko, zh: t.zh, vi: t.vi };
-            if (source.type === 'node_content') updatedConfig.content = val;
-            else if (source.type === 'node_message') updatedConfig.message = val;
-            else if (source.type === 'node_card_text') updatedConfig.text = val;
-            else if (source.type === 'node_card_title') updatedConfig.title = val;
-          }
-          setSelectedNode({
-            ...selectedNode,
-            data: { ...selectedNode.data, config: updatedConfig },
-          });
-        }
-      }
+      applyTranslations(data.translations, sources);
 
       alert(`${texts.length}件のテキストを翻訳しました`);
     } catch (error) {
@@ -1517,6 +1580,42 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       alert('翻訳に失敗しました');
     } finally {
       setTranslating(false);
+    }
+  };
+
+  // --- 個別ノード翻訳 ---
+  const [translatingNodeId, setTranslatingNodeId] = useState<string | null>(null);
+
+  const handleTranslateNode = async (nodeId: string) => {
+    setTranslatingNodeId(nodeId);
+    try {
+      const targetNode = nodes.find((n) => n.id === nodeId);
+      if (!targetNode) return;
+
+      const outgoingEdges = edges.filter((e) => e.source === nodeId);
+      const { texts, sources } = collectTexts([targetNode], outgoingEdges, false);
+
+      if (texts.length === 0) {
+        alert('翻訳対象のテキストがありません');
+        return;
+      }
+
+      const res = await fetch('/api/dashboard/flows/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts }),
+      });
+
+      if (!res.ok) throw new Error('Translation API failed');
+      const data = await res.json();
+      applyTranslations(data.translations, sources);
+
+      alert(`${texts.length}件のテキストを翻訳しました`);
+    } catch (error) {
+      console.error('翻訳エラー:', error);
+      alert('翻訳に失敗しました');
+    } finally {
+      setTranslatingNodeId(null);
     }
   };
 
@@ -1553,6 +1652,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           data: {
             label: node.data.label,
             ...(node.data.service ? { service: node.data.service } : {}),
+            ...(node.data.translationLocked ? { translationLocked: true } : {}),
             config: node.data.config,
           },
         })),
@@ -2122,6 +2222,38 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 </div>
               );
             })()}
+
+            {/* 翻訳ロック表示 + 個別翻訳ボタン */}
+            {['send_message', 'quick_reply', 'card'].includes(getSelectedNodeType()) && (
+              <div className="mb-4 space-y-2">
+                {selectedNode.data.translationLocked ? (
+                  <div className="flex items-center justify-between px-3 py-2 bg-green-50 border border-green-200 rounded-md">
+                    <span className="text-xs text-green-700">🔒 翻訳済み（一括翻訳でスキップ）</span>
+                    <button
+                      onClick={() => {
+                        pushHistory();
+                        const nodeId = selectedNode.id;
+                        setNodes((nds) => nds.map((n) =>
+                          n.id === nodeId ? { ...n, data: { ...n.data, translationLocked: false } } : n
+                        ));
+                        setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, translationLocked: false } });
+                      }}
+                      className="text-xs text-green-600 hover:text-green-800 hover:underline"
+                    >
+                      ロック解除
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleTranslateNode(selectedNode.id)}
+                    disabled={translatingNodeId === selectedNode.id}
+                    className="w-full px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:opacity-50"
+                  >
+                    {translatingNodeId === selectedNode.id ? '翻訳中...' : '🌐 5言語変換'}
+                  </button>
+                )}
+              </div>
+            )}
 
             {getSelectedNodeType() === 'trigger' && (
               <div className="text-sm text-gray-600">

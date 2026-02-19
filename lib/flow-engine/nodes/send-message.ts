@@ -13,6 +13,10 @@ import { FlowNode, FlowEdge } from '@/lib/database/flow-queries';
 import { expandVariables, createTextMessage } from '../utils';
 import { processUrlsInText, UrlSourceType } from '@/lib/tracking/url-processor';
 
+const FALLBACK_ALT_TEXT: Record<string, string> = {
+  ja: 'メッセージ', en: 'Message', ko: '메시지', zh: '消息', vi: 'Tin nhắn',
+};
+
 /**
  * send_message ノードハンドラー
  * ユーザーにメッセージを送信する
@@ -62,7 +66,7 @@ export class SendMessageHandler implements NodeHandler {
             const flexContent = JSON.parse(expandedContent);
             message = {
               type: 'flex',
-              altText: 'メッセージ',
+              altText: FALLBACK_ALT_TEXT[context.lang] || FALLBACK_ALT_TEXT.ja,
               contents: flexContent,
             };
           } catch (e) {
@@ -77,7 +81,7 @@ export class SendMessageHandler implements NodeHandler {
             const templateContent = JSON.parse(expandedContent);
             message = {
               type: 'template',
-              altText: 'メッセージ',
+              altText: FALLBACK_ALT_TEXT[context.lang] || FALLBACK_ALT_TEXT.ja,
               template: templateContent,
             };
           } catch (e) {

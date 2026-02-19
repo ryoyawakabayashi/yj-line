@@ -48,6 +48,16 @@ function FlowNodeComponent({ data, selected }: NodeProps) {
         </div>
       )}
 
+      {/* 翻訳ロックインジケーター */}
+      {data.translationLocked && (
+        <div
+          className="absolute -top-2 -left-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] bg-green-500"
+          title="翻訳済み"
+        >
+          🔒
+        </div>
+      )}
+
       {/* ラベル（JSX or テキスト） */}
       <div className={isMessageNode ? 'whitespace-pre-wrap break-words' : ''}>
         {data.label || data.nodeType || 'ノード'}

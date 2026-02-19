@@ -1,0 +1,1979 @@
+{
+  "startNodeId": "quick_reply-1771313825564",
+  "nodes": [
+    {
+      "id": "send_message-5",
+      "type": "flowNode",
+      "position": {
+        "x": -6095.299591843321,
+        "y": 894.979879867218
+      },
+      "data": {
+        "label": "「仕事」に関する質問です。\n以下から選んでください。",
+        "config": {
+          "content": "「仕事」に関する質問です。\n以下から選んでください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message",
+        "sendText": "仕事について"
+      }
+    },
+    {
+      "id": "send_message-9",
+      "type": "flowNode",
+      "position": {
+        "x": -3903.3209790365922,
+        "y": 2140.874145102475
+      },
+      "data": {
+        "label": "「登録・アカウント」に関する質問です。\n以下から選んでください。",
+        "config": {
+          "content": "「登録・アカウント」に関する質問です。\n以下から選んでください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message",
+        "sendText": "登録・アカウントについて"
+      }
+    },
+    {
+      "id": "send_message-11",
+      "type": "flowNode",
+      "position": {
+        "x": -5562.891650962059,
+        "y": 2514.568159724011
+      },
+      "data": {
+        "label": "恐れ入りますが、現在在留カードの更新や支援は行っておりません。\n在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html\nに相談してください。",
+        "config": {
+          "content": "恐れ入りますが、現在在留カードの更新や支援は行っておりません。\n在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html\nに相談してください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-13",
+      "type": "flowNode",
+      "position": {
+        "x": -4943.367820475869,
+        "y": 994.698502808785
+      },
+      "data": {
+        "label": "「応募・面接」に関する質問です。\n以下から選んでください。",
+        "config": {
+          "content": "「応募・面接」に関する質問です。\n以下から選んでください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message",
+        "sendText": "応募・面接について"
+      }
+    },
+    {
+      "id": "send_message-15",
+      "type": "flowNode",
+      "position": {
+        "x": -4031.467795045311,
+        "y": 2893.561585972048
+      },
+      "data": {
+        "label": "Googleアカウントを利用してアカウント作成・ログインした方は、\"Sign in with Google\"を選んでログインしてください。\nアカウント作成時に利用したGoogleアカウントにログインされている状態で行わないと正しくログインできません。",
+        "config": {
+          "content": "Googleアカウントを利用してアカウント作成・ログインした方は、\"Sign in with Google\"を選んでログインしてください。\nアカウント作成時に利用したGoogleアカウントにログインされている状態で行わないと正しくログインできません。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-17",
+      "type": "flowNode",
+      "position": {
+        "x": -3021.3146196817365,
+        "y": 1830.0632138347726
+      },
+      "data": {
+        "label": "「その他」に関する質問です。\n以下から選んでください。",
+        "config": {
+          "content": "「その他」に関する質問です。\n以下から選んでください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message",
+        "sendText": "その他"
+      }
+    },
+    {
+      "id": "send_message-19",
+      "type": "flowNode",
+      "position": {
+        "x": -5006.7842203407035,
+        "y": 1632.9009367684178
+      },
+      "data": {
+        "label": "マイページの\nhttps://www.yolo-japan.com/ja/recruit/mypage/interview/\nから面接場所を確認することができます。",
+        "config": {
+          "content": "マイページの\nhttps://www.yolo-japan.com/ja/recruit/mypage/interview/\nから面接場所を確認することができます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-31",
+      "type": "flowNode",
+      "position": {
+        "x": -7215.745489741655,
+        "y": 1353.3547057812575
+      },
+      "data": {
+        "label": "海外から応募することはできません。\n\na. 日本に住んでいて、仕事ができる在留カードがあっている人\nb. 日本永住者の人、永住ビザを持つ人。\nc. 日本国籍の人\n\nだけ応募できます。\n\nYOLO JAPANの仕事は、誰でも見ることができます。日本に来るときのために、登録してみてください！",
+        "config": {
+          "content": "海外から応募することはできません。\n\na. 日本に住んでいて、仕事ができる在留カードがあっている人\nb. 日本永住者の人、永住ビザを持つ人。\nc. 日本国籍の人\n\nだけ応募できます。\n\nYOLO JAPANの仕事は、誰でも見ることができます。日本に来るときのために、登録してみてください！",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-33",
+      "type": "flowNode",
+      "position": {
+        "x": -3780.792905193062,
+        "y": 2644.3909487677147
+      },
+      "data": {
+        "label": "https://www.yolo-japan.com/ja/recruit/login\nから「パスワードを忘れた」をクリックしてリセットできます。",
+        "config": {
+          "content": "https://www.yolo-japan.com/ja/recruit/login\nから「パスワードを忘れた」をクリックしてリセットできます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-35",
+      "type": "flowNode",
+      "position": {
+        "x": -4154.815722120491,
+        "y": 2528.765338681165
+      },
+      "data": {
+        "label": "https://www.yolo-japan.com/ja/recruit/mypage/mail/input\nからメールマガジンの設定を変えることができます。",
+        "config": {
+          "content": "https://www.yolo-japan.com/ja/recruit/mypage/mail/input\nからメールマガジンの設定を変えることができます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-37",
+      "type": "flowNode",
+      "position": {
+        "x": -5112.121305788523,
+        "y": 2909.6569448102177
+      },
+      "data": {
+        "label": "https://www.yolo-japan.com/ja/withdraw/\nからアカウントを消すことができます。\n※メールマガジンやSMSを完全にストップするには時間がかかります。\nそのため、次の送信が届くかもしれません。",
+        "config": {
+          "content": "https://www.yolo-japan.com/ja/withdraw/\nからアカウントを消すことができます。\n※メールマガジンやSMSを完全にストップするには時間がかかります。\nそのため、次の送信が届くかもしれません。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-43",
+      "type": "flowNode",
+      "position": {
+        "x": -5494.547198678958,
+        "y": 1551.2860303033121
+      },
+      "data": {
+        "label": "申し訳ございませんが、不採用の理由は企業側から開示されないため、弊社からお伝えすることができません。",
+        "config": {
+          "content": "申し訳ございませんが、不採用の理由は企業側から開示されないため、弊社からお伝えすることができません。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-47",
+      "type": "flowNode",
+      "position": {
+        "x": -4405.175035296443,
+        "y": 1180.1749014959755
+      },
+      "data": {
+        "label": "面接に進む人にだけ連絡がされます。\n応募から14日以内に連絡するようにお願いしているので、もう少し待っていてください。",
+        "config": {
+          "content": "面接に進む人にだけ連絡がされます。\n応募から14日以内に連絡するようにお願いしているので、もう少し待っていてください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-49",
+      "type": "flowNode",
+      "position": {
+        "x": -3334.4102086739217,
+        "y": 2574.065159901605
+      },
+      "data": {
+        "label": "メールアドレス変更のお手続きには、本人確認のために以下の情報を yolostaff@yolo-japan.co.jp \nにお送りください。\n\nYOLO JAPAN ID：\n氏名：\n生年月日：\n性別：\n郵便番号：\n電話番号：\n変更前のアドレス：\n変更後のアドレス：",
+        "config": {
+          "content": "メールアドレス変更のお手続きには、本人確認のために以下の情報を yolostaff@yolo-japan.co.jp \nにお送りください。\n\nYOLO JAPAN ID：\n氏名：\n生年月日：\n性別：\n郵便番号：\n電話番号：\n変更前のアドレス：\n変更後のアドレス：",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-51",
+      "type": "flowNode",
+      "position": {
+        "x": -6295.514277503447,
+        "y": 1448.3296171591307
+      },
+      "data": {
+        "label": "日本と外国の2つ以上の国籍を持っている人は、在留カードの登録は必要ありません。\n\n「ユーザ/スカウト情報」の https://www.yolo-japan.com/ja/recruit/mypage/profile/input/personalInfo \nにある国籍の部分に「日本」を追加してください。",
+        "config": {
+          "content": "日本と外国の2つ以上の国籍を持っている人は、在留カードの登録は必要ありません。\n\n「ユーザ/スカウト情報」の https://www.yolo-japan.com/ja/recruit/mypage/profile/input/personalInfo \nにある国籍の部分に「日本」を追加してください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-53",
+      "type": "flowNode",
+      "position": {
+        "x": -3823.35182360506,
+        "y": 3300.3939666174524
+      },
+      "data": {
+        "label": "こちらのリンク\nhttps://www.yolo-japan.com/ja/my-page/drivers-license\nからできます。",
+        "config": {
+          "content": "こちらのリンク\nhttps://www.yolo-japan.com/ja/my-page/drivers-license\nからできます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-55",
+      "type": "flowNode",
+      "position": {
+        "x": -4390.457312593167,
+        "y": 3036.2406468462036
+      },
+      "data": {
+        "label": "こちらのリンク\nhttps://www.yolo-japan.com/ja/qualifications/create\nからできます。",
+        "config": {
+          "content": "こちらのリンク\nhttps://www.yolo-japan.com/ja/qualifications/create\nからできます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-57",
+      "type": "flowNode",
+      "position": {
+        "x": -4391.552555692426,
+        "y": 1475.0605705585956
+      },
+      "data": {
+        "label": "まだ連絡がない時は、自分で会社に連絡をお願いしています。\n会社のメールアドレスまたは電話番号は2つの方法で調べることができます。\n\n①面接の予約をした時の確認メール\n②マイページの「面接日程」\n\nマイページの\nhttps://www.yolo-japan.com/ja/recruit/mypage/interview/\nからメッセージ機能を使うこともできます。",
+        "config": {
+          "content": "まだ連絡がない時は、自分で会社に連絡をお願いしています。\n会社のメールアドレスまたは電話番号は2つの方法で調べることができます。\n\n①面接の予約をした時の確認メール\n②マイページの「面接日程」\n\nマイページの\nhttps://www.yolo-japan.com/ja/recruit/mypage/interview/\nからメッセージ機能を使うこともできます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-59",
+      "type": "flowNode",
+      "position": {
+        "x": -5361.220138006741,
+        "y": 1848.7971240853356
+      },
+      "data": {
+        "label": "オンライン面接のリンクは面接する会社からメールで送られます。\n届いていない時は、自分で会社に連絡してください。\n\n連絡先はマイページの https://www.yolo-japan.com/ja/recruit/mypage/interview/\nから見ることができます。",
+        "config": {
+          "content": "オンライン面接のリンクは面接する会社からメールで送られます。\n届いていない時は、自分で会社に連絡してください。\n\n連絡先はマイページの https://www.yolo-japan.com/ja/recruit/mypage/interview/\nから見ることができます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-61",
+      "type": "flowNode",
+      "position": {
+        "x": -4771.75913765264,
+        "y": 1901.9305518750764
+      },
+      "data": {
+        "label": "面接前のキャンセルは、マイページの\nhttps://www.yolo-japan.com/ja/recruit/mypage/application/\nからできます。\n\n「お断りする」をクリックすると面接をキャンセルすることができます。\n面接のスケジュールを変えたい時は、自分で会社に連絡してください。",
+        "config": {
+          "content": "面接前のキャンセルは、マイページの\nhttps://www.yolo-japan.com/ja/recruit/mypage/application/\nからできます。\n\n「お断りする」をクリックすると面接をキャンセルすることができます。\n面接のスケジュールを変えたい時は、自分で会社に連絡してください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-67",
+      "type": "flowNode",
+      "position": {
+        "x": -6778.656350338074,
+        "y": 1363.0940588582687
+      },
+      "data": {
+        "label": "在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html\nに相談してください。\n\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq",
+        "config": {
+          "content": "在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html\nに相談してください。\n\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-73",
+      "type": "flowNode",
+      "position": {
+        "x": -6071.390147996399,
+        "y": 2176.907601322157
+      },
+      "data": {
+        "label": "YOLO JAPANではビザに関するサポートはできません。\n\nhttps://www.yolo-japan.com/ja/recruit/feature/visa_support_available\nからビザサポートありの特集があるので見てください。\nそして、面接でスポンサーについて必ず聞いてください。",
+        "config": {
+          "content": "YOLO JAPANではビザに関するサポートはできません。\n\nhttps://www.yolo-japan.com/ja/recruit/feature/visa_support_available\nからビザサポートありの特集があるので見てください。\nそして、面接でスポンサーについて必ず聞いてください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-1771205545766",
+      "type": "flowNode",
+      "position": {
+        "x": -5532.3048273657405,
+        "y": 1156.0411010484831
+      },
+      "data": {
+        "label": "在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html\nに相談してください。\n\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq",
+        "config": {
+          "content": "在留資格の詳しい内容は、出入国在留管理庁 https://www.moj.go.jp/isa/consultation/center/japanese.html\nに相談してください。\n\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq",
+          "quickReply": {
+            "items": [
+              {
+                "type": "action",
+                "action": {
+                  "text": "",
+                  "type": "message",
+                  "label": ""
+                }
+              }
+            ]
+          },
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "card-1771220702462",
+      "type": "flowNode",
+      "position": {
+        "x": -7673.702821222874,
+        "y": 1257.1047454238392
+      },
+      "data": {
+        "label": "求人に応募するには？",
+        "config": {
+          "text": "質問テキストをここに入力",
+          "columns": [
+            {
+              "text": "求人に応募するには？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            },
+            {
+              "text": "就労不可のビザについて",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "就労不可のビザについて",
+                  "label": "就労不可のビザについて"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "send_message-1771220940830",
+      "type": "flowNode",
+      "position": {
+        "x": -7718.0497119748,
+        "y": 1332.8895284057114
+      },
+      "data": {
+        "label": "【登録済みの方】\nマイページ https://www.yolo-japan.com/ja/recruit/mypage/\nにログインし、気になる求人の「応募する」ボタンから応募できます。\n\n【まだ登録していない方】まずYOLO JAPANに会員登録をお願いします。\n\n登録は https://www.yolo-japan.com/ja/recruit/regist/input\nからできます。",
+        "config": {
+          "content": "【登録済みの方】\nマイページ https://www.yolo-japan.com/ja/recruit/mypage/\nにログインし、気になる求人の「応募する」ボタンから応募できます。\n\n【まだ登録していない方】まずYOLO JAPANに会員登録をお願いします。\n\n登録は https://www.yolo-japan.com/ja/recruit/regist/input\nからできます。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "card-1771221493964",
+      "type": "flowNode",
+      "position": {
+        "x": -7173.717152139548,
+        "y": 1270.8832958237326
+      },
+      "data": {
+        "label": "海外から応募するには？",
+        "config": {
+          "text": "質問テキストをここに入力",
+          "columns": [
+            {
+              "text": "海外から応募するには？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            },
+            {
+              "text": "海外から応募できますか？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "海外から応募できますか？",
+                  "label": "海外から応募できますか？"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771228068768",
+      "type": "flowNode",
+      "position": {
+        "x": -5583.148260703572,
+        "y": 2387.7314695414734
+      },
+      "data": {
+        "label": "在留カードの更新サポートはありますか？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "在留カードの更新サポートはありますか？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771228157649",
+      "type": "flowNode",
+      "position": {
+        "x": -6732.924691686595,
+        "y": 1276.9356057738294
+      },
+      "data": {
+        "label": "就労不可のビザについて",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "就労不可のビザについて",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            },
+            {
+              "text": "就労不可のビザについて",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "就労不可のビザについて",
+                  "label": "就労不可のビザについて"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230327544",
+      "type": "flowNode",
+      "position": {
+        "x": -4133.490592824406,
+        "y": 2458.206968273367
+      },
+      "data": {
+        "label": "メルマガからUnsubscribeしたい",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "メルマガからUnsubscribeしたい",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230404194",
+      "type": "flowNode",
+      "position": {
+        "x": -3381.626612075171,
+        "y": 2511.6464109992885
+      },
+      "data": {
+        "label": "メールアドレスを変更したい",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "メールアドレスを変更したい",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230443878",
+      "type": "flowNode",
+      "position": {
+        "x": -5147.630930211928,
+        "y": 2750.295882307993
+      },
+      "data": {
+        "label": "登録されたデータを、全部消したいです。",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "登録されたデータを、全部消したいです。",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230514262",
+      "type": "flowNode",
+      "position": {
+        "x": -4029.7785585260585,
+        "y": 2814.9438909288356
+      },
+      "data": {
+        "label": "ログインできないけどどうすればいいの？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "ログインできないけどどうすればいいの？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230672411",
+      "type": "flowNode",
+      "position": {
+        "x": -4429.245706205464,
+        "y": 2935.104310255519
+      },
+      "data": {
+        "label": "資格を取得できたけど、どこから登録するの？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "資格を取得できたけど、どこから登録するの？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230815913",
+      "type": "flowNode",
+      "position": {
+        "x": -3717.745643454778,
+        "y": 2564.1073571770394
+      },
+      "data": {
+        "label": "パスワードを忘れた",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "パスワードを忘れた",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771230931566",
+      "type": "flowNode",
+      "position": {
+        "x": -3531.409705073554,
+        "y": 2776.204324204717
+      },
+      "data": {
+        "label": "運転免許について",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "運転免許について",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "もっと見る",
+                  "label": "もっと見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771231005917",
+      "type": "flowNode",
+      "position": {
+        "x": -3458.8258725030205,
+        "y": 3222.4504800620884
+      },
+      "data": {
+        "label": "マイナ運転免許証でも登録できますか",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "マイナ運転免許証でも登録できますか",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "send_message-1771231028935",
+      "type": "flowNode",
+      "position": {
+        "x": -3449.335936243227,
+        "y": 3311.0239127996197
+      },
+      "data": {
+        "label": "申し訳ありません。\nマイナ運転免許証では登録できません。",
+        "config": {
+          "content": "申し訳ありません。\nマイナ運転免許証では登録できません。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "card-1771233374420",
+      "type": "flowNode",
+      "position": {
+        "x": -3808.5122995222405,
+        "y": 3206.201637509443
+      },
+      "data": {
+        "label": "運転免許情報をどこで登録するの？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "運転免許情報をどこで登録するの？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771291703284",
+      "type": "flowNode",
+      "position": {
+        "x": -4358.648854696547,
+        "y": 1104.0870025015556
+      },
+      "data": {
+        "label": "応募後の返事がこない",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "応募後の返事がこない",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771300226325",
+      "type": "flowNode",
+      "position": {
+        "x": -5499.0873791234935,
+        "y": 1109.1280983948186
+      },
+      "data": {
+        "label": "研修ビザでもアルバイトできる？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "研修ビザでもアルバイトできる？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771300317093",
+      "type": "flowNode",
+      "position": {
+        "x": -5023.824440829245,
+        "y": 1568.9828699874881
+      },
+      "data": {
+        "label": "面接場所の詳細はどうやって確認できますか？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "面接場所の詳細はどうやって確認できますか？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771300461925",
+      "type": "flowNode",
+      "position": {
+        "x": -5473.174382439345,
+        "y": 1484.4587046540278
+      },
+      "data": {
+        "label": "不採用になった理由が知りたい",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "不採用になった理由が知りたい",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771300509492",
+      "type": "flowNode",
+      "position": {
+        "x": -4356.798770419604,
+        "y": 1419.7629225079106
+      },
+      "data": {
+        "label": "面接日だが何も連絡が来ない",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "面接日だが何も連絡が来ない",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771300546744",
+      "type": "flowNode",
+      "position": {
+        "x": -4936.38940778002,
+        "y": 1835.5505310799329
+      },
+      "data": {
+        "label": "面接、キャンセル（行けない、迷っている、リスケ）したいけど、どうすればいいですか？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "面接、キャンセル（行けない、迷っている、リスケ）したいけど、どうすればいいですか？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771307533712",
+      "type": "flowNode",
+      "position": {
+        "x": -6325.070241324765,
+        "y": 1293.919521479435
+      },
+      "data": {
+        "label": "二重国籍で在留カードない場合どう応募するの？\n",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "二重国籍で在留カードない場合どう応募するの？\n",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "quick_reply-1771313825564",
+      "type": "flowNode",
+      "position": {
+        "x": -2257.1669963561794,
+        "y": 422.70006100037205
+      },
+      "data": {
+        "label": "YOLO JAPANについてですね。\nどのカテゴリについてお困りですか？",
+        "config": {
+          "message": "YOLO JAPANについてですね。\nどのカテゴリについてお困りですか？"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "quick_reply",
+        "sendText": "YOLO JAPAN"
+      }
+    },
+    {
+      "id": "card-1771316504339",
+      "type": "flowNode",
+      "position": {
+        "x": -4778.997779920706,
+        "y": 2768.5620719820167
+      },
+      "data": {
+        "label": "ログインできない。どうすればいいの？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "ログインできない。どうすればいいの？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "send_message-1771316544489",
+      "type": "flowNode",
+      "position": {
+        "x": -4755.196923024723,
+        "y": 2892.855435772158
+      },
+      "data": {
+        "label": "Googleアカウントを利用してアカウント作成・ログインをされた場合は、''Sign in with Google\"を選んでログインしてください。\n\nアカウント作成時に利用したGoogleアカウントにログインされている状態で行わないと正しくログインされませんので、ご注意ください",
+        "config": {
+          "content": "Googleアカウントを利用してアカウント作成・ログインをされた場合は、''Sign in with Google\"を選んでログインしてください。\n\nアカウント作成時に利用したGoogleアカウントにログインされている状態で行わないと正しくログインされませんので、ご注意ください",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "card-1771316601038",
+      "type": "flowNode",
+      "position": {
+        "x": -5360.108174933165,
+        "y": 1760.0224377572479
+      },
+      "data": {
+        "label": "オンライン面接のリンクが届いてない。",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "オンライン面接のリンクが届いてない。",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771316664504",
+      "type": "flowNode",
+      "position": {
+        "x": -6496.597150680644,
+        "y": 1757.009048941704
+      },
+      "data": {
+        "label": "SOFAでも働けますか？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "SOFAでも働けますか？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "send_message-1771316685153",
+      "type": "flowNode",
+      "position": {
+        "x": -6482.97492748361,
+        "y": 1995.6551190375606
+      },
+      "data": {
+        "label": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
+        "config": {
+          "content": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "card-1771317008625",
+      "type": "flowNode",
+      "position": {
+        "x": -7305.567946272904,
+        "y": 2002.873344291173
+      },
+      "data": {
+        "label": "採用になったら、企業さんがVISAをスポンサーしてくれますか？",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "採用になったら、企業さんがVISAをスポンサーしてくれますか？",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "send_message-1771317057471",
+      "type": "flowNode",
+      "position": {
+        "x": -7223.886099820658,
+        "y": 2118.463551266957
+      },
+      "data": {
+        "label": "YOLO JAPANには\nhttps://www.yolo-japan.com/ja/recruit/feature/visa_support_available\nビザサポートをする求人の特集があります。\n\nまた、面接でスポンサーについて必ず聞いてください。",
+        "config": {
+          "content": "YOLO JAPANには\nhttps://www.yolo-japan.com/ja/recruit/feature/visa_support_available\nビザサポートをする求人の特集があります。\n\nまた、面接でスポンサーについて必ず聞いてください。",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "send_message-1771317126287",
+      "type": "flowNode",
+      "position": {
+        "x": -7223.12143681694,
+        "y": 2386.6787741508797
+      },
+      "data": {
+        "label": "「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq\n\n在留資格の詳しい内容は、出入国在留管理庁https://www.moj.go.jp/isa/consultation/center/japanese.htmlに相談してください。\n\nメールアドレス：info-tokyo@i.moj.go.jp",
+        "config": {
+          "content": "「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq\n\n在留資格の詳しい内容は、出入国在留管理庁https://www.moj.go.jp/isa/consultation/center/japanese.htmlに相談してください。\n\nメールアドレス：info-tokyo@i.moj.go.jp",
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    },
+    {
+      "id": "card-1771317179953",
+      "type": "flowNode",
+      "position": {
+        "x": -6199.07760274151,
+        "y": 1860.5403749191378
+      },
+      "data": {
+        "label": "ビザをサポート(留学ビザなどからの切り替え)してほしい。",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "ビザをサポート(留学ビザなどからの切り替え)してほしい。",
+              "title": "",
+              "buttons": [
+                {
+                  "text": "回答を見る",
+                  "label": "回答を見る"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771317625395",
+      "type": "flowNode",
+      "position": {
+        "x": -3230.7362180659743,
+        "y": 2156.760663121434
+      },
+      "data": {
+        "label": "FAQから確認してください。",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "FAQから確認してください。",
+              "title": "",
+              "buttons": [
+                {
+                  "url": "https://www.yolo-japan.com/ja/help/",
+                  "text": "リンクを開く",
+                  "type": "uri",
+                  "label": "リンクを開く"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "card-1771317651311",
+      "type": "flowNode",
+      "position": {
+        "x": -2869.906811378089,
+        "y": 2111.1091901031104
+      },
+      "data": {
+        "label": "専用フォームからお問い合わせください。",
+        "config": {
+          "text": "",
+          "columns": [
+            {
+              "text": "専用フォームからお問い合わせください。",
+              "title": "",
+              "buttons": [
+                {
+                  "url": "https://www.yolo-japan.com/ja/inquiry/input",
+                  "text": "リンクを開く",
+                  "type": "uri",
+                  "label": "リンクを開く"
+                }
+              ],
+              "imageUrl": ""
+            }
+          ]
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "card"
+      }
+    },
+    {
+      "id": "send_message-1771376516283",
+      "type": "flowNode",
+      "position": {
+        "x": -4292.531315130827,
+        "y": 1873.663246953045
+      },
+      "data": {
+        "label": "解決しましたか？",
+        "config": {
+          "content": "解決しましたか？",
+          "quickReply": {
+            "items": [
+              {
+                "type": "action",
+                "action": {
+                  "text": "解決した",
+                  "type": "message",
+                  "label": "解決した"
+                }
+              },
+              {
+                "type": "action",
+                "action": {
+                  "text": "解決していない",
+                  "type": "message",
+                  "label": "解決していない"
+                }
+              }
+            ]
+          },
+          "messageType": "text"
+        },
+        "service": "YOLO_JAPAN",
+        "nodeType": "send_message"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771220702462top",
+      "source": "send_message-5",
+      "target": "card-1771220702462",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "求人に応募するには？",
+      "order": 2
+    },
+    {
+      "id": "e-card-1771220702462-send_message-1771220940830",
+      "source": "card-1771220702462",
+      "target": "send_message-1771220940830",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "【登録済みの方】\nマイページ https://www.yolo-japan.com/ja/recruit/mypage/\nにログインし、気になる求人の「応募する」ボタンから応募できます。\n\n【まだ登録していない方】まずYOLO JAPANに会員登録をお願いします。\n\n登録は https://www.yolo-japan.com/ja/recruit/regist/input\nからできます。",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771221493964top",
+      "source": "send_message-5",
+      "target": "card-1771221493964",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "海外から応募するには？",
+      "order": 1
+    },
+    {
+      "id": "reactflow__edge-card-1771221493964bottom-send_message-31top",
+      "source": "card-1771221493964",
+      "target": "send_message-31",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771228068768top",
+      "source": "send_message-9",
+      "target": "card-1771228068768",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "在留カードの更新サポートはありますか？",
+      "order": 6
+    },
+    {
+      "id": "reactflow__edge-card-1771228068768bottom-send_message-11top",
+      "source": "card-1771228068768",
+      "target": "send_message-11",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771228157649top",
+      "source": "send_message-5",
+      "target": "card-1771228157649",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "就労不可のビザについて",
+      "order": 2
+    },
+    {
+      "id": "reactflow__edge-card-1771228157649bottom-send_message-67top",
+      "source": "card-1771228157649",
+      "target": "send_message-67",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230327544top",
+      "source": "send_message-9",
+      "target": "card-1771230327544",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "メルマガからUnsubscribeしたい",
+      "order": 6
+    },
+    {
+      "id": "reactflow__edge-card-1771230327544bottom-send_message-35top",
+      "source": "card-1771230327544",
+      "target": "send_message-35",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230404194top",
+      "source": "send_message-9",
+      "target": "card-1771230404194",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "メールアドレスを変更したい",
+      "order": 6
+    },
+    {
+      "id": "reactflow__edge-card-1771230404194bottom-send_message-49top",
+      "source": "card-1771230404194",
+      "target": "send_message-49",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-card-1771230443878bottom-send_message-37top",
+      "source": "card-1771230443878",
+      "target": "send_message-37",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230443878top",
+      "source": "send_message-9",
+      "target": "card-1771230443878",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "登録されたデータを、全部消したいです。",
+      "order": 6
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230514262top",
+      "source": "send_message-9",
+      "target": "card-1771230514262",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "ログインできないけどどうすればいいの？",
+      "order": 7
+    },
+    {
+      "id": "reactflow__edge-card-1771230514262bottom-send_message-15top",
+      "source": "card-1771230514262",
+      "target": "send_message-15",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230672411top",
+      "source": "send_message-9",
+      "target": "card-1771230672411",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "資格を取得できた、どこから登録する",
+      "order": 7
+    },
+    {
+      "id": "reactflow__edge-card-1771230672411bottom-send_message-55top",
+      "source": "card-1771230672411",
+      "target": "send_message-55",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230815913top",
+      "source": "send_message-9",
+      "target": "card-1771230815913",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "パスワードを忘れた",
+      "order": 8
+    },
+    {
+      "id": "reactflow__edge-card-1771230815913bottom-send_message-33top",
+      "source": "card-1771230815913",
+      "target": "send_message-33",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771230931566top",
+      "source": "send_message-9",
+      "target": "card-1771230931566",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "運転免許について",
+      "order": 7
+    },
+    {
+      "id": "reactflow__edge-card-1771231005917bottom-send_message-1771231028935top",
+      "source": "card-1771231005917",
+      "target": "send_message-1771231028935",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-card-1771230931566bottom-card-1771231005917top",
+      "source": "card-1771230931566",
+      "target": "card-1771231005917",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "マイナ運転免許証でも登録できますか",
+      "order": 1
+    },
+    {
+      "id": "reactflow__edge-card-1771230931566bottom-card-1771233374420top",
+      "source": "card-1771230931566",
+      "target": "card-1771233374420",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "運転免許情報をどこで登録するの？",
+      "order": 2
+    },
+    {
+      "id": "reactflow__edge-card-1771233374420bottom-send_message-53top",
+      "source": "card-1771233374420",
+      "target": "send_message-53",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-card-1771291703284bottom-send_message-47top",
+      "source": "card-1771291703284",
+      "target": "send_message-47",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "回答",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771291703284top",
+      "source": "send_message-13",
+      "target": "card-1771291703284",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "応募後の返事がこない",
+      "order": 3
+    },
+    {
+      "id": "reactflow__edge-card-1771300226325bottom-send_message-1771205545766top",
+      "source": "card-1771300226325",
+      "target": "send_message-1771205545766",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "就労不可のビザについて ",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771300226325top",
+      "source": "send_message-13",
+      "target": "card-1771300226325",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "研修ビザでもアルバイトできる？",
+      "order": 1
+    },
+    {
+      "id": "reactflow__edge-card-1771300317093bottom-send_message-19top",
+      "source": "card-1771300317093",
+      "target": "send_message-19",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "マイページの\nhttps://www.yolo-j...",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771300317093top",
+      "source": "send_message-13",
+      "target": "card-1771300317093",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "面接場所の詳細はどうやって確認できますか？",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771300461925top",
+      "source": "send_message-13",
+      "target": "card-1771300461925",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "不採用になった理由が知りたい",
+      "order": 2
+    },
+    {
+      "id": "reactflow__edge-card-1771300461925bottom-send_message-43top",
+      "source": "card-1771300461925",
+      "target": "send_message-43",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "不採用になった理由が知りたい",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-card-1771300509492bottom-send_message-57top",
+      "source": "card-1771300509492",
+      "target": "send_message-57",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "まだ連絡がない時は、自分で会社に連絡をお願いしてい...",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771300509492top",
+      "source": "send_message-13",
+      "target": "card-1771300509492",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "面接日だが何も連絡が来ない",
+      "order": 4
+    },
+    {
+      "id": "reactflow__edge-card-1771300546744bottom-send_message-61top",
+      "source": "card-1771300546744",
+      "target": "send_message-61",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "面接のキャンセル",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771300546744top",
+      "source": "send_message-13",
+      "target": "card-1771300546744",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "面接、キャンセル（行けない、迷っている、リスケ）し...",
+      "order": 5
+    },
+    {
+      "id": "reactflow__edge-card-1771307533712bottom-send_message-51top",
+      "source": "card-1771307533712",
+      "target": "send_message-51",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "日本と外国の2つ以上の国籍を持っている人は、在留カ...",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771307533712top",
+      "source": "send_message-5",
+      "target": "card-1771307533712",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "二重国籍だから在留カードない、どうやって応募するの？\n",
+      "order": 3
+    },
+    {
+      "id": "reactflow__edge-quick_reply-1771313825564bottom-send_message-17top",
+      "source": "quick_reply-1771313825564",
+      "target": "send_message-17",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "その他",
+      "text": "その他",
+      "order": 5
+    },
+    {
+      "id": "reactflow__edge-quick_reply-1771313825564bottom-send_message-13top",
+      "source": "quick_reply-1771313825564",
+      "target": "send_message-13",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "応募・面接について",
+      "text": "応募・面接について",
+      "order": 1
+    },
+    {
+      "id": "reactflow__edge-quick_reply-1771313825564bottom-send_message-9top",
+      "source": "quick_reply-1771313825564",
+      "target": "send_message-9",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "登録・アカウントについて",
+      "text": "登録・アカウントについて",
+      "order": 2
+    },
+    {
+      "id": "reactflow__edge-quick_reply-1771313825564bottom-send_message-5top",
+      "source": "quick_reply-1771313825564",
+      "target": "send_message-5",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "仕事について",
+      "text": "仕事について",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-9bottom-card-1771316504339top",
+      "source": "send_message-9",
+      "target": "card-1771316504339",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "ログインできない。どうすればいいの？",
+      "order": 8
+    },
+    {
+      "id": "reactflow__edge-card-1771316504339bottom-send_message-1771316544489top",
+      "source": "card-1771316504339",
+      "target": "send_message-1771316544489",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "メッセージ送信",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-card-1771316601038bottom-send_message-59top",
+      "source": "card-1771316601038",
+      "target": "send_message-59",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "オンライン面接のリンクは面接する会社からメールで送られます。\n届いていない時は、自分で会社に連絡してください。\n\n連絡先はマイページの https://www.yolo-japan.com/ja/recruit/mypage/interview/\nから見ることができます。",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-13bottom-card-1771316601038top",
+      "source": "send_message-13",
+      "target": "card-1771316601038",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "オンライン面接のリンクが届いてない。",
+      "order": 6
+    },
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771316664504top",
+      "source": "send_message-5",
+      "target": "card-1771316664504",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "SOFAでも働けますか？",
+      "order": 4
+    },
+    {
+      "id": "reactflow__edge-card-1771316664504bottom-send_message-1771316685153top",
+      "source": "card-1771316664504",
+      "target": "send_message-1771316685153",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771317008625top",
+      "source": "send_message-5",
+      "target": "card-1771317008625",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "採用になったら、企業さんがVISAをスポンサーしてくれますか？",
+      "order": 5
+    },
+    {
+      "id": "reactflow__edge-card-1771317008625bottom-send_message-1771317057471top",
+      "source": "card-1771317008625",
+      "target": "send_message-1771317057471",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "YOLO JAPANには\nhttps://www.yolo-japan.com/ja/recruit/feature/visa_support_available\nビザサポートをする求人の特集があります。\n\nまた、面接でスポンサーについて必ず聞いてください。\n\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq\n\n在留資格の詳しい内容は、出入国在留管理庁https://www.moj.go.jp/isa/consultation/center/japanese.htmlに相談してください。\n\nメールアドレス：info-tokyo@i.moj.go.jp",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-1771317057471bottom-send_message-1771317126287top",
+      "source": "send_message-1771317057471",
+      "target": "send_message-1771317126287",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq\n\n在留資格の詳しい内容は、出入国在留管理庁https://www.moj.go.jp/isa/consultation/center/japanese.htmlに相談してください。\n\nメールアドレス：info-tokyo@i.moj.go.jp",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-5bottom-card-1771317179953top",
+      "source": "send_message-5",
+      "target": "card-1771317179953",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "ビザをサポート(留学ビザなどからの切り替え)してほしい。",
+      "order": 6
+    },
+    {
+      "id": "reactflow__edge-card-1771317179953bottom-send_message-73top",
+      "source": "card-1771317179953",
+      "target": "send_message-73",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "YOLO JAPANではビザに関するサポートはできません。\n\nhttps://www.yolo-japan.com/ja/recruit/feature/visa_support_available\nからビザサポートありの特集があるので見てください。\nそして、面接でスポンサーについて必ず聞いてください。",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-17bottom-card-1771317625395top",
+      "source": "send_message-17",
+      "target": "card-1771317625395",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "カード",
+      "order": 0
+    },
+    {
+      "id": "reactflow__edge-send_message-17bottom-card-1771317651311top",
+      "source": "send_message-17",
+      "target": "card-1771317651311",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "お問合わせフォーム：https://www.yolo-japan.com/ja/inquiry/input",
+      "order": 1
+    },
+    {
+      "id": "reactflow__edge-send_message-57bottom-send_message-1771376516283top",
+      "source": "send_message-57",
+      "target": "send_message-1771376516283",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "メッセージ送信",
+      "order": 0
+    }
+  ],
+  "incomingEdges": [
+    {
+      "id": "reactflow__edge-quick_reply-1771314015746bottom-quick_reply-1771313825564top",
+      "source": "quick_reply-1771314015746",
+      "target": "quick_reply-1771313825564",
+      "sourceHandle": "bottom",
+      "targetHandle": "top",
+      "label": "YOLO JAPAN",
+      "text": "YOLO JAPAN",
+      "order": 0
+    }
+  ],
+  "nodeIds": [
+    "quick_reply-1771313825564",
+    "send_message-17",
+    "send_message-13",
+    "send_message-9",
+    "send_message-5",
+    "card-1771317625395",
+    "card-1771317651311",
+    "card-1771291703284",
+    "card-1771300226325",
+    "card-1771300317093",
+    "card-1771300461925",
+    "card-1771300509492",
+    "card-1771300546744",
+    "card-1771316601038",
+    "card-1771228068768",
+    "card-1771230327544",
+    "card-1771230404194",
+    "card-1771230443878",
+    "card-1771230514262",
+    "card-1771230672411",
+    "card-1771230815913",
+    "card-1771230931566",
+    "card-1771316504339",
+    "card-1771220702462",
+    "card-1771221493964",
+    "card-1771228157649",
+    "card-1771307533712",
+    "card-1771316664504",
+    "card-1771317008625",
+    "card-1771317179953",
+    "send_message-47",
+    "send_message-1771205545766",
+    "send_message-19",
+    "send_message-43",
+    "send_message-57",
+    "send_message-61",
+    "send_message-59",
+    "send_message-11",
+    "send_message-35",
+    "send_message-49",
+    "send_message-37",
+    "send_message-15",
+    "send_message-55",
+    "send_message-33",
+    "card-1771231005917",
+    "card-1771233374420",
+    "send_message-1771316544489",
+    "send_message-1771220940830",
+    "send_message-31",
+    "send_message-67",
+    "send_message-51",
+    "send_message-1771316685153",
+    "send_message-1771317057471",
+    "send_message-73",
+    "send_message-1771376516283",
+    "send_message-1771231028935",
+    "send_message-53",
+    "send_message-1771317126287"
+  ]
+}

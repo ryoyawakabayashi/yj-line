@@ -23,6 +23,19 @@ import { FAQSearchHandler } from './nodes/faq-search';
 import { QuickReplyHandler, resolveQuickReplyChoice } from './nodes/quick-reply';
 import { CardHandler, resolveCardChoice } from './nodes/card';
 
+// 離脱確認ダイアログの多言語テキスト
+const EXIT_DIALOG: Record<string, { message: string; continueLabel: string; exitLabel: string; exitedMessage: string }> = {
+  ja: { message: 'えらぶもの いがいが 入りました。\nおわりにしますか？', continueLabel: 'つづける', exitLabel: 'おわりにする', exitedMessage: 'おわりました。' },
+  en: { message: 'Your input did not match any option.\nWould you like to end this flow?', continueLabel: 'Continue', exitLabel: 'End', exitedMessage: 'Flow ended.' },
+  ko: { message: '선택지에 없는 입력입니다.\n플로우를 종료하시겠습니까?', continueLabel: '계속', exitLabel: '종료', exitedMessage: '플로우가 종료되었습니다.' },
+  zh: { message: '您的输入不在选项中。\n是否结束此流程？', continueLabel: '继续', exitLabel: '结束', exitedMessage: '流程已结束。' },
+  vi: { message: 'Lựa chọn của bạn không khớp.\nBạn có muốn kết thúc không?', continueLabel: 'Tiếp tục', exitLabel: 'Kết thúc', exitedMessage: 'Đã kết thúc.' },
+};
+
+function getExitDialog(lang: string) {
+  return EXIT_DIALOG[lang] || EXIT_DIALOG.ja;
+}
+
 /**
  * フロー実行エンジン
  */
@@ -88,17 +101,21 @@ export class FlowExecutor {
 
         // quick_reply / card ノードから再開する場合、ユーザーの選択に基づいて次のノードを決定
         if (resumeNode.type === 'quick_reply' || resumeNode.type === 'card') {
-          // 離脱確認の応答を先にチェック
-          if (userMessage === '続ける') {
+          const exitDialog = getExitDialog(context.lang);
+          // 離脱確認の応答を先にチェック（全言語の「続ける」「終了する」を検索）
+          const isContinue = Object.values(EXIT_DIALOG).some((d) => d.continueLabel === userMessage);
+          const isExit = Object.values(EXIT_DIALOG).some((d) => d.exitLabel === userMessage);
+
+          if (isContinue) {
             // 同じノードを再実行 → 元のクイックリプライ/カードを再送
             startNodeId = resumeFromNodeId;
-          } else if (userMessage === '終了する') {
+          } else if (isExit) {
             // フロー終了
             console.log('🛑 ユーザーがフローを終了しました');
             return {
               success: true,
               handled: true,
-              responseMessages: [{ type: 'text', text: 'フローを終了しました。' }],
+              responseMessages: [{ type: 'text', text: exitDialog.exitedMessage }],
               // waitNodeId なし → フロー終了（event.ts側でconversationState がクリアされる）
             };
           } else {
@@ -125,17 +142,17 @@ export class FlowExecutor {
             if (nextNodeId) {
               startNodeId = nextNodeId;
             } else {
-              // マッチしない入力 → 離脱確認メッセージを送信
+              // マッチしない入力 → 離脱確認メッセージを送信（多言語対応）
               return {
                 success: true,
                 handled: true,
                 responseMessages: [{
                   type: 'text',
-                  text: '選択肢以外が入力されました。\nフローを終了しますか？',
+                  text: exitDialog.message,
                   quickReply: {
                     items: [
-                      { type: 'action', action: { type: 'message', label: '続ける', text: '続ける' } },
-                      { type: 'action', action: { type: 'message', label: '終了する', text: '終了する' } },
+                      { type: 'action', action: { type: 'message', label: exitDialog.continueLabel, text: exitDialog.continueLabel } },
+                      { type: 'action', action: { type: 'message', label: exitDialog.exitLabel, text: exitDialog.exitLabel } },
                     ],
                   },
                 }],

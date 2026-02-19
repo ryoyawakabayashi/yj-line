@@ -15,6 +15,13 @@ import {
 import { expandVariables } from '../utils';
 import { processUrlsInText, UrlSourceType, LIFF_URL_BASE } from '@/lib/tracking/url-processor';
 
+const FALLBACK_SELECT: Record<string, string> = {
+  ja: '選択', en: 'Select', ko: '선택', zh: '选择', vi: 'Chọn',
+};
+const FALLBACK_CARD: Record<string, string> = {
+  ja: 'カード', en: 'Card', ko: '카드', zh: '卡片', vi: 'Thẻ',
+};
+
 /** 多言語テキストから適切な言語のテキストを取得 */
 function localize(
   value: string | Record<string, string> | undefined,
@@ -99,7 +106,7 @@ export class CardHandler implements NodeHandler {
           type: 'action',
           action: {
             type: 'message',
-            label: (item.label || '').slice(0, 20) || '選択',
+            label: (item.label || '').slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja,
             text: item.text || item.label,
           },
         })),
@@ -162,7 +169,7 @@ export class CardHandler implements NodeHandler {
           let label = localize(btn.label, context.lang);
           // LINE APIはlabelが空だとメッセージ全体を拒否するためフォールバック
           if (!label) {
-            label = btn.text || colText.slice(0, 20) || '選択';
+            label = btn.text || colText.slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja;
           }
           // labelは最大20文字
           if (label.length > 20) label = label.slice(0, 20);
@@ -224,7 +231,7 @@ export class CardHandler implements NodeHandler {
       if (col.text && col.text.length > maxTextLen) col.text = col.text.slice(0, maxTextLen - 1) + '…';
     }
 
-    const altText = carouselColumns[0]?.title || carouselColumns[0]?.text || 'カード';
+    const altText = carouselColumns[0]?.title || carouselColumns[0]?.text || FALLBACK_CARD[context.lang] || FALLBACK_CARD.ja;
 
     const message: any = {
       type: 'template',
@@ -242,7 +249,7 @@ export class CardHandler implements NodeHandler {
           type: 'action',
           action: {
             type: 'message',
-            label: (item.label || '').slice(0, 20) || '選択',
+            label: (item.label || '').slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja,
             text: item.text || item.label,
           },
         })),
