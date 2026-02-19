@@ -10,6 +10,7 @@ import {
   NodeExecutionResult,
   NodeHandler,
 } from './types';
+import { scheduleDelayedPush } from './delayed-push';
 import {
   createFlowExecution,
   updateFlowExecution,
@@ -169,7 +170,7 @@ export class FlowExecutor {
       let iteration = 0;
       const allResponseMessages: any[] = [];
       const executionLog: any[] = [];
-      let usePushForRemaining = false;  // delay発生後はpushMessageで直接送信
+      let pendingDelaySec = 0;  // 次のメッセージに適用する遅延秒数
 
       while (currentNodeId && iteration < this.maxIterations) {
         iteration++;
@@ -186,19 +187,18 @@ export class FlowExecutor {
 
         console.log(`📍 ノード実行: ${currentNode.type} (${currentNode.id})`);
 
-        // quick_reply/card の遅延処理: 実行前に溜まったメッセージを先送り + 待機
-        // 遅延後のメッセージはpushMessageで直接送信（replyTokenが期限切れ or 関数タイムアウト対策）
-        let delayedNodePush = false;
+        // quick_reply/card の遅延処理: このノード自身にdelayAfterが設定されている場合
+        // 溜まったメッセージを先にpushMessageで送信し、このノードのメッセージを遅延送信予約
         if ((currentNode.type === 'quick_reply' || currentNode.type === 'card') && currentNode.data?.config?.delayAfter > 0) {
           const delaySec = Math.min(currentNode.data.config.delayAfter, 30);
-          console.log(`⏱️  ${currentNode.type} delay処理: ${delaySec}秒待機（メッセージ先送り）`);
+          console.log(`⏱️  ${currentNode.type} delay処理: ${delaySec}秒後に送信予約`);
           if (allResponseMessages.length > 0) {
             const { pushMessage } = await import('@/lib/line/client');
             await pushMessage(context.userId, [...allResponseMessages]);
             allResponseMessages.length = 0;
           }
-          await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
-          delayedNodePush = true;
+          // このノード自身のdelayと、前のsend_messageからの持ち越しdelayの大きい方を使用
+          pendingDelaySec = Math.max(delaySec, pendingDelaySec);
         }
 
         // カードノードの場合: 兄弟cardを自動マージしてカルーセルを生成
@@ -237,31 +237,27 @@ export class FlowExecutor {
 
         // レスポンスメッセージを収集
         if (result.responseMessages) {
-          if (delayedNodePush || usePushForRemaining) {
-            // 遅延後: pushMessageで直接送信（replyToken期限切れ対策）
-            const { pushMessage } = await import('@/lib/line/client');
-            await pushMessage(context.userId, result.responseMessages);
-            console.log(`⏱️  delay後 pushMessage送信: ${result.responseMessages.length}件`);
+          if (pendingDelaySec > 0) {
+            // 遅延送信: 別APIリクエストで非同期送信（fire-and-forget）
+            scheduleDelayedPush(context.userId, result.responseMessages, pendingDelaySec);
+            pendingDelaySec = 0;
           } else {
             allResponseMessages.push(...result.responseMessages);
           }
         }
 
-        // delay処理: send_messageノードにdelayAfterが設定されている場合
-        // 溜まったメッセージを先にpushMessageで送信してから待機
+        // send_messageのdelay処理: メッセージを先にpushMessageで送信し、
+        // 次のノードのメッセージを遅延送信するようフラグを立てる
         if (currentNode.type === 'send_message' && result.variables?._delayAfterSeconds) {
           const delaySec = result.variables._delayAfterSeconds as number;
-          console.log(`⏱️  delay処理: ${delaySec}秒待機（メッセージ先送り）`);
+          console.log(`⏱️  send_message delay: ${delaySec}秒後に次のメッセージを送信予約`);
           if (allResponseMessages.length > 0) {
             const { pushMessage } = await import('@/lib/line/client');
             await pushMessage(context.userId, [...allResponseMessages]);
-            allResponseMessages.length = 0;  // バッファクリア
+            allResponseMessages.length = 0;
           }
-          await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
-          // _delayAfterSeconds はexecutor内部用なのでcontextから除去
           delete context.variables._delayAfterSeconds;
-          // delay発生後は以降のメッセージもpushMessageで送信
-          usePushForRemaining = true;
+          pendingDelaySec = delaySec;  // 次のノードのメッセージに遅延を適用
         }
 
         // エラーチェック

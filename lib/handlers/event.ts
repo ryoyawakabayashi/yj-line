@@ -77,6 +77,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                 };
                 const maxSteps = 20;
                 let step = 0;
+                let chainPendingDelay = 0;  // 遅延送信用
 
                 while (currentNodeId && step < maxSteps) {
                   step++;
@@ -94,30 +95,30 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     console.log('🔗 send_message結果:', { success: result.success, nextNodeId: result.nextNodeId, msgCount: result.responseMessages?.length });
                     if (result.responseMessages) messages.push(...result.responseMessages);
 
-                    // delayAfter処理: メッセージを先に送信してから待機
+                    // delayAfter処理: メッセージを先に送信し、次のノードを遅延送信予約
                     if (result.variables?._delayAfterSeconds) {
                       const delaySec = result.variables._delayAfterSeconds as number;
-                      console.log(`⏱️  card_choiceチェーン delay: ${delaySec}秒待機`);
+                      console.log(`⏱️  card_choiceチェーン send_message delay: ${delaySec}秒後に次メッセージ送信予約`);
                       if (messages.length > 0) {
                         await pushMessage(userId, [...messages]);
                         messages.length = 0;
                       }
-                      await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+                      chainPendingDelay = delaySec;
                     }
 
                     currentNodeId = result.nextNodeId;
                   } else if (node.type === 'card') {
-                    // card delay処理: 表示前に溜まったメッセージを先送り + 待機
+                    // card delay処理: このノードのdelayまたは前ノードからの持ち越しdelay
                     const cardDelay = node.data?.config?.delayAfter;
-                    if (cardDelay && cardDelay > 0) {
-                      const delaySec = Math.min(cardDelay, 30);
-                      console.log(`⏱️  card_choiceチェーン card delay: ${delaySec}秒待機`);
-                      if (messages.length > 0) {
-                        await pushMessage(userId, [...messages]);
-                        messages.length = 0;
-                      }
-                      await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+                    const effectiveDelay = Math.max(
+                      cardDelay && cardDelay > 0 ? Math.min(cardDelay, 30) : 0,
+                      chainPendingDelay
+                    );
+                    if (effectiveDelay > 0 && messages.length > 0) {
+                      await pushMessage(userId, [...messages]);
+                      messages.length = 0;
                     }
+
                     const { CardHandler } = await import('../flow-engine/nodes/card');
                     // 兄弟cardノードをマージしてカルーセルを生成
                     let cardNode: FlowNodeType = node;
@@ -153,33 +154,35 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     const result = await handler.execute(cardNode, context);
                     console.log('🔗 card結果:', { success: result.success, error: result.error, msgCount: result.responseMessages?.length });
                     if (result.responseMessages) {
-                      if (cardDelay && cardDelay > 0) {
-                        // delay後: 直接pushMessage（replyToken期限切れ対策）
-                        await pushMessage(userId, result.responseMessages);
+                      if (effectiveDelay > 0) {
+                        const { scheduleDelayedPush } = await import('../flow-engine/delayed-push');
+                        scheduleDelayedPush(userId, result.responseMessages, effectiveDelay);
+                        chainPendingDelay = 0;
                       } else {
                         messages.push(...result.responseMessages);
                       }
                     }
                     break; // cardは入力待ちなので停止
                   } else if (node.type === 'quick_reply') {
-                    // quick_reply delay処理: 表示前に溜まったメッセージを先送り + 待機
+                    // quick_reply delay処理
                     const qrDelay = node.data?.config?.delayAfter;
-                    if (qrDelay && qrDelay > 0) {
-                      const delaySec = Math.min(qrDelay, 30);
-                      console.log(`⏱️  card_choiceチェーン quick_reply delay: ${delaySec}秒待機`);
-                      if (messages.length > 0) {
-                        await pushMessage(userId, [...messages]);
-                        messages.length = 0;
-                      }
-                      await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+                    const effectiveDelay = Math.max(
+                      qrDelay && qrDelay > 0 ? Math.min(qrDelay, 30) : 0,
+                      chainPendingDelay
+                    );
+                    if (effectiveDelay > 0 && messages.length > 0) {
+                      await pushMessage(userId, [...messages]);
+                      messages.length = 0;
                     }
+
                     const { QuickReplyHandler } = await import('../flow-engine/nodes/quick-reply');
                     const qrHandler = new QuickReplyHandler(edges);
                     const qrResult = await qrHandler.execute(node, context);
                     if (qrResult.responseMessages) {
-                      if (qrDelay && qrDelay > 0) {
-                        // delay後: 直接pushMessage
-                        await pushMessage(userId, qrResult.responseMessages);
+                      if (effectiveDelay > 0) {
+                        const { scheduleDelayedPush } = await import('../flow-engine/delayed-push');
+                        scheduleDelayedPush(userId, qrResult.responseMessages, effectiveDelay);
+                        chainPendingDelay = 0;
                       } else {
                         messages.push(...qrResult.responseMessages);
                       }
