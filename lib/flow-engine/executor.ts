@@ -238,8 +238,8 @@ export class FlowExecutor {
         // レスポンスメッセージを収集
         if (result.responseMessages) {
           if (pendingDelaySec > 0) {
-            // 遅延送信: 別APIリクエストで非同期送信（fire-and-forget）
-            scheduleDelayedPush(context.userId, result.responseMessages, pendingDelaySec);
+            // 遅延送信: 別APIリクエストで非同期送信（awaitして確実にリクエストを送る）
+            await scheduleDelayedPush(context.userId, result.responseMessages, pendingDelaySec);
             pendingDelaySec = 0;
           } else {
             allResponseMessages.push(...result.responseMessages);

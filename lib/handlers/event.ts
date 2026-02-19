@@ -156,7 +156,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     if (result.responseMessages) {
                       if (effectiveDelay > 0) {
                         const { scheduleDelayedPush } = await import('../flow-engine/delayed-push');
-                        scheduleDelayedPush(userId, result.responseMessages, effectiveDelay);
+                        await scheduleDelayedPush(userId, result.responseMessages, effectiveDelay);
                         chainPendingDelay = 0;
                       } else {
                         messages.push(...result.responseMessages);
@@ -181,7 +181,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     if (qrResult.responseMessages) {
                       if (effectiveDelay > 0) {
                         const { scheduleDelayedPush } = await import('../flow-engine/delayed-push');
-                        scheduleDelayedPush(userId, qrResult.responseMessages, effectiveDelay);
+                        await scheduleDelayedPush(userId, qrResult.responseMessages, effectiveDelay);
                         chainPendingDelay = 0;
                       } else {
                         messages.push(...qrResult.responseMessages);
