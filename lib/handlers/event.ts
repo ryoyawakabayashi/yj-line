@@ -152,7 +152,14 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     const handler = new CardHandler(edges);
                     const result = await handler.execute(cardNode, context);
                     console.log('🔗 card結果:', { success: result.success, error: result.error, msgCount: result.responseMessages?.length });
-                    if (result.responseMessages) messages.push(...result.responseMessages);
+                    if (result.responseMessages) {
+                      if (cardDelay && cardDelay > 0) {
+                        // delay後: 直接pushMessage（replyToken期限切れ対策）
+                        await pushMessage(userId, result.responseMessages);
+                      } else {
+                        messages.push(...result.responseMessages);
+                      }
+                    }
                     break; // cardは入力待ちなので停止
                   } else if (node.type === 'quick_reply') {
                     // quick_reply delay処理: 表示前に溜まったメッセージを先送り + 待機
@@ -167,9 +174,16 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                       await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
                     }
                     const { QuickReplyHandler } = await import('../flow-engine/nodes/quick-reply');
-                    const handler = new QuickReplyHandler(edges);
-                    const result = await handler.execute(node, context);
-                    if (result.responseMessages) messages.push(...result.responseMessages);
+                    const qrHandler = new QuickReplyHandler(edges);
+                    const qrResult = await qrHandler.execute(node, context);
+                    if (qrResult.responseMessages) {
+                      if (qrDelay && qrDelay > 0) {
+                        // delay後: 直接pushMessage
+                        await pushMessage(userId, qrResult.responseMessages);
+                      } else {
+                        messages.push(...qrResult.responseMessages);
+                      }
+                    }
                     break; // quick_replyは入力待ちなので停止
                   } else if (node.type === 'end') {
                     break;

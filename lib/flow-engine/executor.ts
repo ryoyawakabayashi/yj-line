@@ -169,6 +169,7 @@ export class FlowExecutor {
       let iteration = 0;
       const allResponseMessages: any[] = [];
       const executionLog: any[] = [];
+      let usePushForRemaining = false;  // delay発生後はpushMessageで直接送信
 
       while (currentNodeId && iteration < this.maxIterations) {
         iteration++;
@@ -186,6 +187,8 @@ export class FlowExecutor {
         console.log(`📍 ノード実行: ${currentNode.type} (${currentNode.id})`);
 
         // quick_reply/card の遅延処理: 実行前に溜まったメッセージを先送り + 待機
+        // 遅延後のメッセージはpushMessageで直接送信（replyTokenが期限切れ or 関数タイムアウト対策）
+        let delayedNodePush = false;
         if ((currentNode.type === 'quick_reply' || currentNode.type === 'card') && currentNode.data?.config?.delayAfter > 0) {
           const delaySec = Math.min(currentNode.data.config.delayAfter, 30);
           console.log(`⏱️  ${currentNode.type} delay処理: ${delaySec}秒待機（メッセージ先送り）`);
@@ -195,6 +198,7 @@ export class FlowExecutor {
             allResponseMessages.length = 0;
           }
           await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+          delayedNodePush = true;
         }
 
         // カードノードの場合: 兄弟cardを自動マージしてカルーセルを生成
@@ -233,7 +237,14 @@ export class FlowExecutor {
 
         // レスポンスメッセージを収集
         if (result.responseMessages) {
-          allResponseMessages.push(...result.responseMessages);
+          if (delayedNodePush || usePushForRemaining) {
+            // 遅延後: pushMessageで直接送信（replyToken期限切れ対策）
+            const { pushMessage } = await import('@/lib/line/client');
+            await pushMessage(context.userId, result.responseMessages);
+            console.log(`⏱️  delay後 pushMessage送信: ${result.responseMessages.length}件`);
+          } else {
+            allResponseMessages.push(...result.responseMessages);
+          }
         }
 
         // delay処理: send_messageノードにdelayAfterが設定されている場合
@@ -249,6 +260,8 @@ export class FlowExecutor {
           await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
           // _delayAfterSeconds はexecutor内部用なのでcontextから除去
           delete context.variables._delayAfterSeconds;
+          // delay発生後は以降のメッセージもpushMessageで送信
+          usePushForRemaining = true;
         }
 
         // エラーチェック
