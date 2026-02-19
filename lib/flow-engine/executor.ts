@@ -185,6 +185,18 @@ export class FlowExecutor {
 
         console.log(`📍 ノード実行: ${currentNode.type} (${currentNode.id})`);
 
+        // quick_reply/card の遅延処理: 実行前に溜まったメッセージを先送り + 待機
+        if ((currentNode.type === 'quick_reply' || currentNode.type === 'card') && currentNode.data?.config?.delayAfter > 0) {
+          const delaySec = Math.min(currentNode.data.config.delayAfter, 30);
+          console.log(`⏱️  ${currentNode.type} delay処理: ${delaySec}秒待機（メッセージ先送り）`);
+          if (allResponseMessages.length > 0) {
+            const { pushMessage } = await import('@/lib/line/client');
+            await pushMessage(context.userId, [...allResponseMessages]);
+            allResponseMessages.length = 0;
+          }
+          await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+        }
+
         // カードノードの場合: 兄弟cardを自動マージしてカルーセルを生成
         let nodeToExecute = currentNode;
         if (currentNode.type === 'card') {

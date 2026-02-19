@@ -107,6 +107,17 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
                     currentNodeId = result.nextNodeId;
                   } else if (node.type === 'card') {
+                    // card delay処理: 表示前に溜まったメッセージを先送り + 待機
+                    const cardDelay = node.data?.config?.delayAfter;
+                    if (cardDelay && cardDelay > 0) {
+                      const delaySec = Math.min(cardDelay, 30);
+                      console.log(`⏱️  card_choiceチェーン card delay: ${delaySec}秒待機`);
+                      if (messages.length > 0) {
+                        await pushMessage(userId, [...messages]);
+                        messages.length = 0;
+                      }
+                      await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+                    }
                     const { CardHandler } = await import('../flow-engine/nodes/card');
                     // 兄弟cardノードをマージしてカルーセルを生成
                     let cardNode: FlowNodeType = node;
@@ -144,6 +155,17 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     if (result.responseMessages) messages.push(...result.responseMessages);
                     break; // cardは入力待ちなので停止
                   } else if (node.type === 'quick_reply') {
+                    // quick_reply delay処理: 表示前に溜まったメッセージを先送り + 待機
+                    const qrDelay = node.data?.config?.delayAfter;
+                    if (qrDelay && qrDelay > 0) {
+                      const delaySec = Math.min(qrDelay, 30);
+                      console.log(`⏱️  card_choiceチェーン quick_reply delay: ${delaySec}秒待機`);
+                      if (messages.length > 0) {
+                        await pushMessage(userId, [...messages]);
+                        messages.length = 0;
+                      }
+                      await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+                    }
                     const { QuickReplyHandler } = await import('../flow-engine/nodes/quick-reply');
                     const handler = new QuickReplyHandler(edges);
                     const result = await handler.execute(node, context);

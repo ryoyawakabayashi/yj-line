@@ -137,6 +137,7 @@ export interface SetVariableConfig {
  */
 export interface QuickReplyConfig {
   message: string | Record<string, string>;  // クイックリプライと一緒に送るメッセージ / 多言語対応
+  delayAfter?: number;  // 送信前の遅延秒数（1〜30秒）。前のメッセージ送信後、この秒数待ってから表示
   // エッジのlabelがボタンのテキストになります
   // エッジのtargetが選択後の遷移先ノードIDになります
 }
@@ -167,6 +168,7 @@ export interface CardConfig {
   title?: string | Record<string, string>;
   text: string | Record<string, string>;
   imageUrl?: string;
+  delayAfter?: number;  // 送信前の遅延秒数（1〜30秒）。前のメッセージ送信後、この秒数待ってから表示
   // --- カルーセルモード（columns配列がある場合はこちらを優先） ---
   columns?: CardColumn[];                      // 複数枚カード（最大10枚）
 }
