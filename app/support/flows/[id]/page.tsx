@@ -2339,6 +2339,29 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                 </div>
                 )}
 
+                {/* 送信後の遅延設定 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    送信後の遅延（秒）
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={30}
+                    value={selectedNode.data.config.delayAfter ?? 0}
+                    onChange={(e) =>
+                      updateNodeConfig(selectedNode.id, {
+                        ...selectedNode.data.config,
+                        delayAfter: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    このメッセージ送信後、指定秒数待ってから次のノードを実行します（0で無効、最大30秒）
+                  </p>
+                </div>
+
                 {/* 接続された子ノード表示 */}
                 {(() => {
                   const connectedNodes = edges

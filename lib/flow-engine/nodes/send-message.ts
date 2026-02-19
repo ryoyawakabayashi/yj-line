@@ -112,10 +112,17 @@ export class SendMessageHandler implements NodeHandler {
       const nextEdge = this.edges.find((e) => e.source === node.id);
       const nextNodeId = nextEdge?.target;
 
+      // delayAfter が設定されている場合、変数経由でexecutorに伝達
+      const delayAfter = config.delayAfter;
+      const variables = delayAfter && delayAfter > 0
+        ? { _delayAfterSeconds: Math.min(delayAfter, 30) }
+        : undefined;
+
       return {
         success: true,
         nextNodeId,
         responseMessages: [message],
+        variables,
       };
     } catch (error) {
       console.error('SendMessageHandler error:', error);

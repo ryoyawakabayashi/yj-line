@@ -62,6 +62,7 @@ export interface NodeHandler {
 export interface SendMessageConfig {
   messageType: 'text' | 'flex' | 'template';
   content: string | Record<string, string>;  // 変数埋め込み可: {{user.name}} / 多言語対応
+  delayAfter?: number;  // 送信後の遅延秒数（1〜30秒）。次のノード実行前に待機する
   quickReply?: {
     items: Array<{
       type: 'action';

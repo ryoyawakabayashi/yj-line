@@ -93,6 +93,18 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                     const result = await handler.execute(node, context);
                     console.log('🔗 send_message結果:', { success: result.success, nextNodeId: result.nextNodeId, msgCount: result.responseMessages?.length });
                     if (result.responseMessages) messages.push(...result.responseMessages);
+
+                    // delayAfter処理: メッセージを先に送信してから待機
+                    if (result.variables?._delayAfterSeconds) {
+                      const delaySec = result.variables._delayAfterSeconds as number;
+                      console.log(`⏱️  card_choiceチェーン delay: ${delaySec}秒待機`);
+                      if (messages.length > 0) {
+                        await pushMessage(userId, [...messages]);
+                        messages.length = 0;
+                      }
+                      await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+                    }
+
                     currentNodeId = result.nextNodeId;
                   } else if (node.type === 'card') {
                     const { CardHandler } = await import('../flow-engine/nodes/card');

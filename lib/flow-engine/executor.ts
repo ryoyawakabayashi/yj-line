@@ -224,6 +224,21 @@ export class FlowExecutor {
           allResponseMessages.push(...result.responseMessages);
         }
 
+        // delay処理: send_messageノードにdelayAfterが設定されている場合
+        // 溜まったメッセージを先にpushMessageで送信してから待機
+        if (currentNode.type === 'send_message' && result.variables?._delayAfterSeconds) {
+          const delaySec = result.variables._delayAfterSeconds as number;
+          console.log(`⏱️  delay処理: ${delaySec}秒待機（メッセージ先送り）`);
+          if (allResponseMessages.length > 0) {
+            const { pushMessage } = await import('@/lib/line/client');
+            await pushMessage(context.userId, [...allResponseMessages]);
+            allResponseMessages.length = 0;  // バッファクリア
+          }
+          await new Promise(resolve => setTimeout(resolve, delaySec * 1000));
+          // _delayAfterSeconds はexecutor内部用なのでcontextから除去
+          delete context.variables._delayAfterSeconds;
+        }
+
         // エラーチェック
         if (!result.success) {
           console.error('ノード実行エラー:', result.error);
