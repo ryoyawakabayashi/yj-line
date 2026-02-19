@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getGlossaryForPrompt } from '@/lib/database/glossary-queries';
 
 let openai: OpenAI | null = null;
 
@@ -38,6 +39,9 @@ export async function POST(request: NextRequest) {
     // 全テキストをまとめて翻訳リクエスト
     const textsJson = JSON.stringify(texts);
     const langList = TARGET_LANGS.map((l) => `${l} (${LANG_NAMES[l]})`).join(', ');
+
+    // 用語集をプロンプトに追加
+    const glossaryPrompt = await getGlossaryForPrompt();
 
     const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
@@ -86,7 +90,7 @@ Output JSON format:
   "translations": [
     { "ja": "...", "en": "...", "ko": "...", "zh": "...", "vi": "..." }
   ]
-}`,
+}${glossaryPrompt}`,
         },
         {
           role: 'user',

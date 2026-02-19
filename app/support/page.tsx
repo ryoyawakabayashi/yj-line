@@ -136,6 +136,12 @@ export default function SupportPage() {
             </div>
             <div className="flex items-center gap-2">
               <Link
+                href="/support/glossary"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              >
+                用語集
+              </Link>
+              <Link
                 href="/support/faq"
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
               >
