@@ -14,14 +14,18 @@ export async function scheduleDelayedPush(
   messages: any[],
   delaySec: number
 ): Promise<void> {
-  // VERCEL_URL（Vercel自動設定）を優先、なければ APP_BASE_URL を使用
-  const appBaseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.APP_BASE_URL || 'https://line-bot-next-omega.vercel.app';
+  // VERCEL_PROJECT_PRODUCTION_URL（本番ドメイン）を優先
+  // VERCEL_URL はデプロイ固有URLなので本番ドメインと異なる場合がある
+  const appBaseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.APP_BASE_URL || 'https://line-bot-next-omega.vercel.app';
   const secret = (process.env.LINE_CHANNEL_SECRET || '').slice(0, 16);
   const url = `${appBaseUrl}/api/flow/delayed-push`;
 
   console.log(`⏱️  scheduleDelayedPush: ${delaySec}秒後に${messages.length}件送信予約 → ${url}`);
+  console.log(`⏱️  ENV: VERCEL_PROJECT_PRODUCTION_URL=${process.env.VERCEL_PROJECT_PRODUCTION_URL || '(未設定)'}, VERCEL_URL=${process.env.VERCEL_URL || '(未設定)'}`);
 
   try {
     const res = await fetch(url, {
@@ -29,7 +33,8 @@ export async function scheduleDelayedPush(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, messages, delaySec, secret }),
     });
-    console.log(`⏱️  scheduleDelayedPush: レスポンス ${res.status}`);
+    const body = await res.text();
+    console.log(`⏱️  scheduleDelayedPush: レスポンス ${res.status} body=${body}`);
   } catch (err) {
     console.error('❌ scheduleDelayedPush fetch エラー:', err);
   }

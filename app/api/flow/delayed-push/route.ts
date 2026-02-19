@@ -32,15 +32,18 @@ export async function POST(req: NextRequest) {
 
     // after() でバックグラウンド処理: 即座にレスポンスを返しつつ、
     // この関数のライフタイム内で遅延送信を実行
+    const startTime = Date.now();
     after(async () => {
       try {
+        console.log(`⏱️  delayed-push after() 開始: ${Date.now() - startTime}ms経過`);
         if (delay > 0) {
           await new Promise(resolve => setTimeout(resolve, delay * 1000));
         }
+        console.log(`⏱️  delayed-push setTimeout完了: ${Date.now() - startTime}ms経過, pushMessage開始`);
         await pushMessage(userId, messages);
-        console.log(`✅ delayed-push: 送信完了 (${delay}秒遅延)`);
+        console.log(`✅ delayed-push: 送信完了 (${delay}秒遅延, 合計${Date.now() - startTime}ms)`);
       } catch (error) {
-        console.error('❌ delayed-push after() エラー:', error);
+        console.error(`❌ delayed-push after() エラー (${Date.now() - startTime}ms経過):`, error);
       }
     });
 
