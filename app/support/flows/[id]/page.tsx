@@ -3075,6 +3075,40 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         </p>
                       </div>
 
+                      {/* クイックリプライ同時送信 */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          クイックリプライ同時送信
+                        </label>
+                        <select
+                          value={selectedNode.data.config.linkedQuickReplyNodeId || ''}
+                          onChange={(e) =>
+                            updateNodeConfig(selectedNode.id, {
+                              ...selectedNode.data.config,
+                              linkedQuickReplyNodeId: e.target.value || undefined,
+                            })
+                          }
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
+                        >
+                          <option value="">なし</option>
+                          {nodes
+                            .filter((n) => (n.data?.nodeType || n.id?.split('-')[0]) === 'quick_reply' && n.id !== selectedNode.id)
+                            .map((n) => {
+                              const msg = n.data?.config?.message;
+                              const preview = typeof msg === 'string' ? msg : (msg?.ja || Object.values(msg || {})[0] || '');
+                              return (
+                                <option key={n.id} value={n.id}>
+                                  {n.id.slice(0, 25)} - {String(preview).slice(0, 20)}
+                                </option>
+                              );
+                            })
+                          }
+                        </select>
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          カードメッセージと一緒にクイックリプライノードを同時送信します。カードボタンもQRボタンもどちらも動作します。
+                        </p>
+                      </div>
+
                       {/* クイックリプライ設定 */}
                       <div>
                         <div className="flex items-center justify-between mb-1">

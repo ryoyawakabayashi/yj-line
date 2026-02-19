@@ -177,4 +177,6 @@ export interface CardConfig {
     text?: string;                              // タップ時に送信されるテキスト（省略時はlabelと同じ）
     targetNodeId: string;                       // 選択時の遷移先ノードID
   }>;
+  // --- 同時送信クイックリプライノード ---
+  linkedQuickReplyNodeId?: string;              // カードと同時にクイックリプライノードを送信
 }

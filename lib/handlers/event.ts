@@ -164,6 +164,27 @@ export async function handleEvent(event: LineEvent): Promise<void> {
                         messages.push(...result.responseMessages);
                       }
                     }
+                    // カード + クイックリプライ同時送信
+                    const linkedQrId = node.data?.config?.linkedQuickReplyNodeId;
+                    if (linkedQrId) {
+                      const qrNode = nodes.find((n) => n.id === linkedQrId);
+                      if (qrNode && qrNode.type === 'quick_reply') {
+                        console.log(`🔗 チェーン: card + QR同時送信: qr=${linkedQrId}`);
+                        const { QuickReplyHandler } = await import('../flow-engine/nodes/quick-reply');
+                        const qrHandler = new QuickReplyHandler(edges);
+                        const qrResult = await qrHandler.execute(qrNode, context);
+                        if (qrResult.responseMessages) {
+                          if (effectiveDelay > 0) {
+                            const { scheduleDelayedPush } = await import('../flow-engine/delayed-push');
+                            await scheduleDelayedPush(userId, qrResult.responseMessages, effectiveDelay);
+                          } else {
+                            messages.push(...qrResult.responseMessages);
+                          }
+                        }
+                        chainWaitingNodeId = linkedQrId;  // QRノードで入力待ち
+                        break;
+                      }
+                    }
                     chainWaitingNodeId = node.id;
                     break; // cardは入力待ちなので停止
                   } else if (node.type === 'quick_reply') {

@@ -279,6 +279,35 @@ export class FlowExecutor {
 
         // 入力待ちチェック
         if (result.shouldWaitForInput) {
+          // カード + クイックリプライ同時送信: linkedQuickReplyNodeId が設定されている場合
+          if (currentNode.type === 'card' && currentNode.data?.config?.linkedQuickReplyNodeId) {
+            const linkedQrId = currentNode.data.config.linkedQuickReplyNodeId as string;
+            const qrNode = flow.flowDefinition.nodes.find((n) => n.id === linkedQrId);
+            if (qrNode && qrNode.type === 'quick_reply') {
+              console.log(`🔗 カード + クイックリプライ同時送信: card=${currentNode.id}, qr=${linkedQrId}`);
+              const qrHandler = this.getNodeHandler('quick_reply', flow.flowDefinition.edges);
+              if (qrHandler) {
+                const qrResult = await qrHandler.execute(qrNode, context);
+                if (qrResult.responseMessages) {
+                  allResponseMessages.push(...qrResult.responseMessages);
+                }
+              }
+              await updateFlowExecution(executionId, {
+                status: 'running',
+                currentNodeId: linkedQrId,
+                executionLog,
+              });
+              return {
+                success: true,
+                handled: true,
+                shouldWaitForInput: true,
+                waitNodeId: linkedQrId,  // QRノードで入力待ち（テキスト入力はQR側で処理）
+                responseMessages: allResponseMessages,
+                variables: context.variables,
+              };
+            }
+          }
+
           console.log('⏸️  ユーザー入力待ち');
           await updateFlowExecution(executionId, {
             status: 'running',
