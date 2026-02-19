@@ -1435,61 +1435,67 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     return { texts, sources };
   };
 
+  /** ノードの config に翻訳結果を適用した新しい config を返す */
+  const buildTranslatedConfig = (config: any, nodeId: string, translations: any[], sources: TextSource[]) => {
+    let updatedConfig = { ...config };
+    let changed = false;
+
+    const apply = (type: string, configKey: string) => {
+      const s = sources.find((s) => s.id === nodeId && s.type === type);
+      if (!s) return;
+      const t = translations[sources.indexOf(s)];
+      if (!t) return;
+      updatedConfig[configKey] = makeLangObj(t, s.originalJa);
+      changed = true;
+    };
+
+    apply('node_content', 'content');
+    apply('node_message', 'message');
+
+    // card text / title（columns[0] 構造に対応）
+    const cardTextS = sources.find((s) => s.id === nodeId && s.type === 'node_card_text');
+    const cardTitleS = sources.find((s) => s.id === nodeId && s.type === 'node_card_title');
+    const cardBtnSources = sources.filter((s) => s.id === nodeId && s.type === 'node_card_btn');
+
+    if (cardTextS || cardTitleS || cardBtnSources.length > 0) {
+      const col = { ...(updatedConfig.columns?.[0] || { title: updatedConfig.title || '', text: updatedConfig.text || '', imageUrl: updatedConfig.imageUrl || '', buttons: updatedConfig.buttons || [] }) };
+      if (cardTextS) {
+        const t = translations[sources.indexOf(cardTextS)];
+        if (t) { col.text = makeLangObj(t, cardTextS.originalJa); changed = true; }
+      }
+      if (cardTitleS) {
+        const t = translations[sources.indexOf(cardTitleS)];
+        if (t) { col.title = makeLangObj(t, cardTitleS.originalJa); changed = true; }
+      }
+      cardBtnSources.forEach((s) => {
+        const t = translations[sources.indexOf(s)];
+        if (!t || s.btnIdx === undefined) return;
+        const btns = [...(col.buttons || [])];
+        if (btns[s.btnIdx]) {
+          btns[s.btnIdx] = { ...btns[s.btnIdx], label: makeLangObj(t, s.originalJa) };
+          col.buttons = btns;
+          changed = true;
+        }
+      });
+      updatedConfig.columns = [col];
+    }
+
+    return { updatedConfig, changed };
+  };
+
   /** 翻訳結果をノード・エッジに適用 */
   const applyTranslations = (
     translations: any[],
     sources: TextSource[],
-    nodeIds?: Set<string>,
   ) => {
-    const translatedNodeIds = new Set<string>();
+    // 翻訳対象ノードIDを sources から同期的に特定
+    const translatedNodeIds = new Set(sources.filter((s) => !s.type.startsWith('edge_')).map((s) => s.id));
 
     setNodes((prevNodes) =>
       prevNodes.map((node) => {
-        let updatedConfig = { ...node.data.config };
-        let changed = false;
-
-        const apply = (type: string, configKey: string) => {
-          const s = sources.find((s) => s.id === node.id && s.type === type);
-          if (!s) return;
-          const t = translations[sources.indexOf(s)];
-          if (!t) return;
-          updatedConfig[configKey] = makeLangObj(t, s.originalJa);
-          changed = true;
-        };
-
-        apply('node_content', 'content');
-        apply('node_message', 'message');
-
-        // card text / title（columns[0] 構造に対応）
-        const cardTextS = sources.find((s) => s.id === node.id && s.type === 'node_card_text');
-        const cardTitleS = sources.find((s) => s.id === node.id && s.type === 'node_card_title');
-        const cardBtnSources = sources.filter((s) => s.id === node.id && s.type === 'node_card_btn');
-
-        if (cardTextS || cardTitleS || cardBtnSources.length > 0) {
-          const col = { ...(updatedConfig.columns?.[0] || { title: updatedConfig.title || '', text: updatedConfig.text || '', imageUrl: updatedConfig.imageUrl || '', buttons: updatedConfig.buttons || [] }) };
-          if (cardTextS) {
-            const t = translations[sources.indexOf(cardTextS)];
-            if (t) { col.text = makeLangObj(t, cardTextS.originalJa); changed = true; }
-          }
-          if (cardTitleS) {
-            const t = translations[sources.indexOf(cardTitleS)];
-            if (t) { col.title = makeLangObj(t, cardTitleS.originalJa); changed = true; }
-          }
-          cardBtnSources.forEach((s) => {
-            const t = translations[sources.indexOf(s)];
-            if (!t || s.btnIdx === undefined) return;
-            const btns = [...(col.buttons || [])];
-            if (btns[s.btnIdx]) {
-              btns[s.btnIdx] = { ...btns[s.btnIdx], label: makeLangObj(t, s.originalJa) };
-              col.buttons = btns;
-              changed = true;
-            }
-          });
-          updatedConfig.columns = [col];
-        }
-
+        if (!translatedNodeIds.has(node.id)) return node;
+        const { updatedConfig, changed } = buildTranslatedConfig(node.data.config, node.id, translations, sources);
         if (!changed) return node;
-        translatedNodeIds.add(node.id);
         return { ...node, data: { ...node.data, config: updatedConfig, translationLocked: true } };
       })
     );
@@ -1522,31 +1528,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       })
     );
 
-    // selectedNode も更新
+    // selectedNode も同期的に更新（setNodes は非同期バッチなので別途更新が必要）
     if (selectedNode && translatedNodeIds.has(selectedNode.id)) {
-      const updatedNode = nodes.find((n) => n.id === selectedNode.id);
-      // nodes はまだ setState 前なので sources から再構築
-      let updatedConfig = { ...selectedNode.data.config };
-      for (const s of sources.filter((s) => s.id === selectedNode.id)) {
-        const t = translations[sources.indexOf(s)];
-        if (!t) continue;
-        const val = makeLangObj(t, s.originalJa);
-        if (s.type === 'node_content') updatedConfig.content = val;
-        else if (s.type === 'node_message') updatedConfig.message = val;
-        else if (s.type === 'node_card_text') {
-          const col = { ...(updatedConfig.columns?.[0] || {}) };
-          col.text = val;
-          updatedConfig.columns = [col];
-        } else if (s.type === 'node_card_title') {
-          const col = { ...(updatedConfig.columns?.[0] || {}) };
-          col.title = val;
-          updatedConfig.columns = [col];
-        }
+      const { updatedConfig, changed } = buildTranslatedConfig(selectedNode.data.config, selectedNode.id, translations, sources);
+      if (changed) {
+        setSelectedNode({
+          ...selectedNode,
+          data: { ...selectedNode.data, config: updatedConfig, translationLocked: true },
+        });
       }
-      setSelectedNode({
-        ...selectedNode,
-        data: { ...selectedNode.data, config: updatedConfig, translationLocked: true },
-      });
     }
 
     return translatedNodeIds;
