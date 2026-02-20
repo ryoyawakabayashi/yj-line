@@ -165,6 +165,14 @@ const siteLabel: Record<string, string> = {
   vi: '🔍 Trang web',
 };
 
+const featuredLabel: Record<string, string> = {
+  ja: '⭐ おすすめの仕事',
+  en: '⭐ Featured Jobs',
+  ko: '⭐ 추천 일자리',
+  zh: '⭐ 推荐工作',
+  vi: '⭐ Việc làm nổi bật',
+};
+
   await replyWithQuickReply(replyToken, messages[lang] || messages.ja, [
     {
       type: 'action',
@@ -180,6 +188,14 @@ const siteLabel: Record<string, string> = {
         type: 'message',
         label: siteLabel[lang] || siteLabel.ja,
         text: 'SITE_MODE_AUTOCHAT', // AIトーク経由を識別
+      },
+    },
+    {
+      type: 'action',
+      action: {
+        type: 'message',
+        label: featuredLabel[lang] || featuredLabel.ja,
+        text: 'VIEW_FEATURES',
       },
     },
   ]);

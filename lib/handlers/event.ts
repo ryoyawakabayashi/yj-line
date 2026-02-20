@@ -373,6 +373,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
 
       // リッチメニューボタンの処理
       const richMenuButtons = [
+        'FIND_JOB',
         'AI_MODE',
         'CAREER_DIAGNOSIS',
         'SITE_MODE',
@@ -390,6 +391,13 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS || currentState?.mode === 'career_diagnosis') {
           console.log('🔄 診断モード中 → リッチメニューボタン → 診断リセット');
           await clearConversationState(userId);
+        }
+
+        // FIND_JOB: 仕事探し3択クイックリプライ
+        if (messageText === 'FIND_JOB') {
+          const { handleFindJob } = await import('./buttons');
+          await handleFindJob(userId, event.replyToken);
+          return;
         }
 
         // AI_MODE: 診断開始
@@ -495,7 +503,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             // ユーザーのメッセージがリッチメニューボタン（AI_MODE等）の場合、
             // 通常ハンドラーに引き継ぐ（returnしない）
             const reDispatchButtons = [
-              'AI_MODE', 'CAREER_DIAGNOSIS', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
+              'FIND_JOB', 'AI_MODE', 'CAREER_DIAGNOSIS', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
               'VIEW_FEATURES', 'CONTACT', 'LANG_CHANGE', 'YOLO_DISCOVER',
             ];
             if (reDispatchButtons.includes(messageText)) {

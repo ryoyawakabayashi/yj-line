@@ -17,6 +17,7 @@ import {
   LifebuoyIcon,
   QuestionMarkCircleIcon,
   Squares2X2Icon,
+  Bars3BottomLeftIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -50,6 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'チケット一覧', href: '/dashboard/support', icon: LifebuoyIcon },
       { label: 'FAQ管理', href: '/support/faq', icon: QuestionMarkCircleIcon },
       { label: 'フロー管理', href: '/support/flows', icon: Squares2X2Icon },
+      { label: 'リッチメニュー', href: '/support/richmenu', icon: Bars3BottomLeftIcon },
     ],
   },
   {

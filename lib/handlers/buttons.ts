@@ -129,11 +129,19 @@ export async function handleFindJob(
   };
 
   const siteLabel: Record<string, string> = {
-    ja: 'サイトで探す',
-    en: 'Search on Site',
-    ko: '사이트에서 검색',
-    zh: '在网站上搜索',
-    vi: 'Tìm trên trang web',
+    ja: '🔍 サイトで探す',
+    en: '🔍 Search on Site',
+    ko: '🔍 사이트에서 검색',
+    zh: '🔍 在网站上搜索',
+    vi: '🔍 Tìm trên trang web',
+  };
+
+  const featuredLabel: Record<string, string> = {
+    ja: '⭐ おすすめの仕事',
+    en: '⭐ Featured Jobs',
+    ko: '⭐ 추천 일자리',
+    zh: '⭐ 推荐工作',
+    vi: '⭐ Việc làm nổi bật',
   };
 
   await replyWithQuickReply(replyToken, messages[lang] || messages.ja, [
@@ -151,6 +159,14 @@ export async function handleFindJob(
         type: 'message',
         label: siteLabel[lang] || siteLabel.ja,
         text: 'SITE_MODE',
+      },
+    },
+    {
+      type: 'action',
+      action: {
+        type: 'message',
+        label: featuredLabel[lang] || featuredLabel.ja,
+        text: 'VIEW_FEATURES',
       },
     },
   ]);
@@ -346,6 +362,9 @@ export async function handleButtonAction(
   const userId = event.source.userId;
   
   switch (action) {
+    case 'FIND_JOB':
+      await handleFindJob(userId, event.replyToken);
+      break;
     case 'SITE_MODE':
       await handleSiteMode(event, lang);
       break;
