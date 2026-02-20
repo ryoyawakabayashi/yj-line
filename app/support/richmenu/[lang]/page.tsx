@@ -41,6 +41,12 @@ export default function RichmenuEditorPage() {
   const [applying, setApplying] = useState(false);
   const [applyStatus, setApplyStatus] = useState('');
 
+  // テストユーザー関連
+  const [testUserIds, setTestUserIds] = useState('');
+  const [linking, setLinking] = useState(false);
+  const [linkResults, setLinkResults] = useState<{ userId: string; success: boolean; error?: string }[] | null>(null);
+  const [settingDefault, setSettingDefault] = useState(false);
+
   useEffect(() => {
     fetch(`/api/dashboard/richmenu/${lang}`)
       .then((res) => res.json())
@@ -191,6 +197,66 @@ export default function RichmenuEditorPage() {
       setApplyStatus('');
     } finally {
       setApplying(false);
+    }
+  };
+
+  const handleLinkTestUsers = async () => {
+    const ids = testUserIds.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0) {
+      alert('LINE ユーザーIDを入力してください');
+      return;
+    }
+    if (!richMenuId) {
+      alert('先に「LINEに適用」でリッチメニューを作成してください');
+      return;
+    }
+
+    setLinking(true);
+    setLinkResults(null);
+    try {
+      const res = await fetch(`/api/dashboard/richmenu/${lang}/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: ids }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLinkResults(data.results);
+        alert(data.summary);
+      } else {
+        alert('エラー: ' + (data.error || ''));
+      }
+    } catch (error: any) {
+      alert('エラー: ' + error.message);
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleSetDefault = async () => {
+    if (!richMenuId) {
+      alert('先に「LINEに適用」でリッチメニューを作成してください');
+      return;
+    }
+    if (!confirm(`${LANG_NAMES[lang] || lang} のリッチメニューを全ユーザーのデフォルトに設定します。よろしいですか？`)) {
+      return;
+    }
+
+    setSettingDefault(true);
+    try {
+      const res = await fetch(`/api/dashboard/richmenu/${lang}/link`, {
+        method: 'PUT',
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+      } else {
+        alert('エラー: ' + (data.error || ''));
+      }
+    } catch (error: any) {
+      alert('エラー: ' + error.message);
+    } finally {
+      setSettingDefault(false);
     }
   };
 
@@ -406,7 +472,76 @@ export default function RichmenuEditorPage() {
           </div>
         </div>
 
-        {/* セクション3: ボタングリッド */}
+        {/* セクション3: テスト適用 & 展開 */}
+        {richMenuId && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">
+              テスト適用 & 展開
+            </h2>
+
+            {/* テストユーザーにリンク */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                テストユーザーに適用
+              </h3>
+              <p className="text-xs text-gray-500 mb-2">
+                LINE ユーザーIDを入力して、特定のユーザーだけに新しいリッチメニューを適用できます。
+              </p>
+              <textarea
+                value={testUserIds}
+                onChange={(e) => setTestUserIds(e.target.value)}
+                placeholder="LINE ユーザーID（1行に1つ、またはカンマ区切り）&#10;例: Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                rows={3}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono mb-2"
+              />
+              <button
+                onClick={handleLinkTestUsers}
+                disabled={linking || !testUserIds.trim()}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                {linking ? 'リンク中...' : 'テストユーザーに適用'}
+              </button>
+
+              {/* リンク結果 */}
+              {linkResults && (
+                <div className="mt-3 space-y-1">
+                  {linkResults.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <span className={r.success ? 'text-green-600' : 'text-red-600'}>
+                        {r.success ? '✓' : '✗'}
+                      </span>
+                      <span className="font-mono text-gray-600">
+                        {r.userId.substring(0, 16)}...
+                      </span>
+                      {r.error && (
+                        <span className="text-red-500">{r.error}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 全ユーザーに展開 */}
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                全ユーザーに展開
+              </h3>
+              <p className="text-xs text-gray-500 mb-2">
+                テスト確認後、このリッチメニューを全ユーザーのデフォルトに設定します。
+              </p>
+              <button
+                onClick={handleSetDefault}
+                disabled={settingDefault}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 text-sm font-medium"
+              >
+                {settingDefault ? '設定中...' : '全ユーザーのデフォルトに設定'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* セクション4: ボタングリッド */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">
             ボタン設定
