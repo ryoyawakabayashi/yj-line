@@ -67,6 +67,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [showFaqImportModal, setShowFaqImportModal] = useState(false);
   const [activeLang, setActiveLang] = useState<string>('_source');
   const [translating, setTranslating] = useState(false);
+  const [jaMode, setJaMode] = useState<'standard' | 'easy'>('standard');
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; message: string; quickReplies: { label: string; text: string }[] }>>([]);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
@@ -1580,7 +1581,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const res = await fetch('/api/dashboard/flows/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts }),
+        body: JSON.stringify({ texts, jaMode }),
       });
 
       if (!res.ok) throw new Error('Translation API failed');
@@ -1616,7 +1617,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const res = await fetch('/api/dashboard/flows/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts }),
+        body: JSON.stringify({ texts, jaMode }),
       });
 
       if (!res.ok) throw new Error('Translation API failed');
@@ -1928,6 +1929,14 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             >
               一時保存
             </button>
+            <select
+              value={jaMode}
+              onChange={(e) => setJaMode(e.target.value as 'standard' | 'easy')}
+              className="px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            >
+              <option value="standard">JA: 日本語</option>
+              <option value="easy">JA: やさしい日本語</option>
+            </select>
             <div className="relative inline-flex">
               <button
                 onClick={() => handleTranslateAll(false)}

@@ -45,7 +45,7 @@ const LANG_NAMES: Record<string, string> = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { texts } = body as { texts: string[] };
+    const { texts, jaMode = 'standard' } = body as { texts: string[]; jaMode?: 'standard' | 'easy' };
 
     if (!texts || !Array.isArray(texts) || texts.length === 0) {
       return NextResponse.json(
@@ -65,19 +65,8 @@ export async function POST(request: NextRequest) {
     // 用語集をプロンプトに追加
     const glossaryPrompt = await getGlossaryForPrompt();
 
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: `You are a professional localization specialist for a customer-facing LINE chatbot that provides support to foreigners living in Japan.
-The bot helps users find jobs, get life support information, and navigate services in Japan.
-
-For EACH input Japanese text, produce 5 outputs:
-
-## 1. "ja" — やさしい日本語 (Easy Japanese)
+    const jaInstruction = jaMode === 'easy'
+      ? `## 1. "ja" — やさしい日本語 (Easy Japanese)
 Imagine you are explaining to a 1st-2nd grade elementary school student (小学1〜2年生). DO NOT just convert kanji to hiragana — you must REWRITE with simpler words and concepts.
 
 ### Word Replacement (most important):
@@ -125,7 +114,32 @@ Replace difficult/formal words with simple everyday equivalents:
 - Use short, direct sentences. Split long sentences into 2-3 short ones.
 - Use です/ます form. Avoid keigo (敬語) and complex grammar.
 - Keep katakana words as-is (メッセージ, サイト, エラー, etc.)
+- Keep emoji as-is.`
+      : `## 1. "ja" — 日本語 (Standard Japanese)
+Write natural, polite Japanese suitable for a customer-facing chatbot.
+- Use です/ます form (polite but not overly formal keigo).
+- Keep the meaning faithful to the original text.
+- Use natural, conversational phrasing appropriate for a LINE chat app.
 - Keep emoji as-is.
+- Keep katakana words as-is.`;
+
+    const jaUserInstruction = jaMode === 'easy'
+      ? 'For "ja", rewrite into genuinely easy Japanese (not just kanji→hiragana).'
+      : 'For "ja", write natural polite Japanese.';
+
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `You are a professional localization specialist for a customer-facing LINE chatbot that provides support to foreigners living in Japan.
+The bot helps users find jobs, get life support information, and navigate services in Japan.
+
+For EACH input Japanese text, produce 5 outputs:
+
+${jaInstruction}
 
 ## 2. "en" — English
 Write natural, native-level English. Not a literal translation from Japanese.
@@ -157,7 +171,7 @@ Output JSON format:
         },
         {
           role: 'user',
-          content: `Localize the following Japanese texts. For "ja", rewrite into genuinely easy Japanese (not just kanji→hiragana). For other languages, write as a native speaker would naturally say it.\n\n${textsJson}`,
+          content: `Localize the following Japanese texts. ${jaUserInstruction} For other languages, write as a native speaker would naturally say it.\n\n${textsJson}`,
         },
       ],
     });
