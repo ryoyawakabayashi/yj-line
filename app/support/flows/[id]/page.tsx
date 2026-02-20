@@ -1543,13 +1543,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   };
 
   // --- 一括翻訳 ---
-  const handleTranslateAll = async () => {
+  const handleTranslateAll = async (includeLocked = false) => {
     setTranslating(true);
     try {
-      const { texts, sources } = collectTexts(nodes, edges, true);
+      const { texts, sources } = collectTexts(nodes, edges, !includeLocked);
 
       if (texts.length === 0) {
-        alert('翻訳対象のテキストがありません（ロック済みノードはスキップ）');
+        alert(includeLocked
+          ? '翻訳対象のテキストがありません'
+          : '翻訳対象のテキストがありません（ロック済みノードはスキップ）');
         setTranslating(false);
         return;
       }
@@ -1905,13 +1907,27 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             >
               一時保存
             </button>
-            <button
-              onClick={handleTranslateAll}
-              disabled={translating}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 text-sm"
-            >
-              {translating ? '翻訳中...' : '一括翻訳 (5言語)'}
-            </button>
+            <div className="relative inline-flex">
+              <button
+                onClick={() => handleTranslateAll(false)}
+                disabled={translating}
+                className="px-4 py-2 bg-green-600 text-white rounded-l-lg hover:bg-green-700 transition disabled:opacity-50 text-sm"
+              >
+                {translating ? '翻訳中...' : '一括翻訳 (5言語)'}
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm('全ノードのロックを解除して再翻訳します。既存の翻訳は上書きされます。よろしいですか？')) {
+                    handleTranslateAll(true);
+                  }
+                }}
+                disabled={translating}
+                className="px-2 py-2 bg-green-700 text-white rounded-r-lg hover:bg-green-800 transition disabled:opacity-50 text-sm border-l border-green-500"
+                title="全ロック解除して再翻訳"
+              >
+                ↻
+              </button>
+            </div>
             <button
               onClick={handleUpdate}
               disabled={saving}
@@ -2369,6 +2385,17 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                       </button>
                     ))}
                   </div>
+                  {/* 原本（標準日本語）表示 */}
+                  {typeof selectedNode.data.config.content === 'object' && selectedNode.data.config.content?._source && (
+                    <details className="mb-2">
+                      <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+                        📄 原本（標準日本語）
+                      </summary>
+                      <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
+                        {selectedNode.data.config.content._source}
+                      </div>
+                    </details>
+                  )}
                   <textarea
                     ref={(el) => { if (el) activeTextareaRef.current = el; }}
                     value={getContentForLang(selectedNode.data.config.content, activeLang)}
@@ -2660,6 +2687,17 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                       </button>
                     ))}
                   </div>
+                  {/* 原本（標準日本語）表示 */}
+                  {typeof selectedNode.data.config.message === 'object' && selectedNode.data.config.message?._source && (
+                    <details className="mb-2">
+                      <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
+                        📄 原本（標準日本語）
+                      </summary>
+                      <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
+                        {selectedNode.data.config.message._source}
+                      </div>
+                    </details>
+                  )}
                   <textarea
                     ref={(el) => { if (el) activeTextareaRef.current = el; }}
                     value={getContentForLang(selectedNode.data.config.message, activeLang)}
@@ -2980,6 +3018,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">タイトル（任意）</label>
+                        {typeof col.title === 'object' && col.title?._source && (
+                          <details className="mb-1">
+                            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">📄 原本</summary>
+                            <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap">{col.title._source}</div>
+                          </details>
+                        )}
                         <input
                           type="text"
                           value={typeof col.title === 'object' ? (col.title[activeLang] || col.title.ja || '') : (col.title || '')}
@@ -2993,6 +3037,12 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">質問テキスト <span className="text-red-500">*</span></label>
+                        {typeof col.text === 'object' && col.text?._source && (
+                          <details className="mb-1">
+                            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">📄 原本</summary>
+                            <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">{col.text._source}</div>
+                          </details>
+                        )}
                         <textarea
                           value={typeof col.text === 'object' ? (col.text[activeLang] || col.text.ja || '') : (col.text || '')}
                           onChange={(e) => updateCol({ text: e.target.value })}

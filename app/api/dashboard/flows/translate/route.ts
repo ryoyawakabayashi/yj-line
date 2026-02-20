@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const glossaryPrompt = await getGlossaryForPrompt();
 
     const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       temperature: 0.2,
       response_format: { type: 'json_object' },
       messages: [
