@@ -34,6 +34,13 @@ export async function handleConversation(
     return;
   }
 
+  if (state.mode === 'career_diagnosis') {
+    console.log('🎯 キャリアタイプ診断モードで処理');
+    const { handleCareerDiagnosisAnswer } = await import('./career-diagnosis');
+    await handleCareerDiagnosisAnswer({ source: { userId }, replyToken, message: { text, type: 'text' } } as LineEvent);
+    return;
+  }
+
   if (state.mode === 'followup') {
     console.log('🤝 フォローアップモードで処理');
     await handleFollowupAnswer({ source: { userId }, replyToken, message: { text, type: 'text' } } as LineEvent);

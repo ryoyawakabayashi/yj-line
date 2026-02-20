@@ -1,6 +1,6 @@
 import { SupportModeState } from './support';
 
-export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support' | 'flow';
+export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support' | 'flow' | 'career_diagnosis';
 
 export type FollowupStep = 'ask_applied' | 'ask_count' | 'ask_trouble' | 'complete';
 
@@ -9,6 +9,17 @@ export interface FollowupAnswers {
   applicationCount?: '1' | '2-3' | '4+';
   trouble?: 'no_match' | 'language' | 'how_to' | 'not_yet';
   action?: 'search_ai' | 'search_site' | 'skip';
+}
+
+export interface CareerDiagnosisAnswers {
+  q1?: 'A' | 'B';
+  q2?: 'A' | 'B';
+  q3?: 'A' | 'B';
+  q4?: 'A' | 'B';
+  q5?: 'A' | 'B';
+  q6?: 'A' | 'B';
+  q7?: 'A' | 'B';
+  q8?: 'A' | 'B';
 }
 
 export interface ConversationState {
@@ -25,6 +36,7 @@ export interface ConversationState {
   flowId?: string;
   waitingNodeId?: string;
   variables?: Record<string, any>;
+  careerAnswers?: CareerDiagnosisAnswers;
 }
 
 export interface DiagnosisAnswers {

@@ -40,7 +40,8 @@ export type UrlSourceType =
   | 'faq'                 // FAQ応答から
   | 'followup'            // フォローアップから
   | '10apply_boost'       // 10件応募促進リマインダーから
-  | 'flow';              // フロー実行エンジンから
+  | 'flow'               // フロー実行エンジンから
+  | 'career_diagnosis';  // キャリアタイプ診断から
 
 /**
  * テキスト内のURLを検出する正規表現

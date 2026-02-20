@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { ConversationState, UserStatus } from '@/types/conversation';
+import { ConversationState, UserStatus, CareerDiagnosisAnswers } from '@/types/conversation';
 
 export async function getUserLang(userId: string): Promise<string> {
   const { data, error } = await supabase
@@ -269,6 +269,38 @@ export async function fetchAndSaveUserProfile(userId: string): Promise<void> {
 
   if (profile) {
     await saveUserProfile(userId, profile.displayName, profile.pictureUrl);
+  }
+}
+
+// キャリアタイプ診断結果を保存
+export async function saveCareerDiagnosisResult(
+  userId: string,
+  answers: CareerDiagnosisAnswers,
+  typeCode: string,
+  recommendedIndustries: string[],
+  lang: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('career_diagnosis_results')
+    .insert({
+      user_id: userId,
+      q1_answer: answers.q1 || null,
+      q2_answer: answers.q2 || null,
+      q3_answer: answers.q3 || null,
+      q4_answer: answers.q4 || null,
+      q5_answer: answers.q5 || null,
+      q6_answer: answers.q6 || null,
+      q7_answer: answers.q7 || null,
+      q8_answer: answers.q8 || null,
+      type_code: typeCode,
+      recommended_industries: recommendedIndustries,
+      lang,
+    });
+
+  if (error) {
+    console.error('❌ saveCareerDiagnosisResult エラー:', error);
+  } else {
+    console.log('✅ キャリア診断結果を保存:', typeCode);
   }
 }
 

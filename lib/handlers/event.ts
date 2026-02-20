@@ -362,6 +362,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
       // リッチメニューボタンの処理
       const richMenuButtons = [
         'AI_MODE',
+        'CAREER_DIAGNOSIS',
         'SITE_MODE',
         'SITE_MODE_AUTOCHAT', // AIトーク経由のサイト誘導
         'VIEW_FEATURES',
@@ -373,8 +374,8 @@ export async function handleEvent(event: LineEvent): Promise<void> {
       if (richMenuButtons.includes(messageText)) {
         console.log('🔘 リッチメニューボタン検出:', messageText);
 
-        // 診断モード中に任意のリッチメニューボタンを押したら診断リセット
-        if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
+        // 診断モード中・キャリア診断中に任意のリッチメニューボタンを押したらリセット
+        if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS || currentState?.mode === 'career_diagnosis') {
           console.log('🔄 診断モード中 → リッチメニューボタン → 診断リセット');
           await clearConversationState(userId);
         }
@@ -382,6 +383,13 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         // AI_MODE: 診断開始
         if (messageText === 'AI_MODE') {
           await startDiagnosisMode(userId, event.replyToken, await getUserLang(userId));
+          return;
+        }
+
+        // CAREER_DIAGNOSIS: キャリアタイプ診断開始
+        if (messageText === 'CAREER_DIAGNOSIS') {
+          const { startCareerDiagnosisMode } = await import('./career-diagnosis');
+          await startCareerDiagnosisMode(userId, event.replyToken, await getUserLang(userId));
           return;
         }
 
@@ -475,7 +483,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             // ユーザーのメッセージがリッチメニューボタン（AI_MODE等）の場合、
             // 通常ハンドラーに引き継ぐ（returnしない）
             const reDispatchButtons = [
-              'AI_MODE', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
+              'AI_MODE', 'CAREER_DIAGNOSIS', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
               'VIEW_FEATURES', 'CONTACT', 'LANG_CHANGE', 'YOLO_DISCOVER',
             ];
             if (reDispatchButtons.includes(messageText)) {
@@ -493,8 +501,8 @@ export async function handleEvent(event: LineEvent): Promise<void> {
       }
 
       // === 診断モード中のサポート要望検出 ===
-      // 診断モード中でもサポート要望を検出してサポートモードへ誘導
-      if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS) {
+      // 診断モード中・キャリア診断中でもサポート要望を検出してサポートモードへ誘導
+      if (currentState?.mode === CONSTANTS.MODE.DIAGNOSIS || currentState?.mode === 'career_diagnosis') {
         const dbLang = await getUserLang(userId);
         const intent = detectUserIntentAdvanced(messageText, dbLang);
 
