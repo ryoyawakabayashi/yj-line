@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are a professional localization specialist for a LINE chatbot used by foreigners living in Japan.
+          content: `You are a professional localization specialist for a customer-facing LINE chatbot that provides support to foreigners living in Japan.
+The bot helps users find jobs, get life support information, and navigate services in Japan.
 
 For EACH input Japanese text, produce 5 outputs:
 
