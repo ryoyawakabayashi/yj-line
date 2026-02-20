@@ -3016,6 +3016,23 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         );
                       })()}
 
+                      {/* 言語タブ（カード共通） */}
+                      <div className="flex gap-1 mb-1">
+                        {LANGS.map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => setActiveLang(lang.code)}
+                            className={`px-2 py-1 text-xs rounded transition ${
+                              activeLang === lang.code
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {lang.name}
+                          </button>
+                        ))}
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">タイトル（任意）</label>
                         {typeof col.title === 'object' && col.title?._source && (
@@ -3026,13 +3043,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         )}
                         <input
                           type="text"
-                          value={typeof col.title === 'object' ? (col.title[activeLang] || col.title.ja || '') : (col.title || '')}
-                          onChange={(e) => updateCol({ title: e.target.value })}
-                          placeholder="カードのタイトル"
+                          value={getContentForLang(col.title, activeLang)}
+                          onChange={(e) => updateCol({ title: setContentForLang(col.title, activeLang, e.target.value) })}
+                          placeholder={activeLang === 'ja' ? 'カードのタイトル' : `${activeLang}のタイトル`}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
                         <div className="text-right mt-0.5">
-                          <CharCount current={(typeof col.title === 'object' ? (col.title[activeLang] || col.title.ja || '') : (col.title || '')).length} max={40} />
+                          <CharCount current={getContentForLang(col.title, activeLang).length} max={40} />
                         </div>
                       </div>
                       <div>
@@ -3044,15 +3061,15 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                           </details>
                         )}
                         <textarea
-                          value={typeof col.text === 'object' ? (col.text[activeLang] || col.text.ja || '') : (col.text || '')}
-                          onChange={(e) => updateCol({ text: e.target.value })}
-                          placeholder="カードに表示する質問テキスト"
+                          value={getContentForLang(col.text, activeLang)}
+                          onChange={(e) => updateCol({ text: setContentForLang(col.text, activeLang, e.target.value) })}
+                          placeholder={activeLang === 'ja' ? 'カードに表示する質問テキスト' : `${activeLang}のテキスト`}
                           rows={3}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
                         <div className="text-right mt-0.5">
                           <CharCount
-                            current={(typeof col.text === 'object' ? (col.text[activeLang] || col.text.ja || '') : (col.text || '')).length}
+                            current={getContentForLang(col.text, activeLang).length}
                             max={(col.title || col.imageUrl) ? 60 : (siblingCardCount > 1 ? 120 : 160)}
                           />
                         </div>
@@ -3155,19 +3172,23 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               </select>
                               <input
                                 type="text"
-                                value={typeof btn.label === 'object' ? (btn.label[activeLang] || btn.label.ja || '') : (btn.label || '')}
+                                value={getContentForLang(btn.label, activeLang)}
                                 onChange={(e) => {
                                   const btns = [...(col.buttons || [])];
-                                  const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
-                                  const oldText = btns[btnIdx].text || '';
-                                  const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
-                                  btns[btnIdx] = { ...btns[btnIdx], label: e.target.value, ...(shouldSync ? { text: e.target.value } : {}) };
+                                  if (activeLang === 'ja') {
+                                    const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
+                                    const oldText = btns[btnIdx].text || '';
+                                    const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
+                                    btns[btnIdx] = { ...btns[btnIdx], label: setContentForLang(btn.label, activeLang, e.target.value), ...(shouldSync ? { text: e.target.value } : {}) };
+                                  } else {
+                                    btns[btnIdx] = { ...btns[btnIdx], label: setContentForLang(btn.label, activeLang, e.target.value) };
+                                  }
                                   updateCol({ buttons: btns });
                                 }}
-                                placeholder="ラベル"
+                                placeholder={activeLang === 'ja' ? 'ラベル' : `${activeLang}`}
                                 className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
                               />
-                              <CharCount current={(typeof btn.label === 'object' ? (btn.label[activeLang] || btn.label.ja || '') : (btn.label || '')).length} max={20} />
+                              <CharCount current={getContentForLang(btn.label, activeLang).length} max={20} />
                               {btn.type !== 'uri' && (
                                 <input
                                   type="text"
