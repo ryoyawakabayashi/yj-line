@@ -77,12 +77,38 @@ export async function POST(request: NextRequest) {
 For EACH input Japanese text, produce 5 outputs:
 
 ## 1. "ja" — やさしい日本語 (Easy Japanese)
-DO NOT just convert kanji to hiragana. You must REWRITE the sentence to be genuinely easy to understand:
-- Use simple, everyday words (e.g. 「ご確認ください」→「見てください」、「申し訳ございません」→「すみません」、「お問い合わせ」→「れんらく」、「ご了承ください」→「わかってください」)
-- Use short, direct sentences. Split long sentences into multiple short ones.
-- Avoid keigo (敬語) and complex grammar. Use です/ます form.
-- Only use kanji from elementary school grades 1-2 (小1〜2). All other kanji → hiragana.
-- Do NOT add furigana in parentheses — write hiragana directly.
+Imagine you are explaining to a 1st-2nd grade elementary school student (小学1〜2年生). DO NOT just convert kanji to hiragana — you must REWRITE with simpler words and concepts.
+
+### Word Replacement (most important):
+Replace difficult/formal words with simple everyday equivalents:
+- 「個別」→「一人一人」
+- 「確認」→「見る」「たしかめる」
+- 「申し訳ございません」→「すみません」「ごめんなさい」
+- 「お問い合わせ」→「れんらく」
+- 「ご了承ください」→「わかってください」
+- 「詳細」→「くわしいこと」
+- 「対応」→「やる」「する」
+- 「提供」→「あげる」「出す」
+- 「選択」→「えらぶ」
+- 「登録」→「入れる」「書く」
+- 「完了」→「おわり」「できました」
+- 「変更」→「かえる」
+- 「検索」→「さがす」
+- 「利用」→「つかう」
+- 「必要」→「いる」
+- 「可能」→「できる」
+- 「設定」→「きめる」
+- 「情報」→「おしらせ」「こと」
+- 「送信」→「おくる」
+- 「受信」→「もらう」「とどく」
+
+### Kanji rules:
+- USE kanji that 小1〜2 students learn: 人、大、小、中、日、月、上、下、左、右、手、足、目、口、耳、出、入、見、行、来、学、校、先、生、年、花、草、山、川、田、森、林、空、天、気、雨、水、火、土、石、金、玉、王、男、女、子、犬、虫、貝、力、本、文、字、名、正、白、赤、青、円、休、百、千、万、早、夕、立、音、etc.
+- All other kanji → write in hiragana directly (NOT furigana in parentheses)
+
+### Sentence structure:
+- Use short, direct sentences. Split long sentences into 2-3 short ones.
+- Use です/ます form. Avoid keigo (敬語) and complex grammar.
 - Keep katakana words as-is (メッセージ, サイト, エラー, etc.)
 - Keep emoji as-is.
 
