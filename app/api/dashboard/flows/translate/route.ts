@@ -13,6 +13,24 @@ function getOpenAI(): OpenAI {
 
 const TARGET_LANGS = ['en', 'ko', 'zh', 'vi'] as const;
 
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]\u3000-\u9FFF\uF900-\uFAFF\uFF01-\uFF60]+/gi;
+
+/**
+ * テキスト内のURLをプレースホルダに置換し、翻訳後に復元する
+ */
+function extractUrls(text: string): { cleaned: string; urls: string[] } {
+  const urls: string[] = [];
+  const cleaned = text.replace(URL_REGEX, (match) => {
+    urls.push(match);
+    return `__URL_${urls.length - 1}__`;
+  });
+  return { cleaned, urls };
+}
+
+function restoreUrls(text: string, urls: string[]): string {
+  return text.replace(/__URL_(\d+)__/g, (_, idx) => urls[parseInt(idx)] || '');
+}
+
 const LANG_NAMES: Record<string, string> = {
   en: 'English',
   ko: 'Korean',
@@ -36,8 +54,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // URLをプレースホルダに置換（GPTがURLを壊すのを防止）
+    const extracted = texts.map((t) => extractUrls(t));
+    const cleanedTexts = extracted.map((e) => e.cleaned);
+
     // 全テキストをまとめて翻訳リクエスト
-    const textsJson = JSON.stringify(texts);
+    const textsJson = JSON.stringify(cleanedTexts);
     const langList = TARGET_LANGS.map((l) => `${l} (${LANG_NAMES[l]})`).join(', ');
 
     // 用語集をプロンプトに追加
@@ -101,9 +123,20 @@ Output JSON format:
 
     const result = JSON.parse(completion.choices[0].message.content || '{}');
 
-    return NextResponse.json({
-      translations: result.translations || [],
+    // プレースホルダをURLに復元
+    const translations = (result.translations || []).map((t: any, i: number) => {
+      const urls = extracted[i]?.urls || [];
+      if (urls.length === 0) return t;
+      return {
+        ja: restoreUrls(t.ja || '', urls),
+        en: restoreUrls(t.en || '', urls),
+        ko: restoreUrls(t.ko || '', urls),
+        zh: restoreUrls(t.zh || '', urls),
+        vi: restoreUrls(t.vi || '', urls),
+      };
     });
+
+    return NextResponse.json({ translations });
   } catch (error) {
     console.error('Translation API error:', error);
     return NextResponse.json(
