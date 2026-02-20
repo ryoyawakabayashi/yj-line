@@ -359,6 +359,18 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         }
       }
 
+      // キャリアタイプ診断キーワードトリガー
+      const careerKeywords = ['キャリア診断', '職業診断', 'career diagnosis', '커리어 진단', '职业诊断', 'chẩn đoán nghề'];
+      if (careerKeywords.some(k => messageText.toLowerCase() === k.toLowerCase())) {
+        console.log('🎯 キャリア診断キーワード検出:', messageText);
+        if (currentState?.mode) {
+          await clearConversationState(userId);
+        }
+        const { startCareerDiagnosisMode } = await import('./career-diagnosis');
+        await startCareerDiagnosisMode(userId, event.replyToken, await getUserLang(userId));
+        return;
+      }
+
       // リッチメニューボタンの処理
       const richMenuButtons = [
         'AI_MODE',
