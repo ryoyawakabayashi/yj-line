@@ -65,7 +65,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showFaqImportModal, setShowFaqImportModal] = useState(false);
-  const [activeLang, setActiveLang] = useState<string>('ja');
+  const [activeLang, setActiveLang] = useState<string>('_source');
   const [translating, setTranslating] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [availableTemplates, setAvailableTemplates] = useState<Array<{ id: string; name: string; message: string; quickReplies: { label: string; text: string }[] }>>([]);
@@ -415,6 +415,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   }, [DRAFT_KEY]);
 
   const LANGS = [
+    { code: '_source', name: '原本' },
     { code: 'ja', name: 'JA' },
     { code: 'en', name: 'EN' },
     { code: 'ko', name: 'KO' },
@@ -1258,6 +1259,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   // 多言語コンテンツのヘルパー関数
   const getContentForLang = (content: string | Record<string, string> | undefined, lang: string): string => {
     if (!content) return '';
+    if (lang === '_source') {
+      if (typeof content === 'object') return content._source || content.ja || '';
+      return content;
+    }
     if (typeof content === 'object') return content[lang] || '';
     return lang === 'ja' ? content : '';
   };
@@ -1267,6 +1272,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     lang: string,
     value: string
   ): string | Record<string, string> => {
+    if (lang === '_source') {
+      if (typeof content !== 'object') return value;
+      return { ...content, _source: value };
+    }
     if (lang === 'ja' && typeof content !== 'object') {
       return value;
     }
@@ -1276,6 +1285,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   };
 
   const getEdgeLabelForLang = (edge: any, lang: string): string => {
+    if (lang === '_source') {
+      return edge.labels?._source || (edge.label as string) || '';
+    }
     if (lang === 'ja') {
       const label = (edge.label as string) || '';
       if (!label) {
@@ -1292,6 +1304,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setEdges((prevEdges) =>
       prevEdges.map((edge) => {
         if (edge.id !== edgeId) return edge;
+        if (lang === '_source') {
+          const currentLabels = (edge as any).labels || {};
+          return { ...edge, label: newLabel, labels: { ...currentLabels, _source: newLabel } };
+        }
         if (lang === 'ja') {
           return { ...edge, label: newLabel };
         }
@@ -1354,6 +1370,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
   // エッジの送信テキスト取得・更新
   const getEdgeTextForLang = (edge: any, lang: string): string => {
+    if (lang === '_source') return (edge as any).texts?._source || (edge as any).text || '';
     if (lang === 'ja') return (edge as any).text || '';
     return (edge as any).texts?.[lang] || '';
   };
@@ -1362,6 +1379,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     setEdges((prevEdges) =>
       prevEdges.map((edge) => {
         if (edge.id !== edgeId) return edge;
+        if (lang === '_source') {
+          const currentTexts = (edge as any).texts || {};
+          return { ...edge, text: newText || undefined, texts: { ...currentTexts, _source: newText } };
+        }
         if (lang === 'ja') {
           return { ...edge, text: newText || undefined };
         }
@@ -2385,17 +2406,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                       </button>
                     ))}
                   </div>
-                  {/* 原本（標準日本語）表示 */}
-                  {typeof selectedNode.data.config.content === 'object' && selectedNode.data.config.content?._source && (
-                    <details className="mb-2">
-                      <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
-                        📄 原本（標準日本語）
-                      </summary>
-                      <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
-                        {selectedNode.data.config.content._source}
-                      </div>
-                    </details>
-                  )}
                   <textarea
                     ref={(el) => { if (el) activeTextareaRef.current = el; }}
                     value={getContentForLang(selectedNode.data.config.content, activeLang)}
@@ -2405,7 +2415,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         content: setContentForLang(selectedNode.data.config.content, activeLang, e.target.value),
                       })
                     }
-                    placeholder={activeLang === 'ja' ? 'メッセージを入力...' : `${activeLang}の翻訳を入力...`}
+                    placeholder={activeLang === '_source' ? 'メッセージを入力（原本）...' : activeLang === 'ja' ? 'やさしい日本語...' : `${activeLang}の翻訳を入力...`}
                     rows={6}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
                   />
@@ -2687,17 +2697,6 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                       </button>
                     ))}
                   </div>
-                  {/* 原本（標準日本語）表示 */}
-                  {typeof selectedNode.data.config.message === 'object' && selectedNode.data.config.message?._source && (
-                    <details className="mb-2">
-                      <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">
-                        📄 原本（標準日本語）
-                      </summary>
-                      <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap max-h-40 overflow-y-auto">
-                        {selectedNode.data.config.message._source}
-                      </div>
-                    </details>
-                  )}
                   <textarea
                     ref={(el) => { if (el) activeTextareaRef.current = el; }}
                     value={getContentForLang(selectedNode.data.config.message, activeLang)}
@@ -2707,7 +2706,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         message: setContentForLang(selectedNode.data.config.message, activeLang, e.target.value),
                       })
                     }
-                    placeholder={activeLang === 'ja' ? '選択肢と一緒に送るメッセージを入力...' : `${activeLang}の翻訳を入力...`}
+                    placeholder={activeLang === '_source' ? '選択肢と一緒に送るメッセージ（原本）...' : activeLang === 'ja' ? 'やさしい日本語...' : `${activeLang}の翻訳を入力...`}
                     rows={4}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
@@ -2832,9 +2831,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               value={getEdgeLabelForLang(edge, activeLang)}
                               onChange={(e) => {
                                 updateEdgeLabelForLang(edge.id, e.target.value, activeLang);
-                                if (activeLang === 'ja') syncTargetNodeLabelFromEdge(edge.id, e.target.value);
+                                if (activeLang === 'ja' || activeLang === '_source') syncTargetNodeLabelFromEdge(edge.id, e.target.value);
                               }}
-                              placeholder={activeLang === 'ja' ? 'ボタンのラベル' : `${activeLang}のラベル`}
+                              placeholder={activeLang === '_source' ? 'ボタンのラベル（原本）' : activeLang === 'ja' ? 'やさしい日本語' : `${activeLang}のラベル`}
                               className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                             <CharCount current={getEdgeLabelForLang(edge, activeLang).length} max={20} />
@@ -2877,7 +2876,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                     value={getEdgeTextForLang(edge, activeLang)}
                                     onChange={(e) => {
                                       updateEdgeTextForLang(edge.id, e.target.value, activeLang);
-                                      if (activeLang === 'ja') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
+                                      if (activeLang === 'ja' || activeLang === '_source') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
                                     }}
                                     placeholder="送信テキスト（例: AI_MODE）空=ラベルと同じ"
                                     className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
@@ -3035,17 +3034,11 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">タイトル（任意）</label>
-                        {typeof col.title === 'object' && col.title?._source && (
-                          <details className="mb-1">
-                            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">📄 原本</summary>
-                            <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap">{col.title._source}</div>
-                          </details>
-                        )}
                         <input
                           type="text"
                           value={getContentForLang(col.title, activeLang)}
                           onChange={(e) => updateCol({ title: setContentForLang(col.title, activeLang, e.target.value) })}
-                          placeholder={activeLang === 'ja' ? 'カードのタイトル' : `${activeLang}のタイトル`}
+                          placeholder={activeLang === '_source' ? 'カードのタイトル（原本）' : activeLang === 'ja' ? 'やさしい日本語' : `${activeLang}のタイトル`}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
                         <div className="text-right mt-0.5">
@@ -3054,16 +3047,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">質問テキスト <span className="text-red-500">*</span></label>
-                        {typeof col.text === 'object' && col.text?._source && (
-                          <details className="mb-1">
-                            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none">📄 原本</summary>
-                            <div className="mt-1 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">{col.text._source}</div>
-                          </details>
-                        )}
                         <textarea
                           value={getContentForLang(col.text, activeLang)}
                           onChange={(e) => updateCol({ text: setContentForLang(col.text, activeLang, e.target.value) })}
-                          placeholder={activeLang === 'ja' ? 'カードに表示する質問テキスト' : `${activeLang}のテキスト`}
+                          placeholder={activeLang === '_source' ? '質問テキスト（原本）' : activeLang === 'ja' ? 'やさしい日本語' : `${activeLang}のテキスト`}
                           rows={3}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
@@ -3175,7 +3162,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                 value={getContentForLang(btn.label, activeLang)}
                                 onChange={(e) => {
                                   const btns = [...(col.buttons || [])];
-                                  if (activeLang === 'ja') {
+                                  if (activeLang === 'ja' || activeLang === '_source') {
                                     const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
                                     const oldText = btns[btnIdx].text || '';
                                     const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
@@ -3185,7 +3172,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                   }
                                   updateCol({ buttons: btns });
                                 }}
-                                placeholder={activeLang === 'ja' ? 'ラベル' : `${activeLang}`}
+                                placeholder={activeLang === '_source' ? 'ラベル（原本）' : activeLang === 'ja' ? 'やさしい日本語' : `${activeLang}`}
                                 className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
                               />
                               <CharCount current={getContentForLang(btn.label, activeLang).length} max={20} />
