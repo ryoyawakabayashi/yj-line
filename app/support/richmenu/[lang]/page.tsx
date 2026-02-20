@@ -141,56 +141,90 @@ export default function RichmenuEditorPage() {
     setImagePreviewUrl(url);
   };
 
-  const handleApplyToLine = async () => {
+  // 共通: 設定保存 + メニュー作成 + 画像アップロード
+  const createAndUploadMenu = async (): Promise<string | null> => {
+    if (!selectedImage) {
+      alert('画像を選択してください');
+      return null;
+    }
+
+    // 設定を保存
+    setApplyStatus('設定を保存中...');
+    const saveRes = await fetch(`/api/dashboard/richmenu/${lang}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menuName, chatBarText, areas }),
+    });
+    const saveData = await saveRes.json();
+    if (!saveData.success) {
+      throw new Error('設定の保存に失敗しました');
+    }
+
+    // LINEにメニュー作成 + 画像アップロード
+    setApplyStatus('メニュー作成 + 画像アップロード中...');
+    const formData = new FormData();
+    formData.append('image', selectedImage);
+
+    const res = await fetch(`/api/dashboard/richmenu/${lang}/apply`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      throw new Error(data.error || '適用に失敗しました');
+    }
+
+    // 成功: UI更新
+    setRichMenuId(data.richMenuId);
+    setLastAppliedAt(new Date().toISOString());
+    setSelectedImage(null);
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    return data.richMenuId;
+  };
+
+  // テストユーザーに適用（メニュー作成 → テストユーザーにリンク）
+  const handleApplyToTestUsers = async () => {
+    const ids = testUserIds.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0) {
+      alert('テストユーザーのLINE IDを入力してください');
+      return;
+    }
     if (!selectedImage) {
       alert('画像を選択してください');
       return;
     }
-
-    if (!confirm('現在のリッチメニューを置き換えます。よろしいですか？')) {
+    if (!confirm('新しいリッチメニューを作成し、テストユーザーに適用します。よろしいですか？')) {
       return;
     }
 
     setApplying(true);
-    setApplyStatus('メニュー作成中...');
-
+    setLinkResults(null);
     try {
-      // まず設定を保存
-      setApplyStatus('設定を保存中...');
-      const saveRes = await fetch(`/api/dashboard/richmenu/${lang}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menuName, chatBarText, areas }),
-      });
-      const saveData = await saveRes.json();
-      if (!saveData.success) {
-        throw new Error('設定の保存に失敗しました');
-      }
+      const newMenuId = await createAndUploadMenu();
+      if (!newMenuId) return;
 
-      // LINEに適用
-      setApplyStatus('LINEに適用中...');
-      const formData = new FormData();
-      formData.append('image', selectedImage);
-
-      const res = await fetch(`/api/dashboard/richmenu/${lang}/apply`, {
+      // テストユーザーにリンク
+      setApplyStatus('テストユーザーにリンク中...');
+      const linkRes = await fetch(`/api/dashboard/richmenu/${lang}/link`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: ids }),
       });
+      const linkData = await linkRes.json();
 
-      const data = await res.json();
-
-      if (data.success) {
+      if (linkData.success) {
+        setLinkResults(linkData.results);
         setApplyStatus('完了');
-        setRichMenuId(data.richMenuId);
-        setLastAppliedAt(new Date().toISOString());
-        setSelectedImage(null);
-        if (imagePreviewUrl) {
-          URL.revokeObjectURL(imagePreviewUrl);
-          setImagePreviewUrl(null);
-        }
-        alert('リッチメニューを適用しました: ' + data.richMenuId);
+        alert(`メニュー作成完了。${linkData.summary}`);
       } else {
-        throw new Error(data.error || '適用に失敗しました');
+        throw new Error(linkData.error || 'リンクに失敗しました');
       }
     } catch (error: any) {
       alert('エラー: ' + error.message);
@@ -200,45 +234,49 @@ export default function RichmenuEditorPage() {
     }
   };
 
-  const handleLinkTestUsers = async () => {
-    const ids = testUserIds.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
-    if (ids.length === 0) {
-      alert('LINE ユーザーIDを入力してください');
+  // 全ユーザーに適用（メニュー作成 → デフォルト設定）
+  const handleApplyToAll = async () => {
+    if (!selectedImage) {
+      alert('画像を選択してください');
       return;
     }
-    if (!richMenuId) {
-      alert('先に「LINEに適用」でリッチメニューを作成してください');
+    if (!confirm(`新しいリッチメニューを作成し、全ユーザーのデフォルトに設定します。よろしいですか？`)) {
       return;
     }
 
-    setLinking(true);
-    setLinkResults(null);
+    setApplying(true);
     try {
-      const res = await fetch(`/api/dashboard/richmenu/${lang}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userIds: ids }),
+      const newMenuId = await createAndUploadMenu();
+      if (!newMenuId) return;
+
+      // 全ユーザーにデフォルト設定
+      setApplyStatus('全ユーザーに展開中...');
+      const defaultRes = await fetch(`/api/dashboard/richmenu/${lang}/link`, {
+        method: 'PUT',
       });
-      const data = await res.json();
-      if (data.success) {
-        setLinkResults(data.results);
-        alert(data.summary);
+      const defaultData = await defaultRes.json();
+
+      if (defaultData.success) {
+        setApplyStatus('完了');
+        alert('全ユーザーのデフォルトに設定しました');
       } else {
-        alert('エラー: ' + (data.error || ''));
+        throw new Error(defaultData.error || 'デフォルト設定に失敗しました');
       }
     } catch (error: any) {
       alert('エラー: ' + error.message);
+      setApplyStatus('');
     } finally {
-      setLinking(false);
+      setApplying(false);
     }
   };
 
-  const handleSetDefault = async () => {
+  // 既存メニューを全ユーザーにデフォルト設定（画像アップロード不要）
+  const handleSetExistingDefault = async () => {
     if (!richMenuId) {
-      alert('先に「LINEに適用」でリッチメニューを作成してください');
+      alert('先にリッチメニューを作成してください');
       return;
     }
-    if (!confirm(`${LANG_NAMES[lang] || lang} のリッチメニューを全ユーザーのデフォルトに設定します。よろしいですか？`)) {
+    if (!confirm(`現在のリッチメニューを全ユーザーのデフォルトに設定します。よろしいですか？`)) {
       return;
     }
 
@@ -450,96 +488,99 @@ export default function RichmenuEditorPage() {
             </div>
           </div>
 
-          {/* LINEに適用ボタン */}
+          {/* テストユーザーID入力 */}
           <div className="mt-6 pt-4 border-t">
-            <div className="flex items-center gap-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">
+              テストユーザー（任意）
+            </h3>
+            <p className="text-xs text-gray-500 mb-2">
+              LINE ユーザーIDを入力すると「テストユーザーに適用」で特定ユーザーだけに新メニューを適用できます。
+            </p>
+            <textarea
+              value={testUserIds}
+              onChange={(e) => setTestUserIds(e.target.value)}
+              placeholder="LINE ユーザーID（1行に1つ、またはカンマ区切り）&#10;例: Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono"
+            />
+          </div>
+
+          {/* 適用ボタン */}
+          <div className="mt-6 pt-4 border-t">
+            {applying && (
+              <div className="mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                {applyStatus}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* テストユーザーに適用 */}
               <button
-                onClick={handleApplyToLine}
-                disabled={!selectedImage || applying}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                onClick={handleApplyToTestUsers}
+                disabled={!selectedImage || applying || !testUserIds.trim()}
+                className="px-5 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
               >
-                {applying ? applyStatus : 'LINEに適用'}
+                テストユーザーに適用
               </button>
+
+              {/* 全ユーザーに適用 */}
+              <button
+                onClick={handleApplyToAll}
+                disabled={!selectedImage || applying}
+                className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
+              >
+                全ユーザーに適用
+              </button>
+
               {!selectedImage && !applying && (
                 <span className="text-xs text-gray-400">
                   画像を選択すると適用できます
                 </span>
               )}
             </div>
+
             <p className="text-xs text-gray-500 mt-2">
-              現在の設定と画像でLINEリッチメニューを作成・適用します。既存のメニューは置き換えられます。
+              どちらも新しいリッチメニューを作成し、画像をアップロードします。既存のメニューは置き換えられます。
             </p>
+
+            {/* リンク結果 */}
+            {linkResults && (
+              <div className="mt-3 space-y-1">
+                {linkResults.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className={r.success ? 'text-green-600' : 'text-red-600'}>
+                      {r.success ? '✓' : '✗'}
+                    </span>
+                    <span className="font-mono text-gray-600">
+                      {r.userId.substring(0, 16)}...
+                    </span>
+                    {r.error && (
+                      <span className="text-red-500">{r.error}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* 既存メニューのデフォルト設定 */}
+          {richMenuId && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSetExistingDefault}
+                  disabled={settingDefault}
+                  className="px-4 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition disabled:opacity-50 text-xs font-medium"
+                >
+                  {settingDefault ? '設定中...' : '既存メニューを全ユーザーのデフォルトに設定'}
+                </button>
+                <span className="text-xs text-gray-400">
+                  画像変更不要で既存メニューを展開する場合
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* セクション3: テスト適用 & 展開 */}
-        {richMenuId && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">
-              テスト適用 & 展開
-            </h2>
-
-            {/* テストユーザーにリンク */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
-                テストユーザーに適用
-              </h3>
-              <p className="text-xs text-gray-500 mb-2">
-                LINE ユーザーIDを入力して、特定のユーザーだけに新しいリッチメニューを適用できます。
-              </p>
-              <textarea
-                value={testUserIds}
-                onChange={(e) => setTestUserIds(e.target.value)}
-                placeholder="LINE ユーザーID（1行に1つ、またはカンマ区切り）&#10;例: Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                rows={3}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono mb-2"
-              />
-              <button
-                onClick={handleLinkTestUsers}
-                disabled={linking || !testUserIds.trim()}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-              >
-                {linking ? 'リンク中...' : 'テストユーザーに適用'}
-              </button>
-
-              {/* リンク結果 */}
-              {linkResults && (
-                <div className="mt-3 space-y-1">
-                  {linkResults.map((r, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className={r.success ? 'text-green-600' : 'text-red-600'}>
-                        {r.success ? '✓' : '✗'}
-                      </span>
-                      <span className="font-mono text-gray-600">
-                        {r.userId.substring(0, 16)}...
-                      </span>
-                      {r.error && (
-                        <span className="text-red-500">{r.error}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 全ユーザーに展開 */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
-                全ユーザーに展開
-              </h3>
-              <p className="text-xs text-gray-500 mb-2">
-                テスト確認後、このリッチメニューを全ユーザーのデフォルトに設定します。
-              </p>
-              <button
-                onClick={handleSetDefault}
-                disabled={settingDefault}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 text-sm font-medium"
-              >
-                {settingDefault ? '設定中...' : '全ユーザーのデフォルトに設定'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* セクション4: ボタングリッド */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
