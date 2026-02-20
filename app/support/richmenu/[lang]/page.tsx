@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -23,15 +23,23 @@ export default function RichmenuEditorPage() {
   const params = useParams();
   const router = useRouter();
   const lang = params.lang as string;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [menuName, setMenuName] = useState('');
   const [chatBarText, setChatBarText] = useState('');
   const [richMenuId, setRichMenuId] = useState('');
+  const [lastAppliedAt, setLastAppliedAt] = useState('');
   const [areas, setAreas] = useState<ButtonArea[]>([]);
   const [selectedButton, setSelectedButton] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // 画像関連
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [applyStatus, setApplyStatus] = useState('');
 
   useEffect(() => {
     fetch(`/api/dashboard/richmenu/${lang}`)
@@ -41,6 +49,7 @@ export default function RichmenuEditorPage() {
           setMenuName(data.config.menu_name);
           setChatBarText(data.config.chat_bar_text);
           setRichMenuId(data.config.rich_menu_id || '');
+          setLastAppliedAt(data.config.last_applied_at || '');
           setAreas(
             (data.config.areas || []).sort(
               (a: ButtonArea, b: ButtonArea) => a.position - b.position
@@ -107,6 +116,84 @@ export default function RichmenuEditorPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      alert('PNG または JPEG のみ対応しています');
+      return;
+    }
+
+    if (file.size > 1 * 1024 * 1024) {
+      alert('ファイルサイズは1MB以下にしてください');
+      return;
+    }
+
+    setSelectedImage(file);
+    const url = URL.createObjectURL(file);
+    setImagePreviewUrl(url);
+  };
+
+  const handleApplyToLine = async () => {
+    if (!selectedImage) {
+      alert('画像を選択してください');
+      return;
+    }
+
+    if (!confirm('現在のリッチメニューを置き換えます。よろしいですか？')) {
+      return;
+    }
+
+    setApplying(true);
+    setApplyStatus('メニュー作成中...');
+
+    try {
+      // まず設定を保存
+      setApplyStatus('設定を保存中...');
+      const saveRes = await fetch(`/api/dashboard/richmenu/${lang}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ menuName, chatBarText, areas }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveData.success) {
+        throw new Error('設定の保存に失敗しました');
+      }
+
+      // LINEに適用
+      setApplyStatus('LINEに適用中...');
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+
+      const res = await fetch(`/api/dashboard/richmenu/${lang}/apply`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setApplyStatus('完了');
+        setRichMenuId(data.richMenuId);
+        setLastAppliedAt(new Date().toISOString());
+        setSelectedImage(null);
+        if (imagePreviewUrl) {
+          URL.revokeObjectURL(imagePreviewUrl);
+          setImagePreviewUrl(null);
+        }
+        alert('リッチメニューを適用しました: ' + data.richMenuId);
+      } else {
+        throw new Error(data.error || '適用に失敗しました');
+      }
+    } catch (error: any) {
+      alert('エラー: ' + error.message);
+      setApplyStatus('');
+    } finally {
+      setApplying(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -117,6 +204,10 @@ export default function RichmenuEditorPage() {
 
   const selectedArea = selectedButton !== null
     ? areas.find((a) => a.position === selectedButton)
+    : null;
+
+  const currentImageUrl = richMenuId
+    ? `/api/dashboard/richmenu/${lang}/image?t=${Date.now()}`
     : null;
 
   return (
@@ -142,6 +233,29 @@ export default function RichmenuEditorPage() {
           >
             {saving ? '保存中...' : '保存'}
           </button>
+        </div>
+
+        {/* ステータス */}
+        <div className="mb-6">
+          {richMenuId ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                適用済み
+              </span>
+              <span className="text-gray-500">
+                ID: {richMenuId.substring(0, 20)}...
+              </span>
+              {lastAppliedAt && (
+                <span className="text-gray-400">
+                  ({new Date(lastAppliedAt).toLocaleString('ja-JP')})
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              未適用
+            </span>
+          )}
         </div>
 
         {/* セクション1: 基本設定 */}
@@ -173,16 +287,126 @@ export default function RichmenuEditorPage() {
               />
             </div>
           </div>
-          {richMenuId && (
-            <div className="mt-3">
-              <span className="text-xs text-gray-400">
-                LINE Rich Menu ID: {richMenuId}
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* セクション2: ボタングリッド */}
+        {/* セクション2: 画像 & LINE適用 */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">
+            メニュー画像 & LINE適用
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 現在の画像 */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                現在の画像
+              </h3>
+              {currentImageUrl ? (
+                <div
+                  className="border-2 border-gray-200 rounded-lg overflow-hidden"
+                  style={{ aspectRatio: '2500 / 1686' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentImageUrl}
+                    alt="現在のリッチメニュー"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 text-gray-400 text-sm"
+                  style={{ aspectRatio: '2500 / 1686' }}
+                >
+                  画像なし（未適用）
+                </div>
+              )}
+            </div>
+
+            {/* アップロード */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                新しい画像
+              </h3>
+              {imagePreviewUrl ? (
+                <div className="relative">
+                  <div
+                    className="border-2 border-blue-300 rounded-lg overflow-hidden"
+                    style={{ aspectRatio: '2500 / 1686' }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imagePreviewUrl}
+                      alt="アップロード画像プレビュー"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      {selectedImage?.name} ({((selectedImage?.size || 0) / 1024).toFixed(0)}KB)
+                    </span>
+                    <button
+                      onClick={() => {
+                        setSelectedImage(null);
+                        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                        setImagePreviewUrl(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-gray-50 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition"
+                  style={{ aspectRatio: '2500 / 1686' }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm text-gray-500">クリックして画像を選択</span>
+                  <span className="text-xs text-gray-400 mt-1">PNG / JPEG, 1MB以下, 2500x1686px</span>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+            </div>
+          </div>
+
+          {/* LINEに適用ボタン */}
+          <div className="mt-6 pt-4 border-t">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleApplyToLine}
+                disabled={!selectedImage || applying}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {applying ? applyStatus : 'LINEに適用'}
+              </button>
+              {!selectedImage && !applying && (
+                <span className="text-xs text-gray-400">
+                  画像を選択すると適用できます
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              現在の設定と画像でLINEリッチメニューを作成・適用します。既存のメニューは置き換えられます。
+            </p>
+          </div>
+        </div>
+
+        {/* セクション3: ボタングリッド */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">
             ボタン設定
@@ -306,7 +530,7 @@ export default function RichmenuEditorPage() {
           )}
         </div>
 
-        {/* セクション3: LINE API JSON出力 */}
+        {/* セクション4: LINE API JSON出力 */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex items-center justify-between border-b pb-2 mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
