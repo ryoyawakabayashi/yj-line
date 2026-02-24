@@ -124,7 +124,9 @@ export async function GET(
     // utm_campaign（キャンペーン名_ユニークID）
     const campaign = request.nextUrl.searchParams.get('campaign');
     if (campaign) {
-      redirectUrl.searchParams.set('utm_campaign', campaign);
+      // uidがある場合はキャンペーン名にユニークIDを付与
+      const campaignValue = uid ? `${campaign}_${utmContent}` : campaign;
+      redirectUrl.searchParams.set('utm_campaign', campaignValue);
     }
 
     return NextResponse.redirect(redirectUrl.toString());
