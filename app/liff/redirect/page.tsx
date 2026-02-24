@@ -17,13 +17,14 @@ declare global {
   }
 }
 
-type Status = 'loading' | 'redirecting' | 'fallback' | 'error';
+type Status = 'loading' | 'redirecting' | 'fallback' | 'error' | 'debug';
 
 function LiffRedirectContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<Status>('loading');
   const [targetUrl, setTargetUrl] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   // URLにUTMパラメータを付与
   const buildTargetUrl = (baseUrl: string): string => {
@@ -89,24 +90,31 @@ function LiffRedirectContent() {
   const handleLiffLoad = async () => {
     const liffId = '2006973060-cAgpaZ0y';
 
+    const logs: string[] = [];
+    const addLog = (msg: string) => { logs.push(msg); setDebugInfo([...logs]); };
+
+    // デバッグモード: URLに debug=1 があるか確認
+    const isDebug = window.location.href.includes('debug=1');
+
     try {
       // まずLIFF初期化
       await window.liff.init({ liffId });
-      console.log('LIFF init success, isInClient:', window.liff.isInClient());
+      const isInClient = window.liff.isInClient();
+      addLog(`init OK, isInClient: ${isInClient}`);
 
       // ユーザーID取得（トラッキング用）
       let uid = '';
       try {
         const profile = await window.liff.getProfile();
         uid = profile.userId;
-        console.log('LIFF getProfile success, userId:', uid.slice(0, 8) + '...');
-      } catch (e) {
-        console.warn('getProfile failed, continuing without uid:', e);
+        addLog(`getProfile OK, uid: ${uid.slice(0, 8)}...`);
+      } catch (e: any) {
+        addLog(`getProfile FAILED: ${e?.message || e}`);
       }
 
       // URLパラメータを取得
       const urlParam = getUrlParam();
-      console.log('URL param:', urlParam);
+      addLog(`urlParam: ${urlParam ? urlParam.slice(0, 60) + '...' : 'null'}`);
 
       if (!urlParam) {
         setStatus('error');
@@ -122,15 +130,27 @@ function LiffRedirectContent() {
 
       // uidをリダイレクトURLに付与（/api/r/ 経由の場合）
       let finalUrl = buildTargetUrl(urlParam);
-      if (uid && finalUrl.includes('/api/r/')) {
+      const hasApiR = finalUrl.includes('/api/r/');
+      addLog(`hasApiR: ${hasApiR}, uid: ${uid ? 'YES' : 'NO'}`);
+
+      if (uid && hasApiR) {
         const separator = finalUrl.includes('?') ? '&' : '?';
         finalUrl = `${finalUrl}${separator}uid=${uid}`;
+      }
+
+      addLog(`finalUrl: ${finalUrl.slice(0, 80)}...`);
+
+      // デバッグモード: リダイレクトせず情報を表示
+      if (isDebug) {
+        setTargetUrl(finalUrl);
+        setStatus('debug');
+        return;
       }
 
       setTargetUrl(finalUrl);
       setStatus('redirecting');
 
-      if (window.liff.isInClient()) {
+      if (isInClient) {
         // LINE内ブラウザ → 外部ブラウザで開く
         console.log('Opening external browser:', finalUrl);
         window.liff.openWindow({ url: finalUrl, external: true });
@@ -139,12 +159,18 @@ function LiffRedirectContent() {
         console.log('Not in LINE, redirecting:', finalUrl);
         window.location.replace(finalUrl);
       }
-    } catch (error) {
+    } catch (error: any) {
+      addLog(`ERROR: ${error?.message || error}`);
       console.error('LIFF error:', error);
       // エラー時はURLパラメータから直接リダイレクト試行
       const urlParam = getUrlParam();
       if (urlParam && validateUrl(urlParam)) {
-        window.location.href = urlParam;
+        if (isDebug) {
+          setTargetUrl(urlParam);
+          setStatus('debug');
+        } else {
+          window.location.href = urlParam;
+        }
       } else {
         setStatus('error');
         setErrorMessage('初期化に失敗しました');
@@ -168,6 +194,33 @@ function LiffRedirectContent() {
           <div style={styles.errorIcon}>!</div>
           <h1 style={styles.title}>エラー</h1>
           <p style={styles.message}>{errorMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // デバッグ表示
+  if (status === 'debug') {
+    return (
+      <div style={styles.container}>
+        <div style={{ ...styles.card, textAlign: 'left' as const, maxWidth: '400px' }}>
+          <h1 style={styles.title}>LIFF Debug</h1>
+          {debugInfo.map((log, i) => (
+            <p key={i} style={{ fontSize: '11px', color: '#333', margin: '4px 0', wordBreak: 'break-all' as const, fontFamily: 'monospace' }}>
+              {log}
+            </p>
+          ))}
+          {targetUrl && (
+            <>
+              <p style={{ fontSize: '11px', color: '#666', margin: '12px 0 4px', fontWeight: 'bold' }}>Final URL:</p>
+              <p style={{ fontSize: '10px', color: '#0066cc', wordBreak: 'break-all' as const, fontFamily: 'monospace' }}>
+                {targetUrl}
+              </p>
+              <a href={targetUrl} style={{ ...styles.button, marginTop: '16px', display: 'inline-block' }}>
+                Open
+              </a>
+            </>
+          )}
         </div>
       </div>
     );
