@@ -277,7 +277,7 @@ function getN1OneLevelDownDescription(lang: string): string {
 
 export function buildYoloSiteUrl(lang: string): string {
   const langPath = lang === 'ja' ? 'ja' : lang === 'en' ? 'en' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh-TW' : 'vi';
-  return addUtmParams(`${YOLO_SITE_BASE}/${langPath}/recruit/job`, `line_chatbot_site_mode`);
+  return addUtmParams(`${YOLO_SITE_BASE}/${langPath}/`, `line_chatbot_site_mode`);
 }
 
 export function buildYoloFeatureUrl(lang: string): string {
@@ -296,7 +296,7 @@ export function buildYoloFeatureUrl(lang: string): string {
  */
 export function buildYoloAutochatUrl(lang: string): string {
   const langPath = lang === 'ja' ? 'ja' : lang === 'en' ? 'en' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh-TW' : 'vi';
-  const url = new URL(`${YOLO_SITE_BASE}/${langPath}/recruit/job`);
+  const url = new URL(`${YOLO_SITE_BASE}/${langPath}/`);
   url.searchParams.append('utm_source', 'line');
   url.searchParams.append('utm_medium', 'autochat');
   url.searchParams.append('utm_campaign', 'line_autochat_ai_chat');

@@ -45,7 +45,7 @@ function generateCampaignToken(campaignId: string): string {
  * URLにトラッキング用リダイレクトを適用（キャンペーン単位）
  */
 function buildCampaignTrackingUrl(url: string, campaignToken: string, campaignId: string): string {
-  const redirectUrl = `${IMAGE_BASE_URL}/api/r/${campaignToken}?url=${encodeURIComponent(url)}&campaign=${encodeURIComponent(campaignId)}`;
+  const redirectUrl = `${IMAGE_BASE_URL}/api/r/${campaignToken}?url=${encodeURIComponent(url)}&medium=push&campaign=${encodeURIComponent(campaignId)}`;
 
   if (ENABLE_LIFF_REDIRECT) {
     return `${LIFF_URL_BASE}#url=${encodeURIComponent(redirectUrl)}`;

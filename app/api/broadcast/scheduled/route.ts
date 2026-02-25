@@ -22,7 +22,7 @@ function generateCampaignToken(campaignId: string): string {
 
 function buildLiffTrackingUrl(targetUrl: string, campaignId: string): string {
   const campaignToken = generateCampaignToken(campaignId);
-  const redirectUrl = `${APP_BASE_URL}/api/r/${campaignToken}?url=${encodeURIComponent(targetUrl)}&campaign=${encodeURIComponent(campaignId)}`;
+  const redirectUrl = `${APP_BASE_URL}/api/r/${campaignToken}?url=${encodeURIComponent(targetUrl)}&medium=push&campaign=${encodeURIComponent(campaignId)}`;
   return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(redirectUrl)}`;
 }
 

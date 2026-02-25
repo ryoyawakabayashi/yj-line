@@ -119,7 +119,8 @@ export async function GET(
     // UTMパラメータをリダイレクト時に付与
     const redirectUrl = new URL(destinationUrl);
     redirectUrl.searchParams.set('utm_source', 'line');
-    redirectUrl.searchParams.set('utm_medium', 'push');
+    const medium = request.nextUrl.searchParams.get('medium') || 'push';
+    redirectUrl.searchParams.set('utm_medium', medium);
 
     // utm_campaign（キャンペーン名_ユニークID）
     const campaign = request.nextUrl.searchParams.get('campaign');

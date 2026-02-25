@@ -49,9 +49,26 @@ function generateUserToken(userId: string): string {
 const APP_BASE_URL = process.env.APP_BASE_URL || 'https://line-bot-next-omega.vercel.app';
 
 /**
+ * ソースタイプ → utm_medium マッピング
+ */
+const SOURCE_TO_MEDIUM: Record<string, string> = {
+  diagnosis: 'chatbot',
+  support: 'chatbot',
+  support_yolo_japan: 'chatbot',
+  support_yolo_home: 'chatbot',
+  support_yolo_discover: 'chatbot',
+  autochat: 'autochat',
+  richmenu: 'menu',
+  faq: 'chatbot',
+  followup: 'followup',
+  '10apply_boost': 'push',
+  flow: 'flow',
+  career_diagnosis: 'chatbot',
+};
+
+/**
  * トラッキングリダイレクトURLを生成
  * メッセージにはパラメータを含めず、/api/r/[token] リダイレクト経由でUTMを付与
- * リダイレクト時: utm_source=line, utm_medium=inquiry, utm_content=TOKEN
  */
 export async function generateTrackingUrl(
   userId: string,
@@ -98,7 +115,8 @@ export async function generateTrackingUrl(
   }
 
   // リダイレクトURL生成（UTMパラメータはリダイレクト時にサーバー側で付与）
-  let redirectUrl = `${APP_BASE_URL}/api/r/${token}?url=${encodeURIComponent(baseUrl)}`;
+  const medium = SOURCE_TO_MEDIUM[urlType] || 'chatbot';
+  let redirectUrl = `${APP_BASE_URL}/api/r/${token}?url=${encodeURIComponent(baseUrl)}&medium=${medium}`;
   if (campaign) {
     // キャンペーン名にユニークID（ユーザートークン）を付加
     const campaignWithToken = `${campaign}_${token}`;
