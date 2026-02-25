@@ -1447,6 +1447,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       if (skipLocked && node.data.translationLocked) return;
       const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
 
+      // sendText（送信クイックリプライ / 送信テキスト）を収集
+      const sendTextJa = getSourceJa(node.data.sendText);
+      if (sendTextJa) { texts.push(sendTextJa); sources.push({ type: 'node_sendText', id: node.id, originalJa: sendTextJa }); }
+
       if (nodeType === 'send_message') {
         const ja = getSourceJa(node.data.config.content);
         if (ja) { texts.push(ja); sources.push({ type: 'node_content', id: node.id, originalJa: ja }); }
@@ -1636,13 +1640,26 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       })
     );
 
-    // ノードのconfig翻訳 + エッジtext→sendText同期を1回のsetNodesで実行
+    // node_sendText の翻訳結果を事前計算
+    const sendTextTranslations: Record<string, Record<string, string>> = {};
+    sources.forEach((s, idx) => {
+      if (s.type === 'node_sendText') {
+        const t = translations[idx];
+        if (t) {
+          sendTextTranslations[s.id] = makeLangObj(t, s.originalJa);
+        }
+      }
+    });
+
+    // ノードのconfig翻訳 + sendText翻訳を1回のsetNodesで実行
+    // 優先順位: node_sendText翻訳 > edgeText同期
     setNodes((prevNodes) =>
       prevNodes.map((node) => {
         const edgeTrans = edgeTextTranslations[node.id];
+        const sendTextTrans = sendTextTranslations[node.id];
         const hasConfig = translatedNodeIds.has(node.id);
 
-        if (!hasConfig && !edgeTrans) return node;
+        if (!hasConfig && !edgeTrans && !sendTextTrans) return node;
 
         let newData = { ...node.data };
 
@@ -1653,7 +1670,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           }
         }
 
-        if (edgeTrans) {
+        // sendText翻訳を適用（直接翻訳 > エッジ同期）
+        if (sendTextTrans) {
+          newData = { ...newData, sendText: sendTextTrans };
+        } else if (edgeTrans) {
           newData = { ...newData, sendText: edgeTrans.texts };
         }
 
@@ -1661,12 +1681,30 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       })
     );
 
+    // sendText翻訳を親エッジのtext/textsにも同期
+    if (Object.keys(sendTextTranslations).length > 0) {
+      setEdges((prevEdges) =>
+        prevEdges.map((edge) => {
+          const sendTextTrans = sendTextTranslations[edge.target];
+          if (!sendTextTrans) return edge;
+          // エッジtext/textsも同期（edge_textで既に翻訳された場合はスキップ）
+          if (edgeTextTranslations[edge.target]) return edge;
+          return {
+            ...edge,
+            text: sendTextTrans.ja || (edge as any).text,
+            texts: { ...((edge as any).texts || {}), ...sendTextTrans },
+          };
+        })
+      );
+    }
+
     // selectedNode も同期的に更新（setNodes は非同期バッチなので別途更新が必要）
     if (selectedNode) {
       const hasConfig = translatedNodeIds.has(selectedNode.id);
       const edgeTrans = edgeTextTranslations[selectedNode.id];
+      const sendTextTrans = sendTextTranslations[selectedNode.id];
 
-      if (hasConfig || edgeTrans) {
+      if (hasConfig || edgeTrans || sendTextTrans) {
         let newData = { ...selectedNode.data };
 
         if (hasConfig) {
@@ -1676,7 +1714,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           }
         }
 
-        if (edgeTrans) {
+        if (sendTextTrans) {
+          newData = { ...newData, sendText: sendTextTrans };
+        } else if (edgeTrans) {
           newData = { ...newData, sendText: edgeTrans.texts };
         }
 
