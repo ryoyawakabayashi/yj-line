@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/database/supabase';
 
+export const dynamic = 'force-dynamic';
+
 function buildLineApiJson(config: any) {
   const areas = (config.areas || []).map((area: any) => ({
     bounds: area.bounds,
@@ -40,11 +42,10 @@ export async function GET(
 
     const lineApiJson = buildLineApiJson(data);
 
-    return NextResponse.json({
-      success: true,
-      config: data,
-      lineApiJson,
-    });
+    return NextResponse.json(
+      { success: true, config: data, lineApiJson },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (error: any) {
     console.error('❌ richmenu GET エラー:', error);
     return NextResponse.json(
@@ -76,10 +77,12 @@ export async function PATCH(
       );
     }
 
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('richmenu_configs')
       .update(updateData)
-      .eq('lang', lang);
+      .eq('lang', lang)
+      .select()
+      .single();
 
     if (error) {
       console.error('❌ richmenu PATCH エラー:', error);
@@ -89,7 +92,15 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({ success: true });
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: `lang="${lang}" の設定が見つかりません` },
+        { status: 404 }
+      );
+    }
+
+    console.log('✅ richmenu PATCH 成功:', { lang, fields: Object.keys(updateData) });
+    return NextResponse.json({ success: true, config: updated });
   } catch (error: any) {
     console.error('❌ richmenu PATCH エラー:', error);
     return NextResponse.json(

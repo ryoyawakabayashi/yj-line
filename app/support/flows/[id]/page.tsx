@@ -1130,12 +1130,18 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     });
   };
 
-  // クイックリプライアイテム更新
-  const updateQuickReplyItem = (index: number, field: 'label' | 'text', value: string) => {
+  // クイックリプライアイテム更新（多言語対応）
+  const updateQuickReplyItem = (index: number, field: 'label' | 'text', value: string, lang?: string) => {
     if (!selectedNode) return;
     const current = selectedNode.data.config.quickReply?.items || [];
     const newItems = current.map((item: any, i: number) => {
       if (i !== index) return item;
+      if (lang) {
+        // 多言語モード: setContentForLang で該当言語のみ更新
+        const currentVal = item.action?.[field];
+        const newVal = setContentForLang(currentVal, lang, value);
+        return { ...item, action: { ...item.action, [field]: newVal } };
+      }
       return {
         ...item,
         action: { ...item.action, [field]: value },
@@ -2550,18 +2556,18 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         <div className="flex-1 min-w-0">
                           <input
                             type="text"
-                            value={item.action?.label || ''}
-                            onChange={(e) => updateQuickReplyItem(idx, 'label', e.target.value)}
-                            placeholder="ラベル"
+                            value={getContentForLang(item.action?.label, activeLang)}
+                            onChange={(e) => updateQuickReplyItem(idx, 'label', e.target.value, activeLang)}
+                            placeholder={activeLang === '_source' ? 'ラベル（原本）' : activeLang === 'ja' ? 'ラベル' : `label (${activeLang})`}
                             className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
                           />
-                          <div className="text-right"><CharCount current={(item.action?.label || '').length} max={20} /></div>
+                          <div className="text-right"><CharCount current={getContentForLang(item.action?.label, activeLang).length} max={20} /></div>
                         </div>
                         <input
                           type="text"
-                          value={item.action?.text || ''}
-                          onChange={(e) => updateQuickReplyItem(idx, 'text', e.target.value)}
-                          placeholder="送信テキスト"
+                          value={getContentForLang(item.action?.text, activeLang)}
+                          onChange={(e) => updateQuickReplyItem(idx, 'text', e.target.value, activeLang)}
+                          placeholder={activeLang === '_source' ? '送信テキスト（原本）' : activeLang === 'ja' ? '送信テキスト' : `text (${activeLang})`}
                           className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs"
                         />
                         <button
@@ -3249,9 +3255,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                   const btns = [...(col.buttons || [])];
                                   if (activeLang === 'ja' || activeLang === '_source') {
                                     const oldLabel = typeof btns[btnIdx].label === 'string' ? btns[btnIdx].label : '';
-                                    const oldText = btns[btnIdx].text || '';
+                                    const oldText = getContentForLang(btns[btnIdx].text, 'ja');
                                     const shouldSync = !oldText || oldText === oldLabel || oldText === 'ボタン';
-                                    btns[btnIdx] = { ...btns[btnIdx], label: setContentForLang(btn.label, activeLang, e.target.value), ...(shouldSync ? { text: e.target.value } : {}) };
+                                    btns[btnIdx] = { ...btns[btnIdx], label: setContentForLang(btn.label, activeLang, e.target.value), ...(shouldSync ? { text: setContentForLang(btn.text, activeLang, e.target.value) } : {}) };
                                   } else {
                                     btns[btnIdx] = { ...btns[btnIdx], label: setContentForLang(btn.label, activeLang, e.target.value) };
                                   }
@@ -3264,13 +3270,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               {btn.type !== 'uri' && (
                                 <input
                                   type="text"
-                                  value={btn.text || ''}
+                                  value={getContentForLang(btn.text, activeLang)}
                                   onChange={(e) => {
                                     const btns = [...(col.buttons || [])];
-                                    btns[btnIdx] = { ...btns[btnIdx], text: e.target.value };
+                                    btns[btnIdx] = { ...btns[btnIdx], text: setContentForLang(btn.text, activeLang, e.target.value) };
                                     updateCol({ buttons: btns });
                                   }}
-                                  placeholder="送信テキスト"
+                                  placeholder={activeLang === '_source' ? '送信テキスト（原本）' : activeLang === 'ja' ? '送信テキスト' : `text (${activeLang})`}
                                   className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-300 rounded"
                                 />
                               )}
@@ -3402,13 +3408,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               <div className="flex gap-1 items-center">
                                 <input
                                   type="text"
-                                  value={item.label || ''}
+                                  value={getContentForLang(item.label, activeLang)}
                                   onChange={(e) => {
                                     const items = [...(selectedNode.data.config.quickReplyItems || [])];
-                                    items[idx] = { ...items[idx], label: e.target.value };
+                                    items[idx] = { ...items[idx], label: setContentForLang(item.label, activeLang, e.target.value) };
                                     updateNodeConfig(selectedNode.id, { ...selectedNode.data.config, quickReplyItems: items });
                                   }}
-                                  placeholder="ラベル（最大20文字）"
+                                  placeholder={activeLang === '_source' ? 'ラベル（原本・最大20文字）' : activeLang === 'ja' ? 'ラベル（最大20文字）' : `label (${activeLang})`}
                                   maxLength={20}
                                   className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-white"
                                 />
@@ -3462,9 +3468,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                               <div key={edge.id} className="flex gap-1 items-center min-w-0 bg-gray-50 px-2 py-1 rounded border border-gray-200">
                                 <input type="text" value={edge.label as string || ''} readOnly
                                   className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-gray-100 text-gray-500" />
-                                <input type="text" value={getEdgeTextForLang(edge, 'ja')}
-                                  onChange={(e) => { updateEdgeTextForLang(edge.id, e.target.value, 'ja'); }}
-                                  placeholder="送信テキスト" className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-white" />
+                                <input type="text" value={getEdgeTextForLang(edge, activeLang)}
+                                  onChange={(e) => { updateEdgeTextForLang(edge.id, e.target.value, activeLang); }}
+                                  placeholder={activeLang === '_source' ? '送信テキスト（原本）' : activeLang === 'ja' ? '送信テキスト' : `text (${activeLang})`}
+                                  className="flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 rounded bg-white" />
                                 <button onClick={() => deleteEdgeAndTarget(edge.id)} className="text-red-400 hover:text-red-600 text-sm px-1">×</button>
                               </div>
                             ))}
