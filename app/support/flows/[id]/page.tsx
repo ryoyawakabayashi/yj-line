@@ -1612,6 +1612,9 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       })
     );
 
+    // エッジの翻訳結果を収集（sendText同期用）
+    const edgeTextTranslations: Record<string, { text: string; texts: Record<string, string> }> = {};
+
     setEdges((prevEdges) =>
       prevEdges.map((edge) => {
         let updated: any = { ...edge };
@@ -1633,6 +1636,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             updated.text = t.ja;
             updated.texts = makeLangObj(t, textS.originalJa);
             changed = true;
+            // sendText同期用に保存
+            edgeTextTranslations[edge.target] = { text: t.ja, texts: makeLangObj(t, textS.originalJa) };
           }
         }
 
@@ -1640,13 +1645,30 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       })
     );
 
+    // エッジのtext翻訳結果を子ノードのsendTextにも同期
+    if (Object.keys(edgeTextTranslations).length > 0) {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => {
+          const edgeTrans = edgeTextTranslations[node.id];
+          if (!edgeTrans) return node;
+          return { ...node, data: { ...node.data, sendText: edgeTrans.texts } };
+        })
+      );
+    }
+
     // selectedNode も同期的に更新（setNodes は非同期バッチなので別途更新が必要）
     if (selectedNode && translatedNodeIds.has(selectedNode.id)) {
       const { updatedConfig, changed } = buildTranslatedConfig(selectedNode.data.config, selectedNode.id, translations, sources);
-      if (changed) {
+      const edgeTrans = edgeTextTranslations[selectedNode.id];
+      if (changed || edgeTrans) {
         setSelectedNode({
           ...selectedNode,
-          data: { ...selectedNode.data, config: updatedConfig, translationLocked: true },
+          data: {
+            ...selectedNode.data,
+            config: changed ? updatedConfig : selectedNode.data.config,
+            translationLocked: true,
+            ...(edgeTrans ? { sendText: edgeTrans.texts } : {}),
+          },
         });
       }
     }
