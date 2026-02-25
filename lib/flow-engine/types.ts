@@ -68,8 +68,8 @@ export interface SendMessageConfig {
       type: 'action';
       action: {
         type: 'message' | 'postback';
-        label: string;
-        text?: string;
+        label: string | Record<string, string>;    // 多言語対応
+        text?: string | Record<string, string>;    // 多言語対応
         data?: string;
       };
     }>;
@@ -151,7 +151,7 @@ export interface CardColumn {
   imageUrl?: string;                           // カード画像URL（任意）
   buttons: Array<{                             // ボタン（最大3つ）
     label: string | Record<string, string>;    // ボタンラベル / 多言語対応
-    text: string;                              // ボタン押下時に送信されるテキスト（postback用）
+    text: string | Record<string, string>;     // ボタン押下時に送信されるテキスト（postback用） / 多言語対応
     type?: 'postback' | 'uri';                 // ボタンタイプ（デフォルト: postback）
     url?: string;                              // URI action用のURL
     openExternal?: boolean;                    // 外部ブラウザで開く（LIFFリダイレクト）
@@ -173,8 +173,8 @@ export interface CardConfig {
   columns?: CardColumn[];                      // 複数枚カード（最大10枚）
   // --- クイックリプライ（カードの下部に表示される小さいボタン） ---
   quickReplyItems?: Array<{
-    label: string;                              // ボタン表示テキスト（最大20文字）
-    text?: string;                              // タップ時に送信されるテキスト（省略時はlabelと同じ）
+    label: string | Record<string, string>;     // ボタン表示テキスト（最大20文字） / 多言語対応
+    text?: string | Record<string, string>;     // タップ時に送信されるテキスト（省略時はlabelと同じ） / 多言語対応
     targetNodeId: string;                       // 選択時の遷移先ノードID
   }>;
   // --- 同時送信クイックリプライノード ---

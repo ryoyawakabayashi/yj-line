@@ -10,7 +10,7 @@ import {
   SendMessageConfig,
 } from '../types';
 import { FlowNode, FlowEdge } from '@/lib/database/flow-queries';
-import { expandVariables, createTextMessage } from '../utils';
+import { expandVariables, createTextMessage, localizeLang } from '../utils';
 import { processUrlsInText, UrlSourceType } from '@/lib/tracking/url-processor';
 
 const FALLBACK_ALT_TEXT: Record<string, string> = {
@@ -94,21 +94,25 @@ export class SendMessageHandler implements NodeHandler {
           message = createTextMessage(expandedContent);
       }
 
-      // クイックリプライが設定されている場合、メッセージに付与
+      // クイックリプライが設定されている場合、メッセージに付与（多言語対応）
       if (config.quickReply?.items && config.quickReply.items.length > 0) {
         message.quickReply = {
           items: config.quickReply.items
             .filter((item) => item.action?.label)
-            .map((item) => ({
-              type: 'action',
-              action: {
-                type: item.action.type || 'message',
-                label: item.action.label.length > 20 ? item.action.label.slice(0, 20) : item.action.label,
-                ...(item.action.type === 'postback'
-                  ? { data: item.action.data || item.action.text || item.action.label }
-                  : { text: item.action.text || item.action.label }),
-              },
-            })),
+            .map((item) => {
+              const label = localizeLang(item.action.label, context.lang);
+              const text = localizeLang(item.action.text, context.lang) || label;
+              return {
+                type: 'action',
+                action: {
+                  type: item.action.type || 'message',
+                  label: label.length > 20 ? label.slice(0, 20) : label,
+                  ...(item.action.type === 'postback'
+                    ? { data: item.action.data || text }
+                    : { text }),
+                },
+              };
+            }),
         };
       }
 

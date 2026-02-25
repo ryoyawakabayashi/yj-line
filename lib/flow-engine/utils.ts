@@ -103,6 +103,19 @@ export function evaluateCondition(
 }
 
 /**
+ * 多言語テキストから適切な言語の文字列を取得
+ * string ならそのまま返し、Record<string, string> なら lang キーを優先
+ */
+export function localizeLang(
+  value: string | Record<string, string> | undefined,
+  lang: string
+): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value[lang] || value.ja || Object.values(value)[0] || '';
+}
+
+/**
  * LINEメッセージオブジェクトを作成
  */
 export function createTextMessage(text: string, quickReply?: any): any {

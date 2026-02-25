@@ -1409,7 +1409,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   });
 
   /** テキスト収集用の型 */
-  type TextSource = { type: string; id: string; originalJa: string; btnIdx?: number };
+  type TextSource = { type: string; id: string; originalJa: string; btnIdx?: number; qrIdx?: number };
 
   /** 指定ノード群からテキストとソースを収集（locked ノードはスキップ） */
   const collectTexts = (targetNodes: Node[], targetEdges: typeof edges, skipLocked: boolean) => {
@@ -1423,6 +1423,14 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       if (nodeType === 'send_message') {
         const ja = getSourceJa(node.data.config.content);
         if (ja) { texts.push(ja); sources.push({ type: 'node_content', id: node.id, originalJa: ja }); }
+        // send_message インラインクイックリプライの label / text
+        const qrItems = node.data.config.quickReply?.items || [];
+        qrItems.forEach((item: any, idx: number) => {
+          const lbl = getSourceJa(item.action?.label);
+          if (lbl) { texts.push(lbl); sources.push({ type: 'node_sm_qr_label', id: node.id, originalJa: lbl, qrIdx: idx }); }
+          const txt = getSourceJa(item.action?.text);
+          if (txt && txt !== lbl) { texts.push(txt); sources.push({ type: 'node_sm_qr_text', id: node.id, originalJa: txt, qrIdx: idx }); }
+        });
       }
       if (nodeType === 'quick_reply') {
         const ja = getSourceJa(node.data.config.message);
@@ -1434,11 +1442,19 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         if (cardText) { texts.push(cardText); sources.push({ type: 'node_card_text', id: node.id, originalJa: cardText }); }
         const cardTitle = getSourceJa(col?.title ?? node.data.config.title);
         if (cardTitle) { texts.push(cardTitle); sources.push({ type: 'node_card_title', id: node.id, originalJa: cardTitle }); }
-        // カードボタンラベル
+        // カードボタンラベル + 送信テキスト
         const buttons = col?.buttons || [];
         buttons.forEach((btn: any, idx: number) => {
           const ja = getSourceJa(btn.label);
           if (ja) { texts.push(ja); sources.push({ type: 'node_card_btn', id: node.id, originalJa: ja, btnIdx: idx }); }
+          const btnText = getSourceJa(btn.text);
+          if (btnText && btnText !== ja) { texts.push(btnText); sources.push({ type: 'node_card_btn_text', id: node.id, originalJa: btnText, btnIdx: idx }); }
+        });
+        // カードのクイックリプライラベル
+        const qrItems = node.data.config.quickReplyItems || [];
+        qrItems.forEach((item: any, idx: number) => {
+          const lbl = getSourceJa(item.label);
+          if (lbl) { texts.push(lbl); sources.push({ type: 'node_card_qr_label', id: node.id, originalJa: lbl, qrIdx: idx }); }
         });
       }
     });
@@ -1499,7 +1515,54 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
           changed = true;
         }
       });
+      // カードボタン送信テキスト
+      const cardBtnTextSources = sources.filter((s) => s.id === nodeId && s.type === 'node_card_btn_text');
+      cardBtnTextSources.forEach((s) => {
+        const t = translations[sources.indexOf(s)];
+        if (!t || s.btnIdx === undefined) return;
+        const btns = [...(col.buttons || [])];
+        if (btns[s.btnIdx]) {
+          btns[s.btnIdx] = { ...btns[s.btnIdx], text: makeLangObj(t, s.originalJa) };
+          col.buttons = btns;
+          changed = true;
+        }
+      });
       updatedConfig.columns = [col];
+    }
+
+    // カードのクイックリプライラベル
+    const cardQrSources = sources.filter((s) => s.id === nodeId && s.type === 'node_card_qr_label');
+    if (cardQrSources.length > 0) {
+      const qrItems = [...(updatedConfig.quickReplyItems || [])];
+      cardQrSources.forEach((s) => {
+        const t = translations[sources.indexOf(s)];
+        if (!t || s.qrIdx === undefined) return;
+        if (qrItems[s.qrIdx]) {
+          qrItems[s.qrIdx] = { ...qrItems[s.qrIdx], label: makeLangObj(t, s.originalJa) };
+          changed = true;
+        }
+      });
+      updatedConfig.quickReplyItems = qrItems;
+    }
+
+    // send_message インラインクイックリプライ
+    const smQrLabelSources = sources.filter((s) => s.id === nodeId && s.type === 'node_sm_qr_label');
+    const smQrTextSources = sources.filter((s) => s.id === nodeId && s.type === 'node_sm_qr_text');
+    if (smQrLabelSources.length > 0 || smQrTextSources.length > 0) {
+      const qr = updatedConfig.quickReply ? { ...updatedConfig.quickReply, items: [...(updatedConfig.quickReply.items || [])] } : { items: [] };
+      smQrLabelSources.forEach((s) => {
+        const t = translations[sources.indexOf(s)];
+        if (!t || s.qrIdx === undefined || !qr.items[s.qrIdx]) return;
+        qr.items[s.qrIdx] = { ...qr.items[s.qrIdx], action: { ...qr.items[s.qrIdx].action, label: makeLangObj(t, s.originalJa) } };
+        changed = true;
+      });
+      smQrTextSources.forEach((s) => {
+        const t = translations[sources.indexOf(s)];
+        if (!t || s.qrIdx === undefined || !qr.items[s.qrIdx]) return;
+        qr.items[s.qrIdx] = { ...qr.items[s.qrIdx], action: { ...qr.items[s.qrIdx].action, text: makeLangObj(t, s.originalJa) } };
+        changed = true;
+      });
+      updatedConfig.quickReply = qr;
     }
 
     return { updatedConfig, changed };

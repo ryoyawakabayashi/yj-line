@@ -99,17 +99,20 @@ export class CardHandler implements NodeHandler {
 
     const message: any = { type: 'template', altText: title || text, template };
 
-    // クイックリプライが設定されている場合、メッセージに付与
+    // クイックリプライが設定されている場合、メッセージに付与（多言語対応）
     if (config.quickReplyItems && config.quickReplyItems.length > 0) {
       message.quickReply = {
-        items: config.quickReplyItems.map((item) => ({
-          type: 'action',
-          action: {
-            type: 'message',
-            label: (item.label || '').slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja,
-            text: item.text || item.label,
-          },
-        })),
+        items: config.quickReplyItems.map((item) => {
+          const label = localize(item.label, context.lang);
+          return {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: (label || '').slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja,
+              text: localize(item.text, context.lang) || label || item.label,
+            },
+          };
+        }),
       };
     }
 
@@ -169,7 +172,7 @@ export class CardHandler implements NodeHandler {
           let label = localize(btn.label, context.lang);
           // LINE APIはlabelが空だとメッセージ全体を拒否するためフォールバック
           if (!label) {
-            label = btn.text || colText.slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja;
+            label = localize(btn.text, context.lang) || colText.slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja;
           }
           // labelは最大20文字
           if (label.length > 20) label = label.slice(0, 20);
@@ -188,8 +191,8 @@ export class CardHandler implements NodeHandler {
             };
           }
 
-          // postbackアクション: cardNodeIdでどのカードのボタンか識別
-          const displayText = btn.text || label;
+          // postbackアクション: cardNodeIdでどのカードのボタンか識別（多言語対応）
+          const displayText = localize(btn.text, context.lang) || label;
           return {
             type: 'postback' as const,
             label,
@@ -242,17 +245,20 @@ export class CardHandler implements NodeHandler {
       },
     };
 
-    // クイックリプライが設定されている場合、メッセージに付与
+    // クイックリプライが設定されている場合、メッセージに付与（多言語対応）
     if (config.quickReplyItems && config.quickReplyItems.length > 0) {
       message.quickReply = {
-        items: config.quickReplyItems.map((item) => ({
-          type: 'action',
-          action: {
-            type: 'message',
-            label: (item.label || '').slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja,
-            text: item.text || item.label,
-          },
-        })),
+        items: config.quickReplyItems.map((item) => {
+          const label = localize(item.label, context.lang);
+          return {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: (label || '').slice(0, 20) || FALLBACK_SELECT[context.lang] || FALLBACK_SELECT.ja,
+              text: localize(item.text, context.lang) || label || item.label,
+            },
+          };
+        }),
       };
     }
 
@@ -334,13 +340,19 @@ export function resolveCardChoice(
     }
   }
 
-  // --- フォールバック: ボタンtextでのマッチング（カルーセルモード） ---
+  // --- フォールバック: ボタンtextでのマッチング（カルーセルモード、多言語対応） ---
   const config = node.data.config as CardConfig;
   if (config.columns && config.columns.length > 0) {
     const allButtonTexts = new Set<string>();
     for (const col of config.columns) {
       for (const btn of col.buttons || []) {
-        if (btn.text) allButtonTexts.add(btn.text);
+        if (btn.text) {
+          if (typeof btn.text === 'string') {
+            allButtonTexts.add(btn.text);
+          } else {
+            Object.values(btn.text).forEach((v) => { if (v) allButtonTexts.add(v); });
+          }
+        }
       }
     }
     if (allButtonTexts.has(userMessage)) {
@@ -348,11 +360,15 @@ export function resolveCardChoice(
     }
   }
 
-  // --- クイックリプライアイテムでのマッチング ---
+  // --- クイックリプライアイテムでのマッチング（多言語対応） ---
   if (config.quickReplyItems && config.quickReplyItems.length > 0) {
     const qrMatch = config.quickReplyItems.find((item) => {
-      const itemText = item.text || item.label;
-      return itemText === userMessage || item.label === userMessage;
+      const matchValues = (v: string | Record<string, string> | undefined): boolean => {
+        if (!v) return false;
+        if (typeof v === 'string') return v === userMessage;
+        return Object.values(v).some((val) => val === userMessage);
+      };
+      return matchValues(item.text) || matchValues(item.label);
     });
     if (qrMatch?.targetNodeId) {
       console.log(`card: quickReplyアイテム "${userMessage}" にマッチ → ${qrMatch.targetNodeId}`);
