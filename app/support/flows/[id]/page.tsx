@@ -1603,16 +1603,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     // 翻訳対象ノードIDを sources から同期的に特定
     const translatedNodeIds = new Set(sources.filter((s) => !s.type.startsWith('edge_')).map((s) => s.id));
 
-    setNodes((prevNodes) =>
-      prevNodes.map((node) => {
-        if (!translatedNodeIds.has(node.id)) return node;
-        const { updatedConfig, changed } = buildTranslatedConfig(node.data.config, node.id, translations, sources);
-        if (!changed) return node;
-        return { ...node, data: { ...node.data, config: updatedConfig, translationLocked: true } };
-      })
-    );
-
-    // エッジの翻訳結果を収集（sendText同期用）
+    // まずエッジの翻訳結果を同期的に計算（sendText同期用にも使う）
     const edgeTextTranslations: Record<string, { text: string; texts: Record<string, string> }> = {};
 
     setEdges((prevEdges) =>
@@ -1645,31 +1636,51 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       })
     );
 
-    // エッジのtext翻訳結果を子ノードのsendTextにも同期
-    if (Object.keys(edgeTextTranslations).length > 0) {
-      setNodes((prevNodes) =>
-        prevNodes.map((node) => {
-          const edgeTrans = edgeTextTranslations[node.id];
-          if (!edgeTrans) return node;
-          return { ...node, data: { ...node.data, sendText: edgeTrans.texts } };
-        })
-      );
-    }
+    // ノードのconfig翻訳 + エッジtext→sendText同期を1回のsetNodesで実行
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => {
+        const edgeTrans = edgeTextTranslations[node.id];
+        const hasConfig = translatedNodeIds.has(node.id);
+
+        if (!hasConfig && !edgeTrans) return node;
+
+        let newData = { ...node.data };
+
+        if (hasConfig) {
+          const { updatedConfig, changed } = buildTranslatedConfig(node.data.config, node.id, translations, sources);
+          if (changed) {
+            newData = { ...newData, config: updatedConfig, translationLocked: true };
+          }
+        }
+
+        if (edgeTrans) {
+          newData = { ...newData, sendText: edgeTrans.texts };
+        }
+
+        return { ...node, data: newData };
+      })
+    );
 
     // selectedNode も同期的に更新（setNodes は非同期バッチなので別途更新が必要）
-    if (selectedNode && translatedNodeIds.has(selectedNode.id)) {
-      const { updatedConfig, changed } = buildTranslatedConfig(selectedNode.data.config, selectedNode.id, translations, sources);
+    if (selectedNode) {
+      const hasConfig = translatedNodeIds.has(selectedNode.id);
       const edgeTrans = edgeTextTranslations[selectedNode.id];
-      if (changed || edgeTrans) {
-        setSelectedNode({
-          ...selectedNode,
-          data: {
-            ...selectedNode.data,
-            config: changed ? updatedConfig : selectedNode.data.config,
-            translationLocked: true,
-            ...(edgeTrans ? { sendText: edgeTrans.texts } : {}),
-          },
-        });
+
+      if (hasConfig || edgeTrans) {
+        let newData = { ...selectedNode.data };
+
+        if (hasConfig) {
+          const { updatedConfig, changed } = buildTranslatedConfig(selectedNode.data.config, selectedNode.id, translations, sources);
+          if (changed) {
+            newData = { ...newData, config: updatedConfig, translationLocked: true };
+          }
+        }
+
+        if (edgeTrans) {
+          newData = { ...newData, sendText: edgeTrans.texts };
+        }
+
+        setSelectedNode({ ...selectedNode, data: newData });
       }
     }
 
@@ -1718,8 +1729,11 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const targetNode = nodes.find((n) => n.id === nodeId);
       if (!targetNode) return;
 
+      // 出ていくエッジ + 入ってくるエッジの両方を翻訳対象にする
       const outgoingEdges = edges.filter((e) => e.source === nodeId);
-      const { texts, sources } = collectTexts([targetNode], outgoingEdges, false);
+      const incomingEdges = edges.filter((e) => e.target === nodeId);
+      const relatedEdges = [...outgoingEdges, ...incomingEdges];
+      const { texts, sources } = collectTexts([targetNode], relatedEdges, false);
 
       if (texts.length === 0) {
         alert('翻訳対象のテキストがありません');
