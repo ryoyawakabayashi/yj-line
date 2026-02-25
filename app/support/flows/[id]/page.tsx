@@ -1448,8 +1448,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
 
       // sendText（送信クイックリプライ / 送信テキスト）を収集
+      // ※ プリセット値（AI_MODE等）やエッジのlabelと同一のものはスキップ
       const sendTextJa = getSourceJa(node.data.sendText);
-      if (sendTextJa) { texts.push(sendTextJa); sources.push({ type: 'node_sendText', id: node.id, originalJa: sendTextJa }); }
+      const isPreset = SEND_TEXT_PRESETS.some((p) => p.text === sendTextJa);
+      const incomingEdge = targetEdges.find((e) => e.target === node.id);
+      const edgeLabelJa = incomingEdge ? ((incomingEdge as any).labels?._source || (incomingEdge.label as string) || '') : '';
+      const isDuplicateOfLabel = sendTextJa && sendTextJa === edgeLabelJa;
+      if (sendTextJa && !isPreset && !isDuplicateOfLabel) { texts.push(sendTextJa); sources.push({ type: 'node_sendText', id: node.id, originalJa: sendTextJa }); }
 
       if (nodeType === 'send_message') {
         const ja = getSourceJa(node.data.config.content);
@@ -1619,9 +1624,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
         if (labelS) {
           const t = translations[sources.indexOf(labelS)];
           if (t) {
-            updated.label = t.ja; // ja（やさしい日本語）をメインラベルに
+            updated.label = t.ja;
             updated.labels = makeLangObj(t, labelS.originalJa);
             changed = true;
+            // sendTextがlabelと同じ値の場合、label翻訳をsendTextにも同期
+            if (!edgeTextTranslations[edge.target]) {
+              edgeTextTranslations[edge.target] = { text: t.ja, texts: makeLangObj(t, labelS.originalJa) };
+            }
           }
         }
         const textS = sources.find((s) => s.id === edge.id && s.type === 'edge_text');
@@ -1631,7 +1640,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             updated.text = t.ja;
             updated.texts = makeLangObj(t, textS.originalJa);
             changed = true;
-            // sendText同期用に保存
+            // sendText同期用に保存（edge_textがあればこちらを優先）
             edgeTextTranslations[edge.target] = { text: t.ja, texts: makeLangObj(t, textS.originalJa) };
           }
         }
