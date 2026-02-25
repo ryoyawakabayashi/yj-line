@@ -604,7 +604,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       // 子ノードのノード名・送信テキストをエッジに自動セット
       const childNode = nodes.find((n) => n.id === finalParams.target);
       const childLabel = childNode?.data?.label || '';
-      const childSendText = childNode?.data?.sendText || '';
+      const childSendText = getContentForLang(childNode?.data?.sendText, 'ja');
 
       setEdges((eds) => {
         const sameSourceEdges = eds.filter((e) => e.source === finalParams.source);
@@ -1339,39 +1339,60 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  // エッジ送信テキスト変更時に子ノードのsendTextも同期する
-  const syncTargetNodeSendTextFromEdge = (edgeId: string, newText: string) => {
+  // エッジ送信テキスト変更時に子ノードのsendTextも同期する（多言語対応）
+  const syncTargetNodeSendTextFromEdge = (edgeId: string, newText: string, lang?: string) => {
     const targetEdge = edges.find((e) => e.id === edgeId);
     if (!targetEdge) return;
     const targetId = targetEdge.target;
+    const updateSendText = (current: string | Record<string, string> | undefined) => {
+      if (lang && lang !== 'ja') {
+        return setContentForLang(current, lang, newText);
+      }
+      // ja or no lang: 既存の動作（jaの場合はRecord更新 + 文字列フォールバック）
+      if (lang === 'ja' || lang === '_source') {
+        return setContentForLang(current, lang, newText);
+      }
+      return newText;
+    };
     setNodes((nds) =>
       nds.map((n) =>
-        n.id === targetId ? { ...n, data: { ...n.data, sendText: newText } } : n
+        n.id === targetId ? { ...n, data: { ...n.data, sendText: updateSendText(n.data.sendText) } } : n
       )
     );
     if (selectedNode?.id === targetId) {
-      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, sendText: newText } });
+      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, sendText: updateSendText(selectedNode.data.sendText) } });
     }
   };
 
-  // 子ノードのsendText変更時に親エッジのtextも同期する
-  const updateNodeSendText = (nodeId: string, newText: string) => {
+  // 子ノードのsendText変更時に親エッジのtextも同期する（多言語対応）
+  const updateNodeSendText = (nodeId: string, newText: string, lang?: string) => {
+    const updateST = (current: string | Record<string, string> | undefined) => {
+      if (lang) return setContentForLang(current, lang, newText);
+      return newText;
+    };
     setNodes((nds) =>
       nds.map((n) =>
-        n.id === nodeId ? { ...n, data: { ...n.data, sendText: newText } } : n
+        n.id === nodeId ? { ...n, data: { ...n.data, sendText: updateST(n.data.sendText) } } : n
       )
     );
-    // 親エッジのtextを同期
+    // 親エッジのtext/textsを同期
     setEdges((eds) =>
       eds.map((edge) => {
         if (edge.target === nodeId) {
+          if (lang && lang !== 'ja') {
+            const currentTexts = (edge as any).texts || {};
+            if (lang === '_source') {
+              return { ...edge, text: newText || undefined, texts: { ...currentTexts, _source: newText } };
+            }
+            return { ...edge, texts: { ...currentTexts, [lang]: newText } };
+          }
           return { ...edge, text: newText || undefined };
         }
         return edge;
       })
     );
     if (selectedNode?.id === nodeId) {
-      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, sendText: newText } });
+      setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, sendText: updateST(selectedNode.data.sendText) } });
     }
   };
 
@@ -2404,13 +2425,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             )}
 
             {/* メッセージタイプ */}
-            {getSelectedNodeType() === 'send_message' && SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+            {getSelectedNodeType() === 'send_message' && SEND_TEXT_PRESETS.some(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja')) && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                このノードは「{SEND_TEXT_PRESETS.find(p => p.text === selectedNode.data.sendText)?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
+                このノードは「{SEND_TEXT_PRESETS.find(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja'))?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
               </div>
             )}
 
-            {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+            {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja')) && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   メッセージタイプ
@@ -2447,11 +2468,28 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {sendTextLabel}
                   </label>
+                  <div className="flex gap-1 mb-1">
+                    {LANGS.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => setActiveLang(lang.code)}
+                        className={`px-2 py-1 text-xs rounded transition ${
+                          activeLang === lang.code
+                            ? 'bg-blue-600 text-white'
+                            : getContentForLang(selectedNode.data.sendText, lang.code)
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {lang.name}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
-                    value={selectedNode.data.sendText || ''}
-                    onChange={(e) => updateNodeSendText(selectedNode.id, e.target.value)}
-                    placeholder="未入力=ラベルと同じ"
+                    value={getContentForLang(selectedNode.data.sendText, activeLang)}
+                    onChange={(e) => updateNodeSendText(selectedNode.id, e.target.value, activeLang)}
+                    placeholder={activeLang === '_source' ? '未入力=ラベルと同じ（原本）' : activeLang === 'ja' ? '未入力=ラベルと同じ' : `text (${activeLang})`}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
                   <div className="flex flex-wrap gap-1 mt-1">
@@ -2460,7 +2498,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                         key={preset.text}
                         onClick={() => updateNodeSendText(selectedNode.id, preset.text)}
                         className={`px-2 py-0.5 text-xs rounded transition ${
-                          selectedNode.data.sendText === preset.text
+                          getContentForLang(selectedNode.data.sendText, 'ja') === preset.text
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
@@ -2474,7 +2512,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
             })()}
 
             {/* メッセージ内容 */}
-            {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+            {getSelectedNodeType() === 'send_message' && !SEND_TEXT_PRESETS.some(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja')) && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2759,13 +2797,13 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
-            {getSelectedNodeType() === 'quick_reply' && SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+            {getSelectedNodeType() === 'quick_reply' && SEND_TEXT_PRESETS.some(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja')) && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                このノードは「{SEND_TEXT_PRESETS.find(p => p.text === selectedNode.data.sendText)?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
+                このノードは「{SEND_TEXT_PRESETS.find(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja'))?.label}」ハンドラーが処理するため、メッセージ内容の設定は不要です。
               </div>
             )}
 
-            {getSelectedNodeType() === 'quick_reply' && !SEND_TEXT_PRESETS.some(p => p.text === selectedNode.data.sendText) && (
+            {getSelectedNodeType() === 'quick_reply' && !SEND_TEXT_PRESETS.some(p => p.text === getContentForLang(selectedNode.data.sendText, 'ja')) && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -2967,7 +3005,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                     value={getEdgeTextForLang(edge, activeLang)}
                                     onChange={(e) => {
                                       updateEdgeTextForLang(edge.id, e.target.value, activeLang);
-                                      if (activeLang === 'ja' || activeLang === '_source') syncTargetNodeSendTextFromEdge(edge.id, e.target.value);
+                                      syncTargetNodeSendTextFromEdge(edge.id, e.target.value, activeLang);
                                     }}
                                     placeholder="送信テキスト（例: AI_MODE）空=ラベルと同じ"
                                     className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
@@ -2986,7 +3024,7 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
                                       key={preset.text}
                                       onClick={() => {
                                         updateEdgeTextForLang(edge.id, preset.text, 'ja');
-                                        syncTargetNodeSendTextFromEdge(edge.id, preset.text);
+                                        syncTargetNodeSendTextFromEdge(edge.id, preset.text, 'ja');
                                       }}
                                       className={`px-1.5 py-0.5 text-[10px] rounded transition ${
                                         getEdgeTextForLang(edge, 'ja') === preset.text
