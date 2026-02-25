@@ -2,6 +2,7 @@ import { LineEvent } from '@/types/line';
 import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile, saveConversationState } from '../database/queries';
 import { getActiveTicketByUserId, saveMessage } from '../database/support-queries';
 import { replyMessage, pushMessage, linkRichMenu } from '../line/client';
+import { syncRichMenuToUserLang } from './richmenu';
 import { config } from '../config';
 import { CONSTANTS } from '../constants';
 import { handleConversation } from './conversation';
@@ -376,6 +377,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         'FIND_JOB',
         'AI_MODE',
         'CAREER_DIAGNOSIS',
+        'Job_Aptitude_Test',
         'SITE_MODE',
         'SITE_MODE_AUTOCHAT', // AIトーク経由のサイト誘導
         'VIEW_FEATURES',
@@ -406,8 +408,8 @@ export async function handleEvent(event: LineEvent): Promise<void> {
           return;
         }
 
-        // CAREER_DIAGNOSIS: キャリアタイプ診断開始
-        if (messageText === 'CAREER_DIAGNOSIS') {
+        // CAREER_DIAGNOSIS / Job_Aptitude_Test: キャリアタイプ診断開始
+        if (messageText === 'CAREER_DIAGNOSIS' || messageText === 'Job_Aptitude_Test') {
           const { startCareerDiagnosisMode } = await import('./career-diagnosis');
           await startCareerDiagnosisMode(userId, event.replyToken, await getUserLang(userId));
           return;
@@ -503,7 +505,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             // ユーザーのメッセージがリッチメニューボタン（AI_MODE等）の場合、
             // 通常ハンドラーに引き継ぐ（returnしない）
             const reDispatchButtons = [
-              'FIND_JOB', 'AI_MODE', 'CAREER_DIAGNOSIS', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
+              'FIND_JOB', 'AI_MODE', 'CAREER_DIAGNOSIS', 'Job_Aptitude_Test', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
               'VIEW_FEATURES', 'CONTACT', 'LANG_CHANGE', 'YOLO_DISCOVER',
             ];
             if (reDispatchButtons.includes(messageText)) {
@@ -635,21 +637,10 @@ async function handleLanguageSelection(
       console.error('⚠️ プロフィール取得失敗:', err)
     );
 
-    const richMenuMap: Record<string, string> = {
-      ja: config.richMenu.ja,
-      en: config.richMenu.en,
-      ko: config.richMenu.ko,
-      zh: config.richMenu.zh,
-      vi: config.richMenu.vi,
-    };
-
-    const richMenuId = richMenuMap[selectedLang];
-
-    if (richMenuId) {
-      console.log('🔄 リッチメニュー切り替え中:', richMenuId);
-      await linkRichMenu(userId, richMenuId);
-      console.log('✅ リッチメニュー切り替え成功');
-    }
+    // DB（richmenu_configs）を優先してリッチメニューを切り替え
+    console.log('🔄 リッチメニュー切り替え中...');
+    await syncRichMenuToUserLang(userId);
+    console.log('✅ リッチメニュー切り替え成功');
 
     const confirmMessages: Record<string, string> = {
       ja: '言語を日本語に設定しました ✅\n\n「しごとをさがす」から求人検索を始められます。',
