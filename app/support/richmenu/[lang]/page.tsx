@@ -48,7 +48,7 @@ export default function RichmenuEditorPage() {
   const [settingDefault, setSettingDefault] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/dashboard/richmenu/${lang}`)
+    fetch(`/api/dashboard/richmenu/${lang}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.config) {
@@ -78,6 +78,22 @@ export default function RichmenuEditorPage() {
     []
   );
 
+  const reloadConfig = async () => {
+    const res = await fetch(`/api/dashboard/richmenu/${lang}`, { cache: 'no-store' });
+    const data = await res.json();
+    if (data.success && data.config) {
+      setMenuName(data.config.menu_name);
+      setChatBarText(data.config.chat_bar_text);
+      setRichMenuId(data.config.rich_menu_id || '');
+      setLastAppliedAt(data.config.last_applied_at || '');
+      setAreas(
+        (data.config.areas || []).sort(
+          (a: ButtonArea, b: ButtonArea) => a.position - b.position
+        )
+      );
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -88,6 +104,7 @@ export default function RichmenuEditorPage() {
       });
       const data = await res.json();
       if (data.success) {
+        await reloadConfig();
         alert('保存しました');
       } else {
         alert('保存に失敗しました: ' + (data.error || ''));
@@ -142,12 +159,8 @@ export default function RichmenuEditorPage() {
   };
 
   // 共通: 設定保存 + メニュー作成 + 画像アップロード
+  // 画像なしの場合は既存画像を再利用（API側で処理）
   const createAndUploadMenu = async (): Promise<string | null> => {
-    if (!selectedImage) {
-      alert('画像を選択してください');
-      return null;
-    }
-
     // 設定を保存
     setApplyStatus('設定を保存中...');
     const saveRes = await fetch(`/api/dashboard/richmenu/${lang}`, {
@@ -161,9 +174,14 @@ export default function RichmenuEditorPage() {
     }
 
     // LINEにメニュー作成 + 画像アップロード
-    setApplyStatus('メニュー作成 + 画像アップロード中...');
+    setApplyStatus(selectedImage
+      ? 'メニュー作成 + 画像アップロード中...'
+      : 'メニュー作成中（既存画像を再利用）...'
+    );
     const formData = new FormData();
-    formData.append('image', selectedImage);
+    if (selectedImage) {
+      formData.append('image', selectedImage);
+    }
 
     const res = await fetch(`/api/dashboard/richmenu/${lang}/apply`, {
       method: 'POST',
@@ -196,11 +214,10 @@ export default function RichmenuEditorPage() {
       alert('テストユーザーのLINE IDを入力してください');
       return;
     }
-    if (!selectedImage) {
-      alert('画像を選択してください');
-      return;
-    }
-    if (!confirm('新しいリッチメニューを作成し、テストユーザーに適用します。よろしいですか？')) {
+    const msg = selectedImage
+      ? '新しいリッチメニューを作成し、テストユーザーに適用します。よろしいですか？'
+      : '現在の設定でリッチメニューを再作成し、テストユーザーに適用します（既存画像を再利用）。よろしいですか？';
+    if (!confirm(msg)) {
       return;
     }
 
@@ -236,11 +253,10 @@ export default function RichmenuEditorPage() {
 
   // 全ユーザーに適用（メニュー作成 → デフォルト設定）
   const handleApplyToAll = async () => {
-    if (!selectedImage) {
-      alert('画像を選択してください');
-      return;
-    }
-    if (!confirm(`新しいリッチメニューを作成し、全ユーザーのデフォルトに設定します。よろしいですか？`)) {
+    const msg = selectedImage
+      ? '新しいリッチメニューを作成し、全ユーザーのデフォルトに設定します。よろしいですか？'
+      : '現在の設定でリッチメニューを再作成し、全ユーザーのデフォルトに設定します（既存画像を再利用）。よろしいですか？';
+    if (!confirm(msg)) {
       return;
     }
 
@@ -517,7 +533,7 @@ export default function RichmenuEditorPage() {
               {/* テストユーザーに適用 */}
               <button
                 onClick={handleApplyToTestUsers}
-                disabled={!selectedImage || applying || !testUserIds.trim()}
+                disabled={applying || !testUserIds.trim()}
                 className="px-5 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
               >
                 テストユーザーに適用
@@ -526,7 +542,7 @@ export default function RichmenuEditorPage() {
               {/* 全ユーザーに適用 */}
               <button
                 onClick={handleApplyToAll}
-                disabled={!selectedImage || applying}
+                disabled={applying}
                 className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
               >
                 全ユーザーに適用
@@ -534,13 +550,13 @@ export default function RichmenuEditorPage() {
 
               {!selectedImage && !applying && (
                 <span className="text-xs text-gray-400">
-                  画像を選択すると適用できます
+                  画像未選択の場合は既存画像を再利用します（画像変更時は新しい画像を選択）
                 </span>
               )}
             </div>
 
             <p className="text-xs text-gray-500 mt-2">
-              どちらも新しいリッチメニューを作成し、画像をアップロードします。既存のメニューは置き換えられます。
+              設定変更のみの場合は既存画像を再利用してメニューを再作成します。画像を変更する場合は新しい画像を選択してください。
             </p>
 
             {/* リンク結果 */}
