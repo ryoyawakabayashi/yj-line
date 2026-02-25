@@ -45,7 +45,7 @@ export async function startCareerDiagnosisMode(
   await saveConversationState(userId, state);
 
   const startMessages: Record<string, string> = {
-    ja: 'キャリアタイプ診断をはじめます！\n8つのかんたんなしつもんに こたえてください 🎯',
+    ja: 'キャリアタイプ診断を始めます！\n8つの簡単な質問に答えてください 🎯',
     en: "Let's start the Career Type Quiz!\nAnswer 8 simple questions 🎯",
     ko: '커리어 타입 진단을 시작합니다!\n8개의 간단한 질문에 답해주세요 🎯',
     zh: '开始职业类型诊断！\n请回答8个简单问题 🎯',
@@ -82,7 +82,7 @@ export async function handleCareerDiagnosisAnswer(event: LineEvent): Promise<voi
   if (userAnswer !== 'A' && userAnswer !== 'B') {
     const lang = state.lang || await getUserLang(userId);
     const retryMessages: Record<string, string> = {
-      ja: 'AまたはBを えらんでください',
+      ja: 'AまたはBを選んでください',
       en: 'Please choose A or B',
       ko: 'A 또는 B를 선택해주세요',
       zh: '请选择A或B',
@@ -126,7 +126,7 @@ function buildQuestionMessage(questionNum: number, lang: string): any {
 
   const remaining = TOTAL_QUESTIONS - questionNum + 1;
   const progressLabels: Record<string, (n: number) => string> = {
-    ja: (n) => `【のこり${n}もん】`,
+    ja: (n) => `【残り${n}問】`,
     en: (n) => `【${n} left】`,
     ko: (n) => `【${n}개 남음】`,
     zh: (n) => `【还剩${n}题】`,
@@ -147,7 +147,7 @@ function buildQuestionMessage(questionNum: number, lang: string): any {
           type: 'action',
           action: {
             type: 'message',
-            label: `A: ${optAText}`.length > 20 ? `A: ${optAText}`.substring(0, 20) : `A: ${optAText}`,
+            label: `A: ${optAText}`.length > 13 ? `A: ${optAText}`.substring(0, 13) : `A: ${optAText}`,
             text: 'A',
           },
         },
@@ -155,7 +155,7 @@ function buildQuestionMessage(questionNum: number, lang: string): any {
           type: 'action',
           action: {
             type: 'message',
-            label: `B: ${optBText}`.length > 20 ? `B: ${optBText}`.substring(0, 20) : `B: ${optBText}`,
+            label: `B: ${optBText}`.length > 13 ? `B: ${optBText}`.substring(0, 13) : `B: ${optBText}`,
             text: 'B',
           },
         },
@@ -244,7 +244,7 @@ async function finishCareerDiagnosis(
   await saveConversationState(userId, { mode: 'ai_chat', lang });
 
   const afterMessages: Record<string, string> = {
-    ja: 'きになる業界の「求人を見る」をタップしてください！\nほかに しつもんがあれば、メッセージを おくってください 💬',
+    ja: '気になる業界の「求人を見る」をタップしてください！\n他に質問があれば、メッセージを送ってください 💬',
     en: 'Tap "View Jobs" for the industry you\'re interested in!\nFeel free to send a message if you have other questions 💬',
     ko: '관심 있는 업계의 "구인 보기"를 눌러주세요!\n다른 질문이 있으면 메시지를 보내주세요 💬',
     zh: '请点击感兴趣行业的"查看职位"！\n如有其他问题，请发送消息 💬',
