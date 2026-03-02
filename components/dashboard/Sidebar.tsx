@@ -35,22 +35,37 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'ダッシュボード',
+    title: '概要',
     items: [
-      { label: '概要', href: '/dashboard/overview', icon: ChartBarIcon },
+      { label: 'ダッシュボード', href: '/dashboard/overview', icon: ChartBarIcon },
+    ],
+  },
+  {
+    title: '分析',
+    items: [
       { label: '分析', href: '/dashboard/analytics', icon: ChartPieIcon },
       { label: 'トレンド', href: '/dashboard/trends', icon: ArrowTrendingUpIcon },
-      { label: 'キャリア診断', href: '/dashboard/career-diagnosis', icon: SparklesIcon },
-      { label: 'お問い合わせ分析', href: '/dashboard/contact-flow', icon: InboxIcon },
       { label: 'GA4 CV', href: '/dashboard/ga4', icon: CursorArrowRaysIcon },
       { label: 'ランキング', href: '/dashboard/ranking', icon: TrophyIcon },
       { label: 'アクティビティ', href: '/dashboard/activity', icon: ClockIcon },
+    ],
+  },
+  {
+    title: '診断・フロー',
+    items: [
+      { label: 'キャリア診断', href: '/dashboard/career-diagnosis', icon: SparklesIcon },
+      { label: 'お問い合わせ分析', href: '/dashboard/contact-flow', icon: InboxIcon },
+    ],
+  },
+  {
+    title: 'ユーザー',
+    items: [
       { label: '会話履歴', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
       { label: '応募者追跡', href: '/dashboard/conversions', icon: UserGroupIcon },
     ],
   },
   {
-    title: '配信',
+    title: 'メッセージ配信',
     items: [
       { label: '配信管理', href: '/dashboard/broadcast', icon: PaperAirplaneIcon },
     ],
