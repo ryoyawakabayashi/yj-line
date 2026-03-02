@@ -50,14 +50,33 @@ interface CampaignStats {
 }
 
 const AREA_OPTIONS = [
-  { value: 'kanto', label: '関東' },
-  { value: 'kansai', label: '関西' },
-  { value: 'chubu', label: '中部' },
+  { value: '', label: '全国' },
   { value: 'hokkaido', label: '北海道' },
   { value: 'tohoku', label: '東北' },
+  { value: 'kanto', label: '関東' },
+  { value: 'chubu', label: '中部' },
+  { value: 'kansai', label: '関西' },
   { value: 'chugoku', label: '中国' },
   { value: 'shikoku', label: '四国' },
   { value: 'kyushu', label: '九州' },
+];
+
+const GENDER_OPTIONS = [
+  { value: '', label: '指定なし' },
+  { value: 'male', label: '男性' },
+  { value: 'female', label: '女性' },
+];
+
+const AGE_OPTIONS = [
+  { value: '', label: '指定なし' },
+  { value: 'age_15', label: '15〜19歳' },
+  { value: 'age_20', label: '20〜24歳' },
+  { value: 'age_25', label: '25〜29歳' },
+  { value: 'age_30', label: '30〜34歳' },
+  { value: 'age_35', label: '35〜39歳' },
+  { value: 'age_40', label: '40〜44歳' },
+  { value: 'age_45', label: '45〜49歳' },
+  { value: 'age_50', label: '50歳以上' },
 ];
 
 const METHOD_OPTIONS: { value: 'broadcast' | 'narrowcast' | 'test'; label: string }[] = [
@@ -103,7 +122,9 @@ export default function BroadcastPage() {
   const [campaignName, setCampaignName] = useState('');
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [deliveryMethod, setDeliveryMethod] = useState<'broadcast' | 'narrowcast' | 'test'>('broadcast');
-  const [area, setArea] = useState('kanto');
+  const [area, setArea] = useState('');
+  const [gender, setGender] = useState('');
+  const [ageRange, setAgeRange] = useState('');
   const [broadcastLang, setBroadcastLang] = useState('ja');
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [testUsers, setTestUsers] = useState<TestUser[]>([]);
@@ -121,6 +142,8 @@ export default function BroadcastPage() {
   const [recentCampaigns, setRecentCampaigns] = useState<RecentCampaign[]>([]);
   const [recentStats, setRecentStats] = useState<Record<string, CampaignStats | null>>({});
   const [areaEstimates, setAreaEstimates] = useState<Record<string, number>>({});
+  const [genderPct, setGenderPct] = useState<Record<string, number>>({});
+  const [agePct, setAgePct] = useState<Record<string, number>>({});
   const [targetedReaches, setTargetedReaches] = useState<number | null>(null);
 
   // --- Load initial data ---
@@ -132,8 +155,10 @@ export default function BroadcastPage() {
       api('GET', { action: 'demographic' }),
     ]);
     if (followerRes.followers !== undefined) setFollowerCount(followerRes.followers);
-    if (demoRes.available && demoRes.estimates) {
-      setAreaEstimates(demoRes.estimates);
+    if (demoRes.available) {
+      if (demoRes.estimates) setAreaEstimates(demoRes.estimates);
+      if (demoRes.genderPct) setGenderPct(demoRes.genderPct);
+      if (demoRes.agePct) setAgePct(demoRes.agePct);
       setTargetedReaches(demoRes.targetedReaches || null);
     }
     if (testRes.users) setTestUsers(testRes.users);
@@ -173,7 +198,9 @@ export default function BroadcastPage() {
       setCampaignName(draft.name || '');
       setMessages(draft.messages || []);
       setDeliveryMethod(draft.delivery_method || 'broadcast');
-      setArea(draft.area || 'kanto');
+      setArea(draft.area || '');
+      setGender(draft.demographic?.gender || '');
+      setAgeRange(draft.demographic?.age || '');
       setBroadcastLang(draft.broadcast_lang || 'ja');
     }
   };
@@ -250,7 +277,9 @@ export default function BroadcastPage() {
         name: campaignName || undefined,
         messages,
         deliveryMethod,
-        area: deliveryMethod === 'narrowcast' ? area : undefined,
+        area: deliveryMethod === 'narrowcast' && area ? area : undefined,
+        gender: deliveryMethod === 'narrowcast' && gender ? gender : undefined,
+        ageRange: deliveryMethod === 'narrowcast' && ageRange ? ageRange : undefined,
         broadcastLang,
       });
       if (res.success) {
@@ -274,7 +303,8 @@ export default function BroadcastPage() {
         name: campaignName || undefined,
         messages,
         deliveryMethod,
-        area: deliveryMethod === 'narrowcast' ? area : undefined,
+        area: deliveryMethod === 'narrowcast' && area ? area : undefined,
+        demographic: deliveryMethod === 'narrowcast' ? { gender: gender || undefined, age: ageRange || undefined } : undefined,
         broadcastLang,
       });
       if (res.success) {
@@ -305,7 +335,9 @@ export default function BroadcastPage() {
         name: campaignName || undefined,
         messages,
         deliveryMethod: isTest ? 'test' : deliveryMethod,
-        area: deliveryMethod === 'narrowcast' && !isTest ? area : undefined,
+        area: deliveryMethod === 'narrowcast' && !isTest && area ? area : undefined,
+        gender: deliveryMethod === 'narrowcast' && !isTest && gender ? gender : undefined,
+        ageRange: deliveryMethod === 'narrowcast' && !isTest && ageRange ? ageRange : undefined,
         broadcastLang,
         scheduledAt: isoStr,
       });
@@ -340,12 +372,31 @@ export default function BroadcastPage() {
     loadData();
   };
 
+  // Narrowcast時の推定人数を計算（エリア × 性別 × 年齢の割合を掛け合わせ）
+  const calcNarrowcastEstimate = (): number | null => {
+    const base = targetedReaches ?? followerCount;
+    if (!base || deliveryMethod !== 'narrowcast') return null;
+    let multiplier = 1;
+    if (area && areaEstimates[area]) {
+      multiplier *= areaEstimates[area] / base;
+    }
+    if (gender && genderPct[gender]) {
+      multiplier *= genderPct[gender] / 100;
+    }
+    if (ageRange && agePct[ageRange]) {
+      multiplier *= agePct[ageRange] / 100;
+    }
+    if (multiplier === 1) return base; // フィルターなし = 全体
+    return Math.round(base * multiplier);
+  };
+
+  const narrowcastEstimate = calcNarrowcastEstimate();
   const targetCount = deliveryMethod === 'test'
     ? testUsers.length
-    : deliveryMethod === 'narrowcast' && areaEstimates[area]
-      ? areaEstimates[area]
+    : deliveryMethod === 'narrowcast'
+      ? (narrowcastEstimate ?? targetedReaches ?? followerCount)
       : (targetedReaches ?? followerCount);
-  const isEstimate = deliveryMethod === 'narrowcast' && !!areaEstimates[area];
+  const isEstimate = deliveryMethod === 'narrowcast' && (!!area || !!gender || !!ageRange);
 
   // =====================================================
   // Render
@@ -441,29 +492,56 @@ export default function BroadcastPage() {
               ))}
             </div>
 
-            {/* エリア選択 (Narrowcast時のみ) - chip style */}
+            {/* Narrowcast フィルター */}
             {deliveryMethod === 'narrowcast' && (
-              <div className="mt-4">
-                <h4 className="text-xs font-medium text-gray-500 mb-2">エリア選択</h4>
-                <div className="flex flex-wrap gap-2">
-                  {AREA_OPTIONS.map((a) => (
-                    <button
-                      key={a.value}
-                      onClick={() => setArea(a.value)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                        area === a.value
-                          ? 'bg-[#eaae9e] text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
+              <div className="mt-4 space-y-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <p className="text-sm font-medium text-amber-800">LINE属性で絞り込んで配信</p>
+                  <p className="text-xs text-amber-600 mt-0.5">LINEが推定した属性データで絞り込みます。</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">エリア</label>
+                    <select
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
                     >
-                      {a.label}
-                      {areaEstimates[a.value] ? (
-                        <span className={`ml-1 ${area === a.value ? 'text-white/70' : 'text-gray-400'}`}>
-                          ≈{areaEstimates[a.value].toLocaleString()}
-                        </span>
-                      ) : null}
-                    </button>
-                  ))}
+                      {AREA_OPTIONS.map((a) => (
+                        <option key={a.value} value={a.value}>{a.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">性別</label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                    >
+                      {GENDER_OPTIONS.map((g) => (
+                        <option key={g.value} value={g.value}>{g.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">年齢</label>
+                    <select
+                      value={ageRange}
+                      onChange={(e) => setAgeRange(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                    >
+                      {AGE_OPTIONS.map((a) => (
+                        <option key={a.value} value={a.value}>{a.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* フィルター概要 */}
+                <div className="text-xs text-gray-500">
+                  フィルター: {AREA_OPTIONS.find(a => a.value === area)?.label || '全国'} / {GENDER_OPTIONS.find(g => g.value === gender)?.label || '指定なし'} / {AGE_OPTIONS.find(a => a.value === ageRange)?.label || '指定なし'}
                 </div>
               </div>
             )}

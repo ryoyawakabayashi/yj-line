@@ -139,8 +139,19 @@ export async function GET(request: NextRequest) {
           result = { testUsers: (testUsers || []).length, successCount };
 
         } else if (campaign.delivery_method === 'narrowcast') {
-          const areaCodes = AREA_PRESETS[campaign.area || ''];
-          if (!areaCodes) throw new Error(`Unknown area: ${campaign.area}`);
+          // デモグラフィックフィルターを動的に構築
+          const andConditions: object[] = [];
+          if (campaign.area) {
+            const areaCodes = AREA_PRESETS[campaign.area];
+            if (areaCodes) andConditions.push({ type: 'area', oneOf: areaCodes });
+          }
+          if (campaign.demographic?.gender) {
+            andConditions.push({ type: 'gender', oneOf: [campaign.demographic.gender] });
+          }
+          if (campaign.demographic?.age) {
+            andConditions.push({ type: 'age', oneOf: [campaign.demographic.age] });
+          }
+          if (andConditions.length === 0) throw new Error('Narrowcast: no demographic filters');
 
           const res = await fetch(NARROWCAST_API, {
             method: 'POST',
@@ -150,7 +161,7 @@ export async function GET(request: NextRequest) {
             },
             body: JSON.stringify({
               messages,
-              filter: { demographic: { type: 'operator', and: [{ type: 'area', oneOf: areaCodes }] } },
+              filter: { demographic: { type: 'operator', and: andConditions } },
               limit: { upToRemainingQuota: true },
               customAggregationUnits: [aggUnit],
             }),

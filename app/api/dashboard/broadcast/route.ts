@@ -32,20 +32,6 @@ const DEMOGRAPHIC_AREA_MAP: Record<string, string[]> = {
   '九州': ['kyushu'],
 };
 
-// エリアプリセット → 対応するデモグラフィックリージョン名
-const PRESET_TO_DEMOGRAPHIC: Record<string, string[]> = {
-  hokkaido: ['北海道'],
-  tohoku: ['東北'],
-  kanto: ['関東'],
-  tokyo: ['関東'],     // 東京は関東の一部（推定のみ）
-  chubu: ['甲信越', '北陸', '東海'],
-  kansai: ['近畿'],
-  osaka: ['近畿'],     // 大阪は近畿の一部（推定のみ）
-  chugoku: ['中国'],
-  shikoku: ['四国'],
-  kyushu: ['九州'],
-};
-
 // エリアプリセット（既存narrowcast routeと同じ）
 const AREA_PRESETS: Record<string, string[]> = {
   kanto: ['jp_08', 'jp_09', 'jp_10', 'jp_11', 'jp_12', 'jp_13', 'jp_14'],
@@ -193,11 +179,28 @@ export async function GET(request: NextRequest) {
           estimates[presetKey] = Math.round(targetedReaches * pct / 100);
         }
 
+        // 性別の割合
+        const genderPctMap: Record<string, number> = {};
+        for (const item of demoData.genders || []) {
+          if (item.gender === 'male' || item.gender === 'female') {
+            genderPctMap[item.gender] = item.percentage;
+          }
+        }
+
+        // 年齢の割合
+        const agePctMap: Record<string, number> = {};
+        for (const item of demoData.ages || []) {
+          if (item.age && item.age !== 'unknown') {
+            agePctMap[item.age] = item.percentage;
+          }
+        }
+
         return NextResponse.json({
           available: true,
           targetedReaches,
           estimates,
-          raw: demoData.areas,
+          genderPct: genderPctMap,
+          agePct: agePctMap,
         });
       }
 
@@ -300,7 +303,7 @@ export async function POST(request: NextRequest) {
     switch (action) {
       // ─── 配信実行 ──────────────────────────
       case 'send': {
-        const { name, messages, deliveryMethod, area, broadcastLang } = body;
+        const { name, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang } = body;
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
         }
@@ -314,6 +317,7 @@ export async function POST(request: NextRequest) {
             delivery_method: deliveryMethod || 'broadcast',
             messages,
             area: area || null,
+            demographic: (genderFilter || ageRange) ? { gender: genderFilter || null, age: ageRange || null } : null,
             broadcast_lang: broadcastLang || 'ja',
             executed_at: new Date().toISOString(),
             admin_email: auth.user?.email,
@@ -345,16 +349,30 @@ export async function POST(request: NextRequest) {
           result = { testUsers: userIds.length, successCount };
 
         } else if (deliveryMethod === 'narrowcast') {
-          if (!area) return NextResponse.json({ error: 'Narrowcastにはエリア指定が必要です' }, { status: 400 });
-          const areaCodes = AREA_PRESETS[area];
-          if (!areaCodes) return NextResponse.json({ error: `不明なエリア: ${area}` }, { status: 400 });
+          // デモグラフィックフィルターを動的に構築
+          const andConditions: object[] = [];
+          if (area) {
+            const areaCodes = AREA_PRESETS[area];
+            if (!areaCodes) return NextResponse.json({ error: `不明なエリア: ${area}` }, { status: 400 });
+            andConditions.push({ type: 'area', oneOf: areaCodes });
+          }
+          if (genderFilter) {
+            andConditions.push({ type: 'gender', oneOf: [genderFilter] });
+          }
+          if (ageRange) {
+            andConditions.push({ type: 'age', oneOf: [ageRange] });
+          }
 
-          const narrowcastBody = {
+          if (andConditions.length === 0) {
+            return NextResponse.json({ error: 'Narrowcastには少なくとも1つのフィルターが必要です' }, { status: 400 });
+          }
+
+          const narrowcastBody: Record<string, unknown> = {
             messages: lineMessages,
             filter: {
               demographic: {
                 type: 'operator',
-                and: [{ type: 'area', oneOf: areaCodes }],
+                and: andConditions,
               },
             },
             limit: { upToRemainingQuota: true },
@@ -375,7 +393,7 @@ export async function POST(request: NextRequest) {
             await supabase.from('broadcast_campaigns').update({ status: 'failed', result }).eq('id', campaignId);
             return NextResponse.json({ error: `Narrowcast失敗: ${errText}`, requestId }, { status: 500 });
           }
-          result = { requestId, areaCodes, aggUnit };
+          result = { requestId, area: area || null, gender: genderFilter || null, age: ageRange || null, aggUnit };
 
         } else {
           // broadcast (全友達)
@@ -408,13 +426,14 @@ export async function POST(request: NextRequest) {
 
       // ─── 下書き保存 ──────────────────────────
       case 'save_draft': {
-        const { id, name, messages, deliveryMethod, area, broadcastLang } = body;
+        const { id, name, messages, deliveryMethod, area, demographic, broadcastLang } = body;
         const payload = {
           name: name || '無題の配信',
           status: 'draft' as const,
           delivery_method: deliveryMethod || 'broadcast',
           messages: messages || [],
           area: area || null,
+          demographic: demographic || null,
           broadcast_lang: broadcastLang || 'ja',
           admin_email: auth.user?.email,
           updated_at: new Date().toISOString(),
@@ -433,7 +452,7 @@ export async function POST(request: NextRequest) {
 
       // ─── 予約配信 ──────────────────────────
       case 'schedule': {
-        const { id, name, messages, deliveryMethod, area, broadcastLang, scheduledAt } = body;
+        const { id, name, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, broadcastLang, scheduledAt } = body;
         if (!scheduledAt) return NextResponse.json({ error: '予約日時が必要です' }, { status: 400 });
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
@@ -445,6 +464,7 @@ export async function POST(request: NextRequest) {
           delivery_method: deliveryMethod || 'broadcast',
           messages,
           area: area || null,
+          demographic: (schedGender || schedAge) ? { gender: schedGender || null, age: schedAge || null } : null,
           broadcast_lang: broadcastLang || 'ja',
           scheduled_at: scheduledAt,
           admin_email: auth.user?.email,
