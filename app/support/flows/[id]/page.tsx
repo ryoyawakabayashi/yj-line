@@ -55,6 +55,8 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const selectedNodeRef = useRef<Node | null>(null);
+  selectedNodeRef.current = selectedNode;
   const [flowName, setFlowName] = useState('');
   const [flowDescription, setFlowDescription] = useState('');
   const [triggerType, setTriggerType] = useState<string>('support_button');
@@ -91,6 +93,17 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
     } catch {}
   }, [viewportKey]);
   const clipboardRef = useRef<Node | null>(null);
+
+  // nodes が変わったら selectedNode を同期（翻訳等でsetNodesした後にUIを最新化）
+  useEffect(() => {
+    const sel = selectedNodeRef.current;
+    if (sel) {
+      const updatedNode = nodes.find((n) => n.id === sel.id);
+      if (updatedNode && updatedNode !== sel) {
+        setSelectedNode(updatedNode);
+      }
+    }
+  }, [nodes]);
 
   // Undo/Redo 履歴管理
   const historyRef = useRef<Array<{ nodes: Node[]; edges: Edge[] }>>([]);
@@ -1448,13 +1461,10 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       const nodeType = node.data.nodeType || (node.id.startsWith('trigger') ? 'trigger' : node.id.split('-')[0]);
 
       // sendText（送信クイックリプライ / 送信テキスト）を収集
-      // ※ プリセット値（AI_MODE等）やエッジのlabelと同一のものはスキップ
+      // ※ プリセット値（AI_MODE等）はスキップ
       const sendTextJa = getSourceJa(node.data.sendText);
       const isPreset = SEND_TEXT_PRESETS.some((p) => p.text === sendTextJa);
-      const incomingEdge = targetEdges.find((e) => e.target === node.id);
-      const edgeLabelJa = incomingEdge ? ((incomingEdge as any).labels?._source || (incomingEdge.label as string) || '') : '';
-      const isDuplicateOfLabel = sendTextJa && sendTextJa === edgeLabelJa;
-      if (sendTextJa && !isPreset && !isDuplicateOfLabel) { texts.push(sendTextJa); sources.push({ type: 'node_sendText', id: node.id, originalJa: sendTextJa }); }
+      if (sendTextJa && !isPreset) { texts.push(sendTextJa); sources.push({ type: 'node_sendText', id: node.id, originalJa: sendTextJa }); }
 
       if (nodeType === 'send_message') {
         const ja = getSourceJa(node.data.config.content);
@@ -1707,31 +1717,32 @@ export default function EditFlowPage({ params }: { params: Promise<{ id: string 
       );
     }
 
-    // selectedNode も同期的に更新（setNodes は非同期バッチなので別途更新が必要）
-    if (selectedNode) {
-      const hasConfig = translatedNodeIds.has(selectedNode.id);
-      const edgeTrans = edgeTextTranslations[selectedNode.id];
-      const sendTextTrans = sendTextTranslations[selectedNode.id];
+    // selectedNode も更新（関数形式でクロージャの古い値を回避）
+    setSelectedNode((prev) => {
+      if (!prev) return prev;
+      const hasConfig = translatedNodeIds.has(prev.id);
+      const edgeTrans = edgeTextTranslations[prev.id];
+      const sendTextTrans = sendTextTranslations[prev.id];
 
-      if (hasConfig || edgeTrans || sendTextTrans) {
-        let newData = { ...selectedNode.data };
+      if (!hasConfig && !edgeTrans && !sendTextTrans) return prev;
 
-        if (hasConfig) {
-          const { updatedConfig, changed } = buildTranslatedConfig(selectedNode.data.config, selectedNode.id, translations, sources);
-          if (changed) {
-            newData = { ...newData, config: updatedConfig, translationLocked: true };
-          }
+      let newData = { ...prev.data };
+
+      if (hasConfig) {
+        const { updatedConfig, changed } = buildTranslatedConfig(prev.data.config, prev.id, translations, sources);
+        if (changed) {
+          newData = { ...newData, config: updatedConfig, translationLocked: true };
         }
-
-        if (sendTextTrans) {
-          newData = { ...newData, sendText: sendTextTrans };
-        } else if (edgeTrans) {
-          newData = { ...newData, sendText: edgeTrans.texts };
-        }
-
-        setSelectedNode({ ...selectedNode, data: newData });
       }
-    }
+
+      if (sendTextTrans) {
+        newData = { ...newData, sendText: sendTextTrans };
+      } else if (edgeTrans) {
+        newData = { ...newData, sendText: edgeTrans.texts };
+      }
+
+      return { ...prev, data: newData };
+    });
 
     return translatedNodeIds;
   };

@@ -123,14 +123,14 @@ export default function ChatPage() {
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#eaae9e] text-white'
                     : 'bg-slate-100 text-slate-900'
                 }`}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
                 <p
                   className={`text-xs mt-1 ${
-                    message.role === 'user' ? 'text-blue-200' : 'text-slate-400'
+                    message.role === 'user' ? 'text-[#f0c4b8]' : 'text-slate-400'
                   }`}
                 >
                   {message.timestamp.toLocaleTimeString('ja-JP', {
@@ -165,14 +165,14 @@ export default function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="メッセージを入力... (Enter で送信)"
-              className="flex-1 resize-none rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 resize-none rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#eaae9e] focus:border-transparent"
               rows={1}
               disabled={loading}
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || loading}
-              className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="px-4 py-3 bg-[#eaae9e] text-white rounded-xl hover:bg-[#d4917f] disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <PaperAirplaneIcon className="h-5 w-5" />
             </button>

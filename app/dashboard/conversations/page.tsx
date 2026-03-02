@@ -119,7 +119,7 @@ export default function ConversationsPage() {
       <div className="w-80 border-r border-slate-200 bg-white flex flex-col">
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center gap-2 mb-3">
-            <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
+            <ChatBubbleLeftRightIcon className="h-5 w-5 text-[#d10a1c]" />
             <h2 className="font-semibold text-slate-900">会話履歴</h2>
             <span className="text-xs text-slate-500 ml-auto">{users.length}件</span>
           </div>
@@ -133,7 +133,7 @@ export default function ConversationsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoComplete="off"
-              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#eaae9e]"
             />
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function ConversationsPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#eaae9e]" />
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="p-4 text-center text-slate-500 text-sm">
@@ -153,7 +153,7 @@ export default function ConversationsPage() {
                 key={user.userId}
                 onClick={() => setSelectedUserId(user.userId)}
                 className={`w-full p-3 text-left border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                  selectedUserId === user.userId ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''
+                  selectedUserId === user.userId ? 'bg-[#fdf2ef] border-l-2 border-l-[#eaae9e]' : ''
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -199,7 +199,7 @@ export default function ConversationsPage() {
           </div>
         ) : detailLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#eaae9e]" />
           </div>
         ) : userDetail ? (
           <>
@@ -213,8 +213,8 @@ export default function ConversationsPage() {
                     className="w-10 h-10 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <UserIcon className="h-5 w-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-full bg-[#fdf2ef] flex items-center justify-center">
+                    <UserIcon className="h-5 w-5 text-[#d10a1c]" />
                   </div>
                 )}
                 <div>
@@ -246,7 +246,7 @@ export default function ConversationsPage() {
                       <div
                         className={`max-w-[70%] rounded-2xl px-4 py-2 ${
                           msg.role === 'user'
-                            ? 'bg-blue-500 text-white rounded-br-md'
+                            ? 'bg-[#eaae9e] text-white rounded-br-md'
                             : 'bg-white text-slate-700 border border-slate-200 rounded-bl-md'
                         }`}
                       >

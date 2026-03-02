@@ -73,7 +73,7 @@ export function TopUsersRanking({ data }: TopUsersRankingProps) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded text-sm font-bold bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded text-sm font-bold bg-[#fdf2ef] text-[#d10a1c]">
                     {user.totalUsage}
                   </span>
                 </td>

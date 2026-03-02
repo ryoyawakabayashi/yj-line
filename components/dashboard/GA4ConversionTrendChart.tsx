@@ -11,8 +11,8 @@ interface GA4ConversionTrendChartProps {
 
 // YJ/YD カラー
 const COLORS = {
-  yjRegistration: '#0ea5e9', // sky-500
-  yjApplication: '#0284c7', // sky-600
+  yjRegistration: '#d10a1c', // sky-500
+  yjApplication: '#b00917', // sky-600
   ydRegistration: '#8b5cf6', // violet-500
   ydApplication: '#7c3aed', // violet-600
   total: '#1f2937', // slate-800
@@ -109,12 +109,12 @@ export function GA4ConversionTrendChart({ data }: GA4ConversionTrendChartProps) 
           <p className="text-lg font-bold text-slate-800">{totals.total.toLocaleString()}</p>
           <p className="text-xs text-slate-500">合計CV</p>
         </div>
-        <div className="p-2 rounded-lg bg-sky-50 border border-sky-100">
-          <p className="text-lg font-bold text-sky-600">{totals.yjRegistrations.toLocaleString()}</p>
+        <div className="p-2 rounded-lg bg-[#fdf2ef] border border-[#f0c4b8]">
+          <p className="text-lg font-bold text-[#d10a1c]">{totals.yjRegistrations.toLocaleString()}</p>
           <p className="text-xs text-slate-500">YJ登録</p>
         </div>
-        <div className="p-2 rounded-lg bg-sky-50 border border-sky-100">
-          <p className="text-lg font-bold text-sky-700">{totals.yjApplications.toLocaleString()}</p>
+        <div className="p-2 rounded-lg bg-[#fdf2ef] border border-[#f0c4b8]">
+          <p className="text-lg font-bold text-[#d10a1c]">{totals.yjApplications.toLocaleString()}</p>
           <p className="text-xs text-slate-500">YJ応募</p>
         </div>
         <div className="p-2 rounded-lg bg-violet-50 border border-violet-100">

@@ -17,7 +17,7 @@ export function UsageTrendChart({ data }: UsageTrendChartProps) {
   return (
     <div className="dashboard-panel p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="h-9 w-9 rounded-lg bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center">
+        <div className="h-9 w-9 rounded-lg bg-[#fdf2ef] border border-[#f0c4b8] text-[#d10a1c] flex items-center justify-center">
           <CpuChipIcon className="h-5 w-5" />
         </div>
         <div>

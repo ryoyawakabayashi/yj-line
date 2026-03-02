@@ -516,7 +516,7 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowEventModal(true)}
-                className={`p-2 hover:bg-slate-100 rounded-lg transition ${events.length > 0 ? 'text-blue-600' : 'text-slate-500'}`}
+                className={`p-2 hover:bg-slate-100 rounded-lg transition ${events.length > 0 ? 'text-[#d10a1c]' : 'text-slate-500'}`}
                 title={`やったこと${events.length > 0 ? ` (${events.length}件)` : ''}`}
               >
                 <CalendarDaysIcon className="h-5 w-5" />
@@ -524,7 +524,7 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
               <button
                 onClick={generateMTGReport}
                 disabled={isLoading || isLoadingContext}
-                className="p-2 hover:bg-slate-100 rounded-lg transition text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 hover:bg-slate-100 rounded-lg transition text-[#d10a1c] disabled:opacity-50 disabled:cursor-not-allowed"
                 title="MTGレポート生成"
               >
                 <DocumentChartBarIcon className="h-5 w-5" />
@@ -568,7 +568,7 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
             {/* 期間表示（ダッシュボードと連動） */}
             <div className="flex flex-col gap-0.5">
               <span className="text-[10px] text-slate-400">期間</span>
-              <div className="text-xs px-2 py-1 rounded-md bg-blue-50 text-blue-700 font-medium border border-blue-200">
+              <div className="text-xs px-2 py-1 rounded-md bg-[#fdf2ef] text-[#d10a1c] font-medium border border-[#f0c4b8]">
                 {getPeriodLabel()}
               </div>
             </div>
@@ -593,7 +593,7 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#eaae9e] text-white'
                     : 'bg-slate-100 text-slate-900'
                 }`}
               >
@@ -606,7 +606,7 @@ export function AIChatSidebar({ isOpen, onClose }: AIChatSidebarProps) {
                 )}
                 <p
                   className={`text-xs mt-1 ${
-                    message.role === 'user' ? 'text-blue-200' : 'text-slate-400'
+                    message.role === 'user' ? 'text-[#f0c4b8]' : 'text-slate-400'
                   }`}
                 >
                   {message.timestamp.toLocaleTimeString('ja-JP', {

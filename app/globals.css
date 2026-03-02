@@ -41,8 +41,8 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(120% 120% at 80% -10%, rgba(64, 158, 255, 0.12), transparent 40%),
-    radial-gradient(90% 90% at 10% 110%, rgba(235, 87, 87, 0.08), transparent 40%);
+  background: radial-gradient(120% 120% at 80% -10%, rgba(234, 174, 158, 0.15), transparent 40%),
+    radial-gradient(90% 90% at 10% 110%, rgba(209, 10, 28, 0.06), transparent 40%);
   pointer-events: none;
   z-index: 0;
 }

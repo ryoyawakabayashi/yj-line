@@ -244,11 +244,11 @@ async function finishCareerDiagnosis(
   await saveConversationState(userId, { mode: 'ai_chat', lang });
 
   const afterMessages: Record<string, string> = {
-    ja: '気になる業界の「求人を見る」をタップしてください！\n他に質問があれば、メッセージを送ってください 💬',
-    en: 'Tap "View Jobs" for the industry you\'re interested in!\nFeel free to send a message if you have other questions 💬',
-    ko: '관심 있는 업계의 "구인 보기"를 눌러주세요!\n다른 질문이 있으면 메시지를 보내주세요 💬',
-    zh: '请点击感兴趣行业的"查看职位"！\n如有其他问题，请发送消息 💬',
-    vi: 'Nhấn "Xem việc làm" cho ngành bạn quan tâm!\nNếu có câu hỏi khác, hãy gửi tin nhắn 💬',
+    ja: '気になる業界の「求人を見る」をタップしてください！',
+    en: 'Tap "View Jobs" for the industry you\'re interested in!',
+    ko: '관심 있는 업계의 "구인 보기"를 눌러주세요!',
+    zh: '请点击感兴趣行业的"查看职位"！',
+    vi: 'Nhấn "Xem việc làm" cho ngành bạn quan tâm!',
   };
 
   await replyMessage(replyToken, [

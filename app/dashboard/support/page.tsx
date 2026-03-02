@@ -44,7 +44,7 @@ interface SupportStats {
 
 const STATUS_COLORS: Record<string, string> = {
   open: 'bg-yellow-100 text-yellow-800',
-  in_progress: 'bg-blue-100 text-blue-800',
+  in_progress: 'bg-[#fdf2ef] text-[#d10a1c]',
   resolved: 'bg-green-100 text-green-800',
 };
 
@@ -163,7 +163,7 @@ export default function SupportDashboardPage() {
             label="対応中"
             value={stats.inProgressTickets}
             icon={UserIcon}
-            color="bg-blue-500"
+            color="bg-[#eaae9e]"
           />
           <StatCard
             label="解決済"
@@ -339,7 +339,7 @@ export default function SupportDashboardPage() {
                   <td className="px-4 py-3">
                     <Link
                       href={`/dashboard/support/${ticket.id}`}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      className="text-[#d10a1c] hover:text-[#d10a1c] text-sm font-medium"
                     >
                       詳細
                     </Link>

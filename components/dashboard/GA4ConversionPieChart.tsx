@@ -11,8 +11,8 @@ interface GA4ConversionPieChartProps {
 
 // YJ: スカイブルー系, YD: パープル系
 const COLORS = {
-  yjRegistration: '#0ea5e9', // sky-500
-  yjApplication: '#0284c7', // sky-600
+  yjRegistration: '#d10a1c', // sky-500
+  yjApplication: '#b00917', // sky-600
   ydRegistration: '#8b5cf6', // violet-500
   ydApplication: '#7c3aed', // violet-600
 };
@@ -97,7 +97,7 @@ export function GA4ConversionPieChart({ data }: GA4ConversionPieChartProps) {
               className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
                 viewMode === mode
                   ? mode === 'yj'
-                    ? 'bg-sky-500 text-white'
+                    ? 'bg-[#fdf2ef]0 text-white'
                     : mode === 'yd'
                       ? 'bg-violet-500 text-white'
                       : 'bg-slate-700 text-white'
@@ -112,12 +112,12 @@ export function GA4ConversionPieChart({ data }: GA4ConversionPieChartProps) {
 
       {/* 4分割サマリー */}
       <div className="grid grid-cols-4 gap-2 mb-4">
-        <div className="text-center p-2 rounded-lg bg-sky-50 border border-sky-100">
-          <p className="text-lg font-bold text-sky-600">{totals.yjRegistrations.toLocaleString()}</p>
+        <div className="text-center p-2 rounded-lg bg-[#fdf2ef] border border-[#f0c4b8]">
+          <p className="text-lg font-bold text-[#d10a1c]">{totals.yjRegistrations.toLocaleString()}</p>
           <p className="text-xs text-slate-500">YJ 登録</p>
         </div>
-        <div className="text-center p-2 rounded-lg bg-sky-50 border border-sky-100">
-          <p className="text-lg font-bold text-sky-700">{totals.yjApplications.toLocaleString()}</p>
+        <div className="text-center p-2 rounded-lg bg-[#fdf2ef] border border-[#f0c4b8]">
+          <p className="text-lg font-bold text-[#d10a1c]">{totals.yjApplications.toLocaleString()}</p>
           <p className="text-xs text-slate-500">YJ 応募</p>
         </div>
         <div className="text-center p-2 rounded-lg bg-violet-50 border border-violet-100">

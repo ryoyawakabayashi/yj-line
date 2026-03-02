@@ -57,7 +57,7 @@ interface Utterance {
 
 // 話者の色
 const SPEAKER_COLORS = [
-  'bg-blue-100 text-blue-800 border-blue-200',
+  'bg-[#fdf2ef] text-[#d10a1c] border-[#f0c4b8]',
   'bg-emerald-100 text-emerald-800 border-emerald-200',
   'bg-purple-100 text-purple-800 border-purple-200',
   'bg-amber-100 text-amber-800 border-amber-200',
@@ -414,9 +414,9 @@ export default function MinutesPage() {
 
       {/* リアルタイム表示 */}
       {interimText && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="text-blue-600 text-sm">{currentSpeaker}: </span>
-          <span className="text-blue-800">{interimText}</span>
+        <div className="mb-4 p-3 bg-[#fdf2ef] border border-[#f0c4b8] rounded-lg">
+          <span className="text-[#d10a1c] text-sm">{currentSpeaker}: </span>
+          <span className="text-[#d10a1c]">{interimText}</span>
           <span className="animate-pulse">|</span>
         </div>
       )}
@@ -427,7 +427,7 @@ export default function MinutesPage() {
         <button
           onClick={() => processContent('summarize')}
           disabled={loading || utterances.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="flex items-center gap-2 px-4 py-2 bg-[#eaae9e] text-white rounded-lg hover:bg-[#d4917f] disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           <SparklesIcon className="h-4 w-4" />
           議事録に整形
@@ -477,7 +477,7 @@ export default function MinutesPage() {
           onClick={() => setActiveTab('edit')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === 'edit'
-              ? 'border-blue-600 text-blue-600'
+              ? 'border-[#eaae9e] text-[#d10a1c]'
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -487,7 +487,7 @@ export default function MinutesPage() {
           onClick={() => setActiveTab('preview')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition ${
             activeTab === 'preview'
-              ? 'border-blue-600 text-blue-600'
+              ? 'border-[#eaae9e] text-[#d10a1c]'
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -529,7 +529,7 @@ export default function MinutesPage() {
                       type="text"
                       value={utterance.text}
                       onChange={(e) => editUtterance(utterance.id, e.target.value)}
-                      className="flex-1 bg-transparent focus:outline-none focus:bg-blue-50 rounded px-2 -mx-2"
+                      className="flex-1 bg-transparent focus:outline-none focus:bg-[#fdf2ef] rounded px-2 -mx-2"
                     />
                     <button
                       onClick={() => deleteUtterance(utterance.id)}
@@ -547,7 +547,7 @@ export default function MinutesPage() {
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#eaae9e] mx-auto mb-2" />
                   <p className="text-slate-500">処理中...</p>
                 </div>
               </div>

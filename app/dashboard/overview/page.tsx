@@ -151,13 +151,13 @@ export default function OverviewPage() {
 
         {/* 右: 期間セレクター */}
         <div className="flex items-center gap-2">
-          <CalendarDaysIcon className="h-5 w-5 text-blue-500" />
+          <CalendarDaysIcon className="h-5 w-5 text-[#d10a1c]" />
           <span className="text-sm font-medium text-slate-600">期間:</span>
           <button
             onClick={() => handlePeriodTypeChange('today')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
               periodType === 'today'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[#eaae9e] text-white'
                 : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
             }`}
           >
@@ -167,7 +167,7 @@ export default function OverviewPage() {
             onClick={() => handlePeriodTypeChange('yesterday')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
               periodType === 'yesterday'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[#eaae9e] text-white'
                 : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
             }`}
           >
@@ -177,7 +177,7 @@ export default function OverviewPage() {
             onClick={() => handlePeriodTypeChange('week')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
               periodType === 'week'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[#eaae9e] text-white'
                 : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
             }`}
           >
@@ -187,7 +187,7 @@ export default function OverviewPage() {
             onClick={() => handlePeriodTypeChange('2week')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
               periodType === '2week'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[#eaae9e] text-white'
                 : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
             }`}
           >
@@ -197,7 +197,7 @@ export default function OverviewPage() {
             onClick={() => handlePeriodTypeChange('month')}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
               periodType === 'month'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[#eaae9e] text-white'
                 : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
             }`}
           >
@@ -208,7 +208,7 @@ export default function OverviewPage() {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="appearance-none bg-white border border-slate-200 rounded-md px-3 py-1.5 pr-8 text-xs font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="appearance-none bg-white border border-slate-200 rounded-md px-3 py-1.5 pr-8 text-xs font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#eaae9e]"
               >
                 {monthOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -231,7 +231,7 @@ export default function OverviewPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#eaae9e]" />
         </div>
       ) : (
         <>

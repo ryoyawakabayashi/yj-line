@@ -240,19 +240,19 @@ export function FunnelChart({ month, periodType = 'month', funnelType = 'diagnos
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-600">診断 → セッション</span>
-                <span className="text-sm font-bold text-blue-600">
+                <span className="text-sm font-bold text-[#d10a1c]">
                   {data.rates.diagnosisSessionRate}%
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-600">セッション → 登録</span>
-                <span className="text-sm font-bold text-sky-600">
+                <span className="text-sm font-bold text-[#d10a1c]">
                   {data.rates.sessionRegistrationRate}%
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-slate-600">セッション → 応募</span>
-                <span className="text-sm font-bold text-sky-700">
+                <span className="text-sm font-bold text-[#d10a1c]">
                   {data.rates.sessionApplicationRate}%
                 </span>
               </div>

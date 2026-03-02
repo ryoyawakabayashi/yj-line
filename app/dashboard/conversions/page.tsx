@@ -188,7 +188,7 @@ export default function ConversionsPage() {
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#eaae9e] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -222,7 +222,7 @@ export default function ConversionsPage() {
           </div>
           <button
             onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-[#eaae9e] text-white rounded-lg hover:bg-[#d4917f] transition"
           >
             <ArrowDownTrayIcon className="h-5 w-5" />
             CSVエクスポート
@@ -268,7 +268,7 @@ export default function ConversionsPage() {
               onClick={() => setActiveTab('applications')}
               className={`py-4 px-2 border-b-2 font-medium text-sm transition whitespace-nowrap ${
                 activeTab === 'applications'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#eaae9e] text-[#d10a1c]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -278,7 +278,7 @@ export default function ConversionsPage() {
               onClick={() => setActiveTab('users')}
               className={`py-4 px-2 border-b-2 font-medium text-sm transition whitespace-nowrap ${
                 activeTab === 'users'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#eaae9e] text-[#d10a1c]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -288,7 +288,7 @@ export default function ConversionsPage() {
               onClick={() => setActiveTab('issuers')}
               className={`py-4 px-2 border-b-2 font-medium text-sm transition whitespace-nowrap ${
                 activeTab === 'issuers'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#eaae9e] text-[#d10a1c]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -298,7 +298,7 @@ export default function ConversionsPage() {
               onClick={() => setActiveTab('clicks')}
               className={`py-4 px-2 border-b-2 font-medium text-sm transition whitespace-nowrap ${
                 activeTab === 'clicks'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#eaae9e] text-[#d10a1c]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -308,7 +308,7 @@ export default function ConversionsPage() {
               onClick={() => setActiveTab('details')}
               className={`py-4 px-2 border-b-2 font-medium text-sm transition whitespace-nowrap ${
                 activeTab === 'details'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#eaae9e] text-[#d10a1c]'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -382,14 +382,14 @@ export default function ConversionsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                        <span className="inline-block px-2 py-0.5 bg-[#fdf2ef] text-[#d10a1c] rounded text-xs">
                           {app.urlType || '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <button
                           onClick={() => openConversationModal(app.userId)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-[#d10a1c] hover:text-[#d10a1c] p-1"
                           title="会話履歴を見る"
                         >
                           <ChatBubbleLeftRightIcon className="h-5 w-5" />
@@ -481,7 +481,7 @@ export default function ConversionsPage() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => openConversationModal(user.userId)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-[#d10a1c] hover:text-[#d10a1c] p-1"
                           title="会話履歴を見る"
                         >
                           <ChatBubbleLeftRightIcon className="h-5 w-5" />
@@ -592,7 +592,7 @@ export default function ConversionsPage() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => openConversationModal(issuer.userId)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-[#d10a1c] hover:text-[#d10a1c] p-1"
                           title="会話履歴を見る"
                         >
                           <ChatBubbleLeftRightIcon className="h-5 w-5" />
@@ -632,7 +632,7 @@ export default function ConversionsPage() {
                   clicksByType.map((item) => (
                     <tr key={item.urlType} className="hover:bg-slate-50">
                       <td className="px-6 py-4">
-                        <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                        <span className="inline-block px-2 py-0.5 bg-[#fdf2ef] text-[#d10a1c] rounded text-xs font-medium">
                           {item.urlType}
                         </span>
                       </td>
@@ -646,7 +646,7 @@ export default function ConversionsPage() {
                         <div className="flex items-center gap-2">
                           <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-blue-500 rounded-full"
+                              className="h-full bg-[#eaae9e] rounded-full"
                               style={{ width: `${Math.min(item.clickRate, 100)}%` }}
                             />
                           </div>
@@ -764,7 +764,7 @@ export default function ConversionsPage() {
             <div className="flex-1 overflow-y-auto p-4">
               {loadingConversation ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+                  <div className="animate-spin h-8 w-8 border-4 border-[#eaae9e] border-t-transparent rounded-full" />
                 </div>
               ) : conversationDetail ? (
                 <div className="space-y-6">
@@ -800,7 +800,7 @@ export default function ConversionsPage() {
                               className={`max-w-[80%] rounded-lg px-4 py-2 ${
                                 msg.role === 'user'
                                   ? 'bg-slate-100 text-slate-900'
-                                  : 'bg-blue-600 text-white'
+                                  : 'bg-[#eaae9e] text-white'
                               }`}
                             >
                               <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -842,7 +842,7 @@ function StatCard({
   color: 'blue' | 'green' | 'purple' | 'orange';
 }) {
   const colorMap = {
-    blue: 'bg-blue-50 text-blue-600',
+    blue: 'bg-[#fdf2ef] text-[#d10a1c]',
     green: 'bg-green-50 text-green-600',
     purple: 'bg-purple-50 text-purple-600',
     orange: 'bg-orange-50 text-orange-600',

@@ -744,11 +744,11 @@ function getQuestion(
     },
     3: {
       text: ({
-        ja: 'どのくらい急ぎですか？',
-        en: 'How urgent?',
-        ko: '얼마나 급하신가요?',
-        zh: '有多紧急？',
-        vi: 'Mức độ khẩn cấp?',
+        ja: 'お仕事探しはどのくらいお急ぎですか？',
+        en: 'How soon are you looking to start working?',
+        ko: '얼마나 빨리 일을 시작하고 싶으신가요?',
+        zh: '您希望多快开始工作？',
+        vi: 'Bạn muốn bắt đầu làm việc sớm đến mức nào?',
       } as any)[lang],
       options: [
         {

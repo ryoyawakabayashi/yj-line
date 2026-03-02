@@ -9,7 +9,7 @@ interface LanguageChartProps {
 }
 
 const COLORS: Record<string, string> = {
-  ja: '#3B82F6',
+  ja: '#eaae9e',
   en: '#10B981',
   ko: '#F59E0B',
   zh: '#EF4444',
@@ -37,7 +37,7 @@ export function LanguageChart({ data }: LanguageChartProps) {
     <div className="dashboard-panel p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-lg bg-[#fdf2ef] border border-[#f0c4b8] text-[#d10a1c] flex items-center justify-center">
             <GlobeAltIcon className="h-5 w-5" />
           </div>
           <div>

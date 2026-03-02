@@ -115,7 +115,7 @@ export function FunnelComparisonChart({ month, periodType = 'month' }: FunnelCom
   // 各経由の色を定義
   const funnelColors: Record<string, { bg: string; text: string; bar: string }> = {
     diagnosis: { bg: 'bg-amber-50', text: 'text-amber-700', bar: 'bg-amber-500' },
-    menu: { bg: 'bg-blue-50', text: 'text-blue-700', bar: 'bg-blue-500' },
+    menu: { bg: 'bg-[#fdf2ef]', text: 'text-[#d10a1c]', bar: 'bg-[#eaae9e]' },
     feature: { bg: 'bg-green-50', text: 'text-green-700', bar: 'bg-green-500' },
     message: { bg: 'bg-purple-50', text: 'text-purple-700', bar: 'bg-purple-500' },
     autochat: { bg: 'bg-pink-50', text: 'text-pink-700', bar: 'bg-pink-500' },
@@ -144,15 +144,15 @@ export function FunnelComparisonChart({ month, periodType = 'month' }: FunnelCom
         </div>
         <div className="text-center border-x border-slate-200">
           <p className="text-xs text-slate-500 mb-1">総登録</p>
-          <p className="text-2xl font-bold text-sky-600">{totals.registrations.toLocaleString()}</p>
-          <p className="text-xs text-sky-500 mt-0.5">
+          <p className="text-2xl font-bold text-[#d10a1c]">{totals.registrations.toLocaleString()}</p>
+          <p className="text-xs text-[#d10a1c] mt-0.5">
             CVR: {totals.sessions > 0 ? ((totals.registrations / totals.sessions) * 100).toFixed(1) : '0.0'}%
           </p>
         </div>
         <div className="text-center">
           <p className="text-xs text-slate-500 mb-1">総応募</p>
-          <p className="text-2xl font-bold text-blue-700">{totals.applications.toLocaleString()}</p>
-          <p className="text-xs text-blue-500 mt-0.5">
+          <p className="text-2xl font-bold text-[#d10a1c]">{totals.applications.toLocaleString()}</p>
+          <p className="text-xs text-[#d10a1c] mt-0.5">
             CVR: {totals.sessions > 0 ? ((totals.applications / totals.sessions) * 100).toFixed(1) : '0.0'}%
           </p>
         </div>
@@ -197,12 +197,12 @@ export function FunnelComparisonChart({ month, periodType = 'month' }: FunnelCom
                 </div>
               </div>
               <div className="col-span-2 text-right">
-                <span className="text-sm font-semibold text-sky-600">
+                <span className="text-sm font-semibold text-[#d10a1c]">
                   {funnel.yjRegistrations.toLocaleString()}
                 </span>
               </div>
               <div className="col-span-2 text-right">
-                <span className="text-sm font-semibold text-blue-700">
+                <span className="text-sm font-semibold text-[#d10a1c]">
                   {funnel.yjApplications.toLocaleString()}
                 </span>
               </div>

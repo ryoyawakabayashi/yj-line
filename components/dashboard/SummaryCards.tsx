@@ -242,8 +242,8 @@ export function SummaryCards({
       tag: isSpecificFunnel ? funnelLabel : 'ファネル',
       subtitle: isSpecificFunnel ? `${funnelLabel}経由` : undefined,
       helper: isSpecificFunnel ? `${funnelLabel}経由のセッション` : '全LINE経由のセッション',
-      border: 'border-blue-200',
-      iconBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
+      border: 'border-[#f0c4b8]',
+      iconBg: 'bg-gradient-to-br from-[#eaae9e] to-[#d4917f]',
     },
     {
       id: 'yjRegistration',
@@ -253,10 +253,10 @@ export function SummaryCards({
       tag: isSpecificFunnel ? funnelLabel : 'ファネル',
       subtitle: funnelLoading ? undefined : `CVR: ${registrationCvr}%`,
       helper: isSpecificFunnel ? `${funnelLabel}経由の登録` : 'クリックで履歴表示',
-      border: 'border-sky-200',
-      iconBg: 'bg-gradient-to-br from-sky-500 to-sky-600',
+      border: 'border-[#fecaca]',
+      iconBg: 'bg-gradient-to-br from-[#d10a1c] to-[#b00917]',
       historyType: isSpecificFunnel ? undefined : 'yjRegistration',
-      chartColor: '#0ea5e9',
+      chartColor: '#d10a1c',
       chartLabel: '登録',
     },
     {
@@ -267,10 +267,10 @@ export function SummaryCards({
       tag: isSpecificFunnel ? funnelLabel : 'ファネル',
       subtitle: funnelLoading ? undefined : `CVR: ${applicationCvr}%`,
       helper: isSpecificFunnel ? `${funnelLabel}経由の応募` : 'クリックで履歴表示',
-      border: 'border-sky-200',
-      iconBg: 'bg-gradient-to-br from-sky-600 to-sky-700',
+      border: 'border-[#fecaca]',
+      iconBg: 'bg-gradient-to-br from-[#b00917] to-[#8f0712]',
       historyType: isSpecificFunnel ? undefined : 'yjApplication',
-      chartColor: '#0284c7',
+      chartColor: '#b00917',
       chartLabel: '応募',
     },
   ];
@@ -364,7 +364,7 @@ export function SummaryCards({
       {/* コンバージョンファネル */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-slate-600 mb-3 flex items-center gap-2">
-          <span className="h-1 w-4 bg-gradient-to-r from-orange-500 to-sky-500 rounded-full"></span>
+          <span className="h-1 w-4 bg-gradient-to-r from-orange-500 to-[#eaae9e] rounded-full"></span>
           コンバージョンファネル
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">

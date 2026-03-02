@@ -117,3 +117,37 @@ export interface LineFollowerStats {
   targetedReaches: number;
   blocks: number;
 }
+
+// キャリア診断分析
+export interface CareerDiagnosisDailyTrend {
+  date: string;
+  count: number;
+}
+
+export interface CareerTypeDistribution {
+  typeCode: string;
+  typeName: string;
+  count: number;
+}
+
+export interface CareerTypeConversion {
+  typeCode: string;
+  typeName: string;
+  diagnosisCount: number;
+  clickCount: number;
+  applicationCount: number;
+}
+
+// お問い合わせフロー分析
+export interface ContactFlowQuestionRank {
+  cardNodeId: string;
+  questionText: string;
+  count: number;
+  uniqueUsers: number;
+}
+
+export interface ContactFlowDailyTrend {
+  date: string;
+  executions: number;
+  cardClicks: number;
+}

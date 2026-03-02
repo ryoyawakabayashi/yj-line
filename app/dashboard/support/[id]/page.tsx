@@ -254,7 +254,7 @@ export default function SupportTicketDetailPage() {
       <div className="p-6">
         <div className="text-center py-12">
           <p className="text-slate-500">チケットが見つかりません</p>
-          <Link href="/dashboard/support" className="text-blue-600 mt-4 inline-block">
+          <Link href="/dashboard/support" className="text-[#d10a1c] mt-4 inline-block">
             一覧に戻る
           </Link>
         </div>
@@ -370,7 +370,7 @@ export default function SupportTicketDetailPage() {
               <button
                 onClick={sendMessage}
                 disabled={!isHumanMode || sending || !newMessage.trim()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
+                className="bg-[#eaae9e] text-white px-4 py-2 rounded-lg hover:bg-[#d4917f] disabled:bg-slate-300 disabled:cursor-not-allowed transition"
               >
                 <PaperAirplaneIcon className="h-5 w-5" />
               </button>
@@ -440,7 +440,7 @@ function MessageBubble({ message }: { message: SupportMessage }) {
             ? 'bg-slate-100 text-slate-900'
             : isOperator
             ? 'bg-green-600 text-white'
-            : 'bg-blue-600 text-white'
+            : 'bg-[#eaae9e] text-white'
         }`}
       >
         <div className="flex items-center gap-2 mb-1">

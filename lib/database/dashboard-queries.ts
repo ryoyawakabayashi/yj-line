@@ -10,6 +10,11 @@ import type {
   DailyUsageTrend,
   TopUser,
   ActiveUserHistory,
+  CareerDiagnosisDailyTrend,
+  CareerTypeDistribution,
+  CareerTypeConversion,
+  ContactFlowQuestionRank,
+  ContactFlowDailyTrend,
 } from '@/types/dashboard';
 
 /**
@@ -704,5 +709,424 @@ export async function getUserConversationDetail(userId: string): Promise<UserCon
   } catch (error) {
     console.error('getUserConversationDetail error:', error);
     return null;
+  }
+}
+
+// =====================================================
+// キャリア診断分析クエリ
+// =====================================================
+
+const CAREER_TYPE_NAMES: Record<string, string> = {
+  GARJ: 'チームで動く お世話タイプ',
+  GARO: 'チームで動く ものづくりタイプ',
+  GAVJ: 'チームで動く おもてなしタイプ',
+  GAVO: 'チームで動く アウトドアタイプ',
+  GDRJ: 'チームで学ぶ オフィスタイプ',
+  GDRO: 'チームで働く テクニカルタイプ',
+  GDVJ: 'チームで考える クリエイティブタイプ',
+  GDVO: 'チームで挑戦する グローバルタイプ',
+  LARJ: '一人で動く 職人タイプ',
+  LARO: '一人で動く もくもくタイプ',
+  LAVJ: '一人で動く フリーランスタイプ',
+  LAVO: '一人で動く 自然派タイプ',
+  LDRJ: '一人で学ぶ 研究者タイプ',
+  LDRO: '一人で集中 コツコツタイプ',
+  LDVJ: '一人で考える プランナータイプ',
+  LDVO: '一人で挑戦する デジタルタイプ',
+};
+
+/** 日別診断回数（過去N日） */
+export async function getCareerDiagnosisTrend(days = 30): Promise<CareerDiagnosisDailyTrend[]> {
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const { data, error } = await supabase
+      .from('career_diagnosis_results')
+      .select('created_at')
+      .gte('created_at', since.toISOString());
+
+    if (error) throw error;
+    if (!data) return [];
+
+    // 日別にグループ化
+    const countByDate: Record<string, number> = {};
+    for (const row of data) {
+      const date = new Date(row.created_at).toISOString().split('T')[0];
+      countByDate[date] = (countByDate[date] || 0) + 1;
+    }
+
+    // 全日付を埋める
+    const result: CareerDiagnosisDailyTrend[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      result.push({ date: dateStr, count: countByDate[dateStr] || 0 });
+    }
+    return result;
+  } catch (error) {
+    console.error('getCareerDiagnosisTrend error:', error);
+    return [];
+  }
+}
+
+/** タイプ別分布 */
+export async function getCareerTypeDistribution(): Promise<CareerTypeDistribution[]> {
+  try {
+    const { data, error } = await supabase
+      .from('career_diagnosis_results')
+      .select('type_code');
+
+    if (error) throw error;
+    if (!data) return [];
+
+    const countByType: Record<string, number> = {};
+    for (const row of data) {
+      countByType[row.type_code] = (countByType[row.type_code] || 0) + 1;
+    }
+
+    return Object.entries(countByType)
+      .map(([typeCode, count]) => ({
+        typeCode,
+        typeName: CAREER_TYPE_NAMES[typeCode] || typeCode,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+  } catch (error) {
+    console.error('getCareerTypeDistribution error:', error);
+    return [];
+  }
+}
+
+/** タイプ別クリック・応募（user_idで結合） */
+export async function getCareerTypeConversion(): Promise<CareerTypeConversion[]> {
+  try {
+    // 1. 診断結果（user_id → type_code）
+    const { data: diagnosisData, error: dErr } = await supabase
+      .from('career_diagnosis_results')
+      .select('user_id, type_code');
+    if (dErr) throw dErr;
+
+    // 2. クリック（url_type='career_diagnosis' かつ clicked_at IS NOT NULL）
+    const { data: clickData, error: cErr } = await supabase
+      .from('tracking_tokens')
+      .select('user_id')
+      .eq('url_type', 'career_diagnosis')
+      .not('clicked_at', 'is', null);
+    if (cErr) throw cErr;
+
+    // 3. 応募
+    const { data: appData, error: aErr } = await supabase
+      .from('application_logs')
+      .select('user_id')
+      .eq('url_type', 'career_diagnosis');
+    if (aErr) throw aErr;
+
+    // user_id → 最新のtype_code マッピング
+    const userToType: Record<string, string> = {};
+    for (const row of diagnosisData || []) {
+      userToType[row.user_id] = row.type_code;
+    }
+
+    // type_code別の診断数
+    const diagnosisByType: Record<string, number> = {};
+    for (const row of diagnosisData || []) {
+      diagnosisByType[row.type_code] = (diagnosisByType[row.type_code] || 0) + 1;
+    }
+
+    // type_code別のクリック数
+    const clicksByType: Record<string, number> = {};
+    for (const row of clickData || []) {
+      const tc = userToType[row.user_id];
+      if (tc) clicksByType[tc] = (clicksByType[tc] || 0) + 1;
+    }
+
+    // type_code別の応募数
+    const appsByType: Record<string, number> = {};
+    for (const row of appData || []) {
+      const tc = userToType[row.user_id];
+      if (tc) appsByType[tc] = (appsByType[tc] || 0) + 1;
+    }
+
+    // 全タイプを集約
+    const allTypes = new Set([...Object.keys(diagnosisByType), ...Object.keys(clicksByType), ...Object.keys(appsByType)]);
+    return Array.from(allTypes)
+      .map((typeCode) => ({
+        typeCode,
+        typeName: CAREER_TYPE_NAMES[typeCode] || typeCode,
+        diagnosisCount: diagnosisByType[typeCode] || 0,
+        clickCount: clicksByType[typeCode] || 0,
+        applicationCount: appsByType[typeCode] || 0,
+      }))
+      .sort((a, b) => b.diagnosisCount - a.diagnosisCount);
+  } catch (error) {
+    console.error('getCareerTypeConversion error:', error);
+    return [];
+  }
+}
+
+/** キャリア診断KPI（総数・ユニークユーザー数） */
+export async function getCareerDiagnosisKpi(): Promise<{ totalDiagnoses: number; uniqueUsers: number; totalClicks: number; totalApplications: number }> {
+  try {
+    const [diagResult, clickResult, appResult] = await Promise.all([
+      supabase.from('career_diagnosis_results').select('user_id'),
+      supabase.from('tracking_tokens').select('user_id').eq('url_type', 'career_diagnosis').not('clicked_at', 'is', null),
+      supabase.from('application_logs').select('user_id').eq('url_type', 'career_diagnosis'),
+    ]);
+
+    const diagData = diagResult.data || [];
+    const uniqueUsers = new Set(diagData.map((r) => r.user_id)).size;
+
+    return {
+      totalDiagnoses: diagData.length,
+      uniqueUsers,
+      totalClicks: clickResult.data?.length || 0,
+      totalApplications: appResult.data?.length || 0,
+    };
+  } catch (error) {
+    console.error('getCareerDiagnosisKpi error:', error);
+    return { totalDiagnoses: 0, uniqueUsers: 0, totalClicks: 0, totalApplications: 0 };
+  }
+}
+
+/** 診断者一覧（最新順、user_statusと結合） */
+export async function getCareerDiagnosisUsers(limit = 100): Promise<Array<{
+  userId: string;
+  displayName: string | null;
+  lang: string;
+  typeCode: string;
+  typeName: string;
+  createdAt: string;
+}>> {
+  try {
+    const { data, error } = await supabase
+      .from('career_diagnosis_results')
+      .select('user_id, type_code, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    if (!data || data.length === 0) return [];
+
+    // user_statusからdisplay_name, langを取得
+    const userIds = [...new Set(data.map((r) => r.user_id))];
+    const { data: users } = await supabase
+      .from('user_status')
+      .select('user_id, display_name, lang')
+      .in('user_id', userIds);
+
+    const userMap: Record<string, { displayName: string | null; lang: string }> = {};
+    for (const u of users || []) {
+      userMap[u.user_id] = { displayName: u.display_name, lang: u.lang || 'en' };
+    }
+
+    return data.map((row) => ({
+      userId: row.user_id,
+      displayName: userMap[row.user_id]?.displayName || null,
+      lang: userMap[row.user_id]?.lang || 'en',
+      typeCode: row.type_code,
+      typeName: CAREER_TYPE_NAMES[row.type_code] || row.type_code,
+      createdAt: row.created_at,
+    }));
+  } catch (error) {
+    console.error('getCareerDiagnosisUsers error:', error);
+    return [];
+  }
+}
+
+// =====================================================
+// お問い合わせフロー分析
+// =====================================================
+
+/** support_buttonフローの一覧を取得 */
+export async function getContactFlows(): Promise<{ id: string; name: string; service: string | null }[]> {
+  try {
+    const { data, error } = await supabase
+      .from('chat_flows')
+      .select('id, name, service')
+      .eq('trigger_type', 'support_button')
+      .order('name');
+
+    if (error) throw error;
+    return (data || []).map((f) => ({ id: f.id, name: f.name, service: f.service }));
+  } catch (error) {
+    console.error('getContactFlows error:', error);
+    return [];
+  }
+}
+
+/** 質問ランキング: card_selection_events を card_node_id でGROUP BY */
+export async function getContactFlowQuestionRanking(flowId?: string): Promise<ContactFlowQuestionRank[]> {
+  try {
+    // 1. card_selection_events を取得（display_textも取得してフォールバック用）
+    let query = supabase.from('card_selection_events').select('card_node_id, user_id, flow_id, display_text');
+    if (flowId) query = query.eq('flow_id', flowId);
+    const { data: events, error: eventsErr } = await query;
+    if (eventsErr) throw eventsErr;
+    if (!events || events.length === 0) return [];
+
+    // 2. card_node_id ごとに集計 + display_textを保存（フォールバック用）
+    const countMap: Record<string, { count: number; users: Set<string>; flowId: string; displayText: string }> = {};
+    for (const ev of events) {
+      if (!countMap[ev.card_node_id]) {
+        countMap[ev.card_node_id] = { count: 0, users: new Set(), flowId: ev.flow_id, displayText: ev.display_text || '' };
+      }
+      countMap[ev.card_node_id].count++;
+      countMap[ev.card_node_id].users.add(ev.user_id);
+    }
+
+    // 3. 関連するフロー定義を取得してcard_node_id → 質問テキストをマッピング
+    const flowIds = [...new Set(events.map((e) => e.flow_id))];
+    const { data: flows } = await supabase
+      .from('chat_flows')
+      .select('id, flow_definition')
+      .in('id', flowIds);
+
+    const nodeTextMap: Record<string, string> = {};
+    for (const flow of flows || []) {
+      const def = flow.flow_definition as { nodes?: any[]; edges?: any[] };
+      if (!def?.nodes) continue;
+      for (const node of def.nodes) {
+        if (node.type !== 'card') continue;
+        const cfg = node.data?.config;
+        if (!cfg) continue;
+
+        // config.text（単体カード）
+        if (cfg.text) {
+          const text = cfg.text;
+          const resolved = typeof text === 'string' ? text : (text.ja || Object.values(text)[0] || '');
+          if (resolved) { nodeTextMap[node.id] = resolved; continue; }
+        }
+        // config.columns[0].text（カルーセルの最初のカラム）
+        if (cfg.columns && cfg.columns.length > 0 && cfg.columns[0].text) {
+          const text = cfg.columns[0].text;
+          const resolved = typeof text === 'string' ? text : (text.ja || Object.values(text)[0] || '');
+          if (resolved) nodeTextMap[node.id] = resolved;
+        }
+      }
+    }
+
+    // 4. 結果を生成（降順）: フロー定義テキスト → display_text → cardNodeId の優先順
+    return Object.entries(countMap)
+      .map(([cardNodeId, info]) => ({
+        cardNodeId,
+        questionText: nodeTextMap[cardNodeId] || info.displayText || cardNodeId,
+        count: info.count,
+        uniqueUsers: info.users.size,
+      }))
+      .sort((a, b) => b.count - a.count);
+  } catch (error) {
+    console.error('getContactFlowQuestionRanking error:', error);
+    return [];
+  }
+}
+
+/** 日別トレンド: フロー実行回数 + カードクリック数 */
+export async function getContactFlowTrend(days = 30): Promise<ContactFlowDailyTrend[]> {
+  try {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const sinceISO = since.toISOString();
+
+    // support_button フローIDの取得
+    const { data: flows } = await supabase
+      .from('chat_flows')
+      .select('id')
+      .eq('trigger_type', 'support_button');
+    const flowIds = (flows || []).map((f) => f.id);
+
+    // フロー実行回数
+    const execMap: Record<string, number> = {};
+    if (flowIds.length > 0) {
+      const { data: execs } = await supabase
+        .from('chat_flow_executions')
+        .select('started_at')
+        .in('flow_id', flowIds)
+        .gte('started_at', sinceISO);
+      for (const ex of execs || []) {
+        const date = ex.started_at.split('T')[0];
+        execMap[date] = (execMap[date] || 0) + 1;
+      }
+    }
+
+    // カードクリック数
+    const clickMap: Record<string, number> = {};
+    const { data: clicks } = await supabase
+      .from('card_selection_events')
+      .select('created_at')
+      .gte('created_at', sinceISO);
+    for (const c of clicks || []) {
+      const date = c.created_at.split('T')[0];
+      clickMap[date] = (clickMap[date] || 0) + 1;
+    }
+
+    // 全日付を埋める
+    const result: ContactFlowDailyTrend[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        executions: execMap[dateStr] || 0,
+        cardClicks: clickMap[dateStr] || 0,
+      });
+    }
+    return result;
+  } catch (error) {
+    console.error('getContactFlowTrend error:', error);
+    return [];
+  }
+}
+
+/** KPI: 総実行数・完了数・カードクリック数・ユニークユーザー数 */
+export async function getContactFlowKpi(): Promise<{
+  totalExecutions: number;
+  completedExecutions: number;
+  totalCardClicks: number;
+  uniqueUsers: number;
+}> {
+  try {
+    // support_button フローIDの取得
+    const { data: flows } = await supabase
+      .from('chat_flows')
+      .select('id')
+      .eq('trigger_type', 'support_button');
+    const flowIds = (flows || []).map((f) => f.id);
+
+    let totalExecutions = 0;
+    let completedExecutions = 0;
+    if (flowIds.length > 0) {
+      const { count: total } = await supabase
+        .from('chat_flow_executions')
+        .select('*', { count: 'exact', head: true })
+        .in('flow_id', flowIds);
+      totalExecutions = total || 0;
+
+      const { count: completed } = await supabase
+        .from('chat_flow_executions')
+        .select('*', { count: 'exact', head: true })
+        .in('flow_id', flowIds)
+        .eq('status', 'completed');
+      completedExecutions = completed || 0;
+    }
+
+    // カードクリック
+    const { count: clicks } = await supabase
+      .from('card_selection_events')
+      .select('*', { count: 'exact', head: true });
+    const totalCardClicks = clicks || 0;
+
+    // ユニークユーザー（card_selection_events）
+    const { data: userRows } = await supabase
+      .from('card_selection_events')
+      .select('user_id');
+    const uniqueUsers = new Set((userRows || []).map((r) => r.user_id)).size;
+
+    return { totalExecutions, completedExecutions, totalCardClicks, uniqueUsers };
+  } catch (error) {
+    console.error('getContactFlowKpi error:', error);
+    return { totalExecutions: 0, completedExecutions: 0, totalCardClicks: 0, uniqueUsers: 0 };
   }
 }

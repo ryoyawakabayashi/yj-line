@@ -31,7 +31,7 @@ export default function GA4Page() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#eaae9e]" />
       </div>
     );
   }
@@ -66,9 +66,9 @@ export default function GA4Page() {
                   <span className="text-xl font-bold text-purple-600">{item.conversions.toLocaleString()}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                  <div className="rounded-lg bg-blue-50 p-2">
-                    <div className="text-blue-600 text-xs">登録 CV</div>
-                    <div className="text-blue-900 font-bold">{item.registrations.toLocaleString()}</div>
+                  <div className="rounded-lg bg-[#fdf2ef] p-2">
+                    <div className="text-[#d10a1c] text-xs">登録 CV</div>
+                    <div className="text-[#d10a1c] font-bold">{item.registrations.toLocaleString()}</div>
                   </div>
                   <div className="rounded-lg bg-emerald-50 p-2">
                     <div className="text-emerald-600 text-xs">応募 CV</div>

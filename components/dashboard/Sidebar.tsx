@@ -18,6 +18,8 @@ import {
   QuestionMarkCircleIcon,
   Squares2X2Icon,
   Bars3BottomLeftIcon,
+  InboxIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -38,11 +40,19 @@ const NAV_SECTIONS: NavSection[] = [
       { label: '概要', href: '/dashboard/overview', icon: ChartBarIcon },
       { label: '分析', href: '/dashboard/analytics', icon: ChartPieIcon },
       { label: 'トレンド', href: '/dashboard/trends', icon: ArrowTrendingUpIcon },
+      { label: 'キャリア診断', href: '/dashboard/career-diagnosis', icon: SparklesIcon },
+      { label: 'お問い合わせ分析', href: '/dashboard/contact-flow', icon: InboxIcon },
       { label: 'GA4 CV', href: '/dashboard/ga4', icon: CursorArrowRaysIcon },
       { label: 'ランキング', href: '/dashboard/ranking', icon: TrophyIcon },
       { label: 'アクティビティ', href: '/dashboard/activity', icon: ClockIcon },
       { label: '会話履歴', href: '/dashboard/conversations', icon: ChatBubbleLeftRightIcon },
       { label: '応募者追跡', href: '/dashboard/conversions', icon: UserGroupIcon },
+    ],
+  },
+  {
+    title: '配信',
+    items: [
+      { label: '配信管理', href: '/dashboard/broadcast', icon: PaperAirplaneIcon },
     ],
   },
   {
@@ -76,7 +86,7 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
       <div className="px-5 py-6 border-b border-slate-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#eaae9e] to-[#d4917f] flex items-center justify-center">
               <span className="text-white font-bold text-lg">Y</span>
             </div>
             <div>
@@ -113,7 +123,7 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
                     href={item.href}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-[#eaae9e] text-white'
                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                     }`}
                   >
