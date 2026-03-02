@@ -81,23 +81,23 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex w-[240px] bg-slate-900 flex-col h-screen sticky top-0">
+    <aside className="hidden lg:flex w-[240px] bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
       {/* Logo + AI Chat Button */}
-      <div className="px-5 py-6 border-b border-slate-800">
+      <div className="px-5 py-5 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#eaae9e] to-[#d4917f] flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-[#d10a1c] flex items-center justify-center">
               <span className="text-white font-bold text-lg">Y</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">YOLO JAPAN</p>
-              <p className="text-xs text-slate-500">LINE Bot Admin</p>
+              <p className="text-sm font-semibold text-gray-900">YOLO JAPAN</p>
+              <p className="text-xs text-gray-400">LINE Bot Admin</p>
             </div>
           </div>
           {/* AI Chat Button */}
           <button
             onClick={onOpenChat}
-            className="h-9 w-9 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/25"
+            className="h-9 w-9 rounded-lg bg-[#eaae9e] flex items-center justify-center hover:bg-[#d4917f] transition-all"
             title="AIチャット"
           >
             <SparklesIcon className="h-5 w-5 text-white" />
@@ -106,13 +106,13 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {NAV_SECTIONS.map((section) => (
           <div key={section.title}>
-            <p className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <p className="px-3 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
               {section.title}
             </p>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -121,13 +121,13 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-[#eaae9e] text-white'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        ? 'bg-[#fdf2ef] text-[#d10a1c] border border-[#f0c4b8]'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-[#d10a1c]' : 'text-gray-400'}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -138,10 +138,10 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-slate-800">
+      <div className="px-4 py-4 border-t border-gray-200">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span className="text-xs text-slate-500">Production</span>
+          <span className="text-xs text-gray-400">Production</span>
         </div>
       </div>
     </aside>

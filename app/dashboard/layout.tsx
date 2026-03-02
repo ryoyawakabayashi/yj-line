@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <DashboardPeriodProvider>
-      <div className="min-h-screen bg-slate-100 flex">
+      <div className="min-h-screen bg-gray-50 flex">
         <Sidebar onOpenChat={() => setIsChatOpen(true)} />
         <main
           className={`flex-1 overflow-auto transition-all duration-300 ${
