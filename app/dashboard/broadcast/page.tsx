@@ -120,15 +120,22 @@ export default function BroadcastPage() {
   const [uploading, setUploading] = useState<number | null>(null);
   const [recentCampaigns, setRecentCampaigns] = useState<RecentCampaign[]>([]);
   const [recentStats, setRecentStats] = useState<Record<string, CampaignStats | null>>({});
+  const [areaEstimates, setAreaEstimates] = useState<Record<string, number>>({});
+  const [targetedReaches, setTargetedReaches] = useState<number | null>(null);
 
   // --- Load initial data ---
   const loadData = useCallback(async () => {
-    const [followerRes, testRes, recentRes] = await Promise.all([
+    const [followerRes, testRes, recentRes, demoRes] = await Promise.all([
       api('GET', { action: 'follower_count' }),
       api('GET', { action: 'test_users' }),
       api('GET', { action: 'recent_campaigns' }),
+      api('GET', { action: 'demographic' }),
     ]);
     if (followerRes.followers !== undefined) setFollowerCount(followerRes.followers);
+    if (demoRes.available && demoRes.estimates) {
+      setAreaEstimates(demoRes.estimates);
+      setTargetedReaches(demoRes.targetedReaches || null);
+    }
     if (testRes.users) setTestUsers(testRes.users);
     if (recentRes.campaigns) {
       setRecentCampaigns(recentRes.campaigns);
@@ -333,7 +340,12 @@ export default function BroadcastPage() {
     loadData();
   };
 
-  const targetCount = deliveryMethod === 'test' ? testUsers.length : followerCount;
+  const targetCount = deliveryMethod === 'test'
+    ? testUsers.length
+    : deliveryMethod === 'narrowcast' && areaEstimates[area]
+      ? areaEstimates[area]
+      : (targetedReaches ?? followerCount);
+  const isEstimate = deliveryMethod === 'narrowcast' && !!areaEstimates[area];
 
   // =====================================================
   // Render
@@ -445,6 +457,11 @@ export default function BroadcastPage() {
                       }`}
                     >
                       {a.label}
+                      {areaEstimates[a.value] ? (
+                        <span className={`ml-1 ${area === a.value ? 'text-white/70' : 'text-gray-400'}`}>
+                          ≈{areaEstimates[a.value].toLocaleString()}
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>
@@ -453,7 +470,15 @@ export default function BroadcastPage() {
 
             {/* 配信対象数 */}
             <div className="mt-3 text-sm text-gray-600">
-              配信対象: <span className="font-bold text-gray-900">{targetCount !== null ? `${targetCount.toLocaleString()}人` : '取得中...'}</span>
+              配信対象:{' '}
+              <span className="font-bold text-gray-900">
+                {targetCount !== null
+                  ? `${isEstimate ? '≈ ' : ''}${targetCount.toLocaleString()}人`
+                  : '取得中...'}
+              </span>
+              {isEstimate && (
+                <span className="text-xs text-gray-400 ml-1.5">（デモグラフィック推定）</span>
+              )}
             </div>
           </div>
 

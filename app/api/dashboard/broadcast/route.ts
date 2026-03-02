@@ -15,6 +15,36 @@ const LIFF_ID = '2006973060-cAgpaZ0y';
 const BROADCAST_API = 'https://api.line.me/v2/bot/message/broadcast';
 const NARROWCAST_API = 'https://api.line.me/v2/bot/message/narrowcast';
 const INSIGHT_EVENT_API = 'https://api.line.me/v2/bot/insight/message/event/aggregation';
+const INSIGHT_DEMOGRAPHIC_API = 'https://api.line.me/v2/bot/insight/demographic';
+
+// LINE Demographic API のエリア名 → エリアプリセットキーへのマッピング
+// LINE APIは「関東」「近畿」等のリージョン名で返す
+const DEMOGRAPHIC_AREA_MAP: Record<string, string[]> = {
+  '北海道': ['hokkaido'],
+  '東北': ['tohoku'],
+  '関東': ['kanto', 'tokyo'],
+  '甲信越': ['chubu'],
+  '北陸': ['chubu'],
+  '東海': ['chubu'],
+  '近畿': ['kansai', 'osaka'],
+  '中国': ['chugoku'],
+  '四国': ['shikoku'],
+  '九州': ['kyushu'],
+};
+
+// エリアプリセット → 対応するデモグラフィックリージョン名
+const PRESET_TO_DEMOGRAPHIC: Record<string, string[]> = {
+  hokkaido: ['北海道'],
+  tohoku: ['東北'],
+  kanto: ['関東'],
+  tokyo: ['関東'],     // 東京は関東の一部（推定のみ）
+  chubu: ['甲信越', '北陸', '東海'],
+  kansai: ['近畿'],
+  osaka: ['近畿'],     // 大阪は近畿の一部（推定のみ）
+  chugoku: ['中国'],
+  shikoku: ['四国'],
+  kyushu: ['九州'],
+};
 
 // エリアプリセット（既存narrowcast routeと同じ）
 const AREA_PRESETS: Record<string, string[]> = {
@@ -122,6 +152,52 @@ export async function GET(request: NextRequest) {
           followers: stats?.followers || 0,
           targetedReaches: stats?.targetedReaches || 0,
           blocks: stats?.blocks || 0,
+        });
+      }
+
+      case 'demographic': {
+        // LINE Demographic Insight APIからエリア分布を取得
+        const demoRes = await fetch(INSIGHT_DEMOGRAPHIC_API, {
+          headers: { Authorization: `Bearer ${config.line.channelAccessToken}` },
+        });
+        if (!demoRes.ok) {
+          return NextResponse.json({ error: 'Demographic API error', available: false }, { status: demoRes.status });
+        }
+        const demoData = await demoRes.json();
+        if (!demoData.available) {
+          return NextResponse.json({ available: false, areas: [] });
+        }
+
+        // フォロワー数も取得してエリアごとの推定人数を計算
+        const stats = await getFollowerStatistics();
+        const targetedReaches = stats?.targetedReaches || 0;
+
+        // エリア分布をプリセットごとにまとめる
+        const areaPercentages: Record<string, number> = {};
+        for (const areaItem of demoData.areas || []) {
+          const areaName = areaItem.area as string;
+          const pct = areaItem.percentage as number;
+          // デモグラフィックのエリア名からプリセットキーを逆引き
+          for (const [demoRegion, presetKeys] of Object.entries(DEMOGRAPHIC_AREA_MAP)) {
+            if (areaName.includes(demoRegion)) {
+              for (const key of presetKeys) {
+                areaPercentages[key] = (areaPercentages[key] || 0) + pct;
+              }
+            }
+          }
+        }
+
+        // 推定人数を計算
+        const estimates: Record<string, number> = {};
+        for (const [presetKey, pct] of Object.entries(areaPercentages)) {
+          estimates[presetKey] = Math.round(targetedReaches * pct / 100);
+        }
+
+        return NextResponse.json({
+          available: true,
+          targetedReaches,
+          estimates,
+          raw: demoData.areas,
         });
       }
 
