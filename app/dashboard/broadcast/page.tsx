@@ -34,6 +34,21 @@ interface TestUser {
   pictureUrl: string | null;
 }
 
+interface RecentCampaign {
+  id: string;
+  name: string | null;
+  delivery_method: string;
+  executed_at: string | null;
+  result: any;
+  messages: any[];
+  status: string;
+}
+
+interface CampaignStats {
+  uniqueImpression?: number;
+  uniqueClick?: number;
+}
+
 const AREA_OPTIONS = [
   { value: 'kanto', label: '関東' },
   { value: 'kansai', label: '関西' },
@@ -103,15 +118,37 @@ export default function BroadcastPage() {
   const [schedHour, setSchedHour] = useState('12');
   const [schedMin, setSchedMin] = useState('00');
   const [uploading, setUploading] = useState<number | null>(null);
+  const [recentCampaigns, setRecentCampaigns] = useState<RecentCampaign[]>([]);
+  const [recentStats, setRecentStats] = useState<Record<string, CampaignStats | null>>({});
 
   // --- Load initial data ---
   const loadData = useCallback(async () => {
-    const [followerRes, testRes] = await Promise.all([
+    const [followerRes, testRes, recentRes] = await Promise.all([
       api('GET', { action: 'follower_count' }),
       api('GET', { action: 'test_users' }),
+      api('GET', { action: 'recent_campaigns' }),
     ]);
     if (followerRes.followers !== undefined) setFollowerCount(followerRes.followers);
     if (testRes.users) setTestUsers(testRes.users);
+    if (recentRes.campaigns) {
+      setRecentCampaigns(recentRes.campaigns);
+      // Fetch stats for campaigns with aggUnit
+      const withUnit = (recentRes.campaigns as RecentCampaign[]).filter((c) => c.result?.aggUnit);
+      const statsResults: Record<string, CampaignStats | null> = {};
+      await Promise.all(
+        withUnit.map(async (c) => {
+          try {
+            const data = await api('GET', { action: 'broadcast_stats', unit: c.result.aggUnit });
+            if (data.overview) {
+              statsResults[c.id] = { uniqueImpression: data.overview.uniqueImpression, uniqueClick: data.overview.uniqueClick };
+            } else {
+              statsResults[c.id] = null;
+            }
+          } catch { statsResults[c.id] = null; }
+        })
+      );
+      setRecentStats(statsResults);
+    }
   }, []);
 
   useEffect(() => {
@@ -122,8 +159,8 @@ export default function BroadcastPage() {
   }, [loadData]);
 
   const loadDraft = async (id: string) => {
-    const res = await api('GET', { action: 'campaigns', status: 'draft' });
-    const draft = (res.campaigns || []).find((c: any) => c.id === id);
+    const res = await api('GET', { action: 'campaign_detail', id });
+    const draft = res.campaign;
     if (draft) {
       setEditingDraftId(draft.id);
       setCampaignName(draft.name || '');
@@ -677,6 +714,56 @@ export default function BroadcastPage() {
           </div>
         </div>
       </div>
+
+      {/* ═══════ 最近の配信 ═══════ */}
+      {recentCampaigns.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900">最近の配信</h3>
+            <Link href="/dashboard/broadcast/history" className="text-xs text-[#d10a1c] hover:text-[#b00917] font-medium">
+              配信履歴を見る &rarr;
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {recentCampaigns.map((c) => {
+              const stats = recentStats[c.id];
+              const isTest = c.delivery_method === 'test';
+              const methodLabel = isTest ? 'Test' : c.delivery_method === 'narrowcast' ? 'Narrowcast' : 'Broadcast';
+              const execDate = c.executed_at
+                ? new Date(c.executed_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '-';
+              return (
+                <div key={c.id} className={`rounded-lg border px-4 py-3 ${c.status === 'failed' ? 'border-red-200 bg-red-50' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="font-medium text-gray-800 truncate flex-1">{c.name || '無題の配信'}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${isTest ? 'bg-gray-200 text-gray-600' : 'bg-[#fdf2ef] text-[#d10a1c]'}`}>
+                      {methodLabel}
+                    </span>
+                    <span className="text-xs text-gray-500">{execDate}</span>
+                  </div>
+                  <div className="mt-1.5 text-xs text-gray-500">
+                    {c.status === 'failed' ? (
+                      <span className="text-red-600 font-medium">配信失敗{c.result?.error ? `: ${c.result.error}` : ''}</span>
+                    ) : isTest ? (
+                      <span>送信: {c.result?.successCount ?? '-'}人（テスト配信のため統計なし）</span>
+                    ) : stats ? (
+                      <span>
+                        開封: <span className="font-medium text-gray-700">{stats.uniqueImpression?.toLocaleString() ?? '-'}人</span>
+                        {stats.uniqueImpression ? <span className="text-gray-400 ml-0.5">({((stats.uniqueClick || 0) / stats.uniqueImpression * 100).toFixed(0)}%クリック)</span> : null}
+                        {' '}クリック: <span className="font-medium text-gray-700">{stats.uniqueClick?.toLocaleString() ?? '-'}人</span>
+                      </span>
+                    ) : c.result?.aggUnit ? (
+                      <span className="text-gray-400">統計データ集計中...</span>
+                    ) : (
+                      <span className="text-gray-400">統計なし</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ═══════ 予約モーダル ═══════ */}
       {showScheduleModal && (

@@ -162,6 +162,29 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ campaigns: data || [] });
       }
 
+      case 'campaign_detail': {
+        const id = request.nextUrl.searchParams.get('id');
+        if (!id) return NextResponse.json({ error: 'id parameter required' }, { status: 400 });
+        const { data, error } = await supabase
+          .from('broadcast_campaigns')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+        return NextResponse.json({ campaign: data });
+      }
+
+      case 'recent_campaigns': {
+        const { data, error } = await supabase
+          .from('broadcast_campaigns')
+          .select('*')
+          .in('status', ['sent', 'failed'])
+          .order('executed_at', { ascending: false })
+          .limit(5);
+        if (error) throw error;
+        return NextResponse.json({ campaigns: data || [] });
+      }
+
       case 'broadcast_stats': {
         const unit = request.nextUrl.searchParams.get('unit');
         if (!unit) return NextResponse.json({ error: 'unit parameter required' }, { status: 400 });

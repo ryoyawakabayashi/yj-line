@@ -20,6 +20,7 @@ interface Campaign {
   result: any;
   admin_email: string | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 interface CampaignStats {
@@ -192,6 +193,7 @@ export default function BroadcastHistoryPage() {
                   {activeTab === 'sent' && (
                     <>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">配信日時</th>
+                      <th className="text-center py-3 px-4 font-medium text-gray-600">MSG数</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-600">送信</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-600">開封</th>
                       <th className="text-right py-3 px-4 font-medium text-gray-600">クリック</th>
@@ -216,6 +218,9 @@ export default function BroadcastHistoryPage() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-800">{c.name || '無題の配信'}</span>
+                          {activeTab === 'sent' && c.status === 'sent' && (
+                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">配信済み</span>
+                          )}
                           {c.status === 'failed' && (
                             <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs font-medium">失敗</span>
                           )}
@@ -231,6 +236,7 @@ export default function BroadcastHistoryPage() {
                       {activeTab === 'sent' && (
                         <>
                           <td className="py-3 px-4 text-gray-600">{formatDate(c.executed_at)}</td>
+                          <td className="py-3 px-4 text-center text-gray-600">{Array.isArray(c.messages) ? c.messages.length : '-'}</td>
                           <td className="py-3 px-4 text-right font-medium text-gray-800">
                             {c.delivery_method === 'test'
                               ? (c.result?.successCount ?? '-')
@@ -259,7 +265,7 @@ export default function BroadcastHistoryPage() {
 
                       {/* 下書きタブ */}
                       {activeTab === 'draft' && (
-                        <td className="py-3 px-4 text-gray-600">{formatDate(c.created_at)}</td>
+                        <td className="py-3 px-4 text-gray-600">{formatDate(c.updated_at || c.created_at)}</td>
                       )}
 
                       {/* 操作 */}
