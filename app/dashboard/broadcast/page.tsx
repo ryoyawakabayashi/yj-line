@@ -105,13 +105,36 @@ const AGE_OPTIONS = [
   { value: 'age_50', label: '50歳以上' },
 ];
 
-const METHOD_OPTIONS: { value: 'broadcast' | 'narrowcast' | 'prefecture' | 'recent_followers' | 'test'; label: string }[] = [
-  { value: 'broadcast', label: 'LINE友達全員' },
-  { value: 'narrowcast', label: 'LINE友達（絞込）' },
-  { value: 'prefecture', label: '登録ユーザー' },
-  { value: 'recent_followers', label: '新規友達' },
+type DeliveryMethod = 'broadcast' | 'narrowcast' | 'prefecture' | 'recent_followers' | 'test';
+type DataSource = 'line' | 'db' | 'test';
+
+const DATA_SOURCE_OPTIONS: { value: DataSource; label: string }[] = [
+  { value: 'line', label: 'LINE側' },
+  { value: 'db', label: '自社DB側' },
   { value: 'test', label: 'テスト配信' },
 ];
+
+const SUB_METHOD_OPTIONS: Record<DataSource, { value: DeliveryMethod; label: string }[]> = {
+  line: [
+    { value: 'broadcast', label: '全員' },
+    { value: 'narrowcast', label: '絞り込み' },
+  ],
+  db: [
+    { value: 'prefecture', label: '登録ユーザー（都道府県）' },
+    { value: 'recent_followers', label: '新規友達（期間）' },
+  ],
+  test: [
+    { value: 'test', label: 'テストユーザーに配信' },
+  ],
+};
+
+const METHOD_TO_SOURCE: Record<DeliveryMethod, DataSource> = {
+  broadcast: 'line',
+  narrowcast: 'line',
+  prefecture: 'db',
+  recent_followers: 'db',
+  test: 'test',
+};
 
 const RECENT_PERIOD_OPTIONS = [
   { value: '7', label: '1週間以内' },
@@ -204,7 +227,8 @@ export default function BroadcastPage() {
   const [campaignName, setCampaignName] = useState('');
   const [notificationText, setNotificationText] = useState('');
   const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [deliveryMethod, setDeliveryMethod] = useState<'broadcast' | 'narrowcast' | 'prefecture' | 'recent_followers' | 'test'>('broadcast');
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('broadcast');
+  const dataSource = METHOD_TO_SOURCE[deliveryMethod];
   const [recentDays, setRecentDays] = useState('30');
   const [recentFollowerCount, setRecentFollowerCount] = useState<number | null>(null);
   const [area, setArea] = useState('');
@@ -952,24 +976,46 @@ export default function BroadcastPage() {
         {/* ═══════ 左カラム: 設定 + エディタ ═══════ */}
         <div className="xl:col-span-2 space-y-4">
 
-          {/* 配信方式 (tab-style) */}
+          {/* 配信方式 (2段構造) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">配信方式</h3>
+            {/* データソース選択 */}
             <div className="flex gap-2">
-              {METHOD_OPTIONS.map((m) => (
+              {DATA_SOURCE_OPTIONS.map((s) => (
                 <button
-                  key={m.value}
-                  onClick={() => setDeliveryMethod(m.value)}
+                  key={s.value}
+                  onClick={() => {
+                    const firstMethod = SUB_METHOD_OPTIONS[s.value][0].value;
+                    setDeliveryMethod(firstMethod);
+                  }}
                   className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
-                    deliveryMethod === m.value
+                    dataSource === s.value
                       ? 'bg-[#eaae9e] text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {m.label}
+                  {s.label}
                 </button>
               ))}
             </div>
+            {/* サブ選択（2つ以上ある場合のみ表示） */}
+            {SUB_METHOD_OPTIONS[dataSource].length > 1 && (
+              <div className="flex gap-2 mt-2">
+                {SUB_METHOD_OPTIONS[dataSource].map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => setDeliveryMethod(m.value)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                      deliveryMethod === m.value
+                        ? 'bg-gray-800 text-white'
+                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Narrowcast フィルター */}
             {deliveryMethod === 'narrowcast' && (
