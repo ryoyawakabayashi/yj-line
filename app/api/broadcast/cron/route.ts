@@ -32,10 +32,18 @@ interface CarouselBubble {
   title?: string;
   body?: string;
   buttons?: { label: string; url: string; campaign?: string; actionType?: 'uri' | 'message'; messageText?: string; color?: string }[];
+  originalUrl?: string;
+  linkUrl?: string;
+  linkCampaign?: string;
+  imageFullWidth?: boolean;
+  imageAspectRatio?: string;
+  imageAspectMode?: 'cover' | 'fit';
+  imageNaturalWidth?: number;
+  imageNaturalHeight?: number;
 }
 
 interface MessageItem {
-  type: 'text' | 'card' | 'image' | 'carousel';
+  type: 'text' | 'card' | 'image';
   text?: string;
   imageUrl?: string;
   title?: string;
@@ -50,6 +58,7 @@ interface MessageItem {
   imageAspectMode?: 'cover' | 'fit';
   imageNaturalWidth?: number;
   imageNaturalHeight?: number;
+  isCarousel?: boolean;
   bubbles?: CarouselBubble[];
 }
 
@@ -69,17 +78,47 @@ function buildLineMessages(items: MessageItem[], broadcastId?: string, notificat
       return { type: 'text', text: item.text || '' };
     }
     if (item.type === 'image') {
+      // 画像カルーセル
+      if (item.isCarousel && item.bubbles && item.bubbles.length > 0) {
+        const buildImageBubble = (img: CarouselBubble) => {
+          const url = img.originalUrl || '';
+          const rawRatio = img.imageAspectRatio || 'original';
+          let ar: string;
+          if (rawRatio === 'original' && img.imageNaturalWidth && img.imageNaturalHeight) {
+            const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+            const g = gcd(img.imageNaturalWidth, img.imageNaturalHeight);
+            let w = img.imageNaturalWidth / g;
+            let h = img.imageNaturalHeight / g;
+            if (w / h > 3) h = Math.round(w / 3);
+            if (h / w > 3) w = Math.round(h / 3);
+            ar = `${w}:${h}`;
+          } else if (rawRatio === 'original') {
+            ar = '20:13';
+          } else {
+            ar = rawRatio;
+          }
+          const am = rawRatio === 'original' ? 'cover' : (img.imageAspectMode || 'cover');
+          const hero: Record<string, unknown> = { type: 'image', url, size: 'full', aspectRatio: ar, aspectMode: am };
+          if (img.linkUrl) {
+            hero.action = { type: 'uri', label: 'open', uri: createLiffUrl(img.linkUrl, img.linkCampaign, broadcastId) };
+          }
+          return { type: 'bubble', size: 'mega', hero };
+        };
+        return {
+          type: 'flex',
+          altText: notificationText || item.altText || '画像メッセージ',
+          contents: { type: 'carousel', contents: item.bubbles.map(buildImageBubble) },
+        };
+      }
+      // 単体画像
       const url = item.originalUrl || '';
       const rawRatio = item.imageAspectRatio || 'original';
-      // aspectRatio計算: LINEは1:3〜3:1の範囲のみ対応
       let ar: string;
       if (rawRatio === 'original' && item.imageNaturalWidth && item.imageNaturalHeight) {
-        // GCDで簡約化
         const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
         const g = gcd(item.imageNaturalWidth, item.imageNaturalHeight);
         let w = item.imageNaturalWidth / g;
         let h = item.imageNaturalHeight / g;
-        // LINE制限: 1:3〜3:1にクランプ
         if (w / h > 3) h = Math.round(w / 3);
         if (h / w > 3) w = Math.round(h / 3);
         ar = `${w}:${h}`;
@@ -116,43 +155,31 @@ function buildLineMessages(items: MessageItem[], broadcastId?: string, notificat
       return { type: 'image', originalContentUrl: url, previewImageUrl: url };
     }
     if (item.type === 'card') {
-      const bodyContents: object[] = [];
-      if (item.title) bodyContents.push({ type: 'text', text: item.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
-      if (item.body) bodyContents.push({ type: 'text', text: item.body, size: 'md', color: '#555555', wrap: true, margin: item.title ? 'md' : 'none' });
-      const footerContents = (item.buttons || []).map((btn: any) => {
-        const action = btn.actionType === 'message'
-          ? { type: 'message', label: btn.label, text: btn.messageText || btn.label }
-          : { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) };
-        return { type: 'button', action, style: 'primary', color: btn.color || '#f9c93e', margin: 'sm' };
-      });
-      const bubble: Record<string, unknown> = { type: 'bubble' };
-      if (item.imageUrl) bubble.hero = { type: 'image', url: item.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
-      if (bodyContents.length > 0) bubble.body = { type: 'box', layout: 'vertical', contents: bodyContents };
-      if (footerContents.length > 0) bubble.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents };
-      return { type: 'flex', altText: notificationText || item.altText || item.title || item.body || 'カードメッセージ', contents: bubble };
-    }
-    if (item.type === 'carousel') {
-      const bubbleContents = (item.bubbles || []).map((bubble) => {
+      const buildCardBubble = (card: { title?: string; body?: string; imageUrl?: string; buttons?: any[] }) => {
         const bodyContents: object[] = [];
-        if (bubble.title) bodyContents.push({ type: 'text', text: bubble.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
-        if (bubble.body) bodyContents.push({ type: 'text', text: bubble.body, size: 'md', color: '#555555', wrap: true, margin: bubble.title ? 'md' : 'none' });
-        const footerContents = (bubble.buttons || []).map((btn: any) => {
+        if (card.title) bodyContents.push({ type: 'text', text: card.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
+        if (card.body) bodyContents.push({ type: 'text', text: card.body, size: 'md', color: '#555555', wrap: true, margin: card.title ? 'md' : 'none' });
+        const footerContents = (card.buttons || []).map((btn: any) => {
           const action = btn.actionType === 'message'
             ? { type: 'message', label: btn.label, text: btn.messageText || btn.label }
             : { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) };
           return { type: 'button', action, style: 'primary', color: btn.color || '#f9c93e', margin: 'sm' };
         });
         const b: Record<string, unknown> = { type: 'bubble' };
-        if (bubble.imageUrl) b.hero = { type: 'image', url: bubble.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
+        if (card.imageUrl) b.hero = { type: 'image', url: card.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
         if (bodyContents.length > 0) b.body = { type: 'box', layout: 'vertical', contents: bodyContents };
         if (footerContents.length > 0) b.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents };
         return b;
-      });
-      return {
-        type: 'flex',
-        altText: notificationText || item.altText || 'カルーセルメッセージ',
-        contents: { type: 'carousel', contents: bubbleContents },
       };
+      if (item.isCarousel && item.bubbles && item.bubbles.length > 0) {
+        return {
+          type: 'flex',
+          altText: notificationText || item.altText || 'カルーセルメッセージ',
+          contents: { type: 'carousel', contents: item.bubbles.map(buildCardBubble) },
+        };
+      }
+      const bubble = buildCardBubble(item);
+      return { type: 'flex', altText: notificationText || item.altText || item.title || item.body || 'カードメッセージ', contents: bubble };
     }
     return { type: 'text', text: '' };
   });

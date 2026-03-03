@@ -16,14 +16,24 @@ import {
 // =====================================================
 
 interface CarouselBubble {
+  // カード用
   imageUrl?: string;
   title?: string;
   body?: string;
   buttons?: { label: string; url: string; campaign?: string; actionType?: 'uri' | 'message'; messageText?: string; color?: string }[];
+  // 画像用
+  originalUrl?: string;
+  linkUrl?: string;
+  linkCampaign?: string;
+  imageFullWidth?: boolean;
+  imageAspectRatio?: string;
+  imageAspectMode?: 'cover' | 'fit';
+  imageNaturalWidth?: number;
+  imageNaturalHeight?: number;
 }
 
 interface MessageItem {
-  type: 'text' | 'card' | 'image' | 'carousel';
+  type: 'text' | 'card' | 'image';
   text?: string;
   imageUrl?: string;
   title?: string;
@@ -38,6 +48,7 @@ interface MessageItem {
   imageAspectMode?: 'cover' | 'fit';
   imageNaturalWidth?: number;
   imageNaturalHeight?: number;
+  isCarousel?: boolean;
   bubbles?: CarouselBubble[];
 }
 
@@ -389,12 +400,43 @@ export default function BroadcastPage() {
   };
 
   // --- Message editor helpers ---
-  const addMessage = (type: 'text' | 'card' | 'image' | 'carousel') => {
+  const addMessage = (type: 'text' | 'card' | 'image') => {
     if (messages.length >= 5) return;
     if (type === 'text') setMessages([...messages, { type: 'text', text: '' }]);
     else if (type === 'card') setMessages([...messages, { type: 'card', title: '', body: '', buttons: [] }]);
-    else if (type === 'carousel') setMessages([...messages, { type: 'carousel', altText: '', bubbles: [{ title: '', body: '', buttons: [] }, { title: '', body: '', buttons: [] }] }]);
     else setMessages([...messages, { type: 'image', originalUrl: '' }]);
+  };
+
+  const toggleCarousel = (idx: number) => {
+    const msg = messages[idx];
+    if (msg.isCarousel) {
+      // OFF: bubbles[0] の内容を msg 本体に戻す
+      const first = (msg.bubbles || [])[0] || {};
+      if (msg.type === 'card') {
+        updateMessage(idx, { isCarousel: false, bubbles: undefined, title: first.title, body: first.body, imageUrl: first.imageUrl, buttons: first.buttons });
+      } else if (msg.type === 'image') {
+        updateMessage(idx, { isCarousel: false, bubbles: undefined, originalUrl: first.originalUrl, linkUrl: first.linkUrl, linkCampaign: first.linkCampaign, imageFullWidth: first.imageFullWidth, imageAspectRatio: first.imageAspectRatio, imageAspectMode: first.imageAspectMode, imageNaturalWidth: first.imageNaturalWidth, imageNaturalHeight: first.imageNaturalHeight });
+      }
+    } else {
+      // ON: msg 本体の内容を bubbles[0] に移し、空の bubbles[1] を追加
+      if (msg.type === 'card') {
+        updateMessage(idx, {
+          isCarousel: true,
+          bubbles: [
+            { title: msg.title, body: msg.body, imageUrl: msg.imageUrl, buttons: msg.buttons },
+            { title: '', body: '', buttons: [] },
+          ],
+        });
+      } else if (msg.type === 'image') {
+        updateMessage(idx, {
+          isCarousel: true,
+          bubbles: [
+            { originalUrl: msg.originalUrl, linkUrl: msg.linkUrl, linkCampaign: msg.linkCampaign, imageFullWidth: msg.imageFullWidth, imageAspectRatio: msg.imageAspectRatio, imageAspectMode: msg.imageAspectMode, imageNaturalWidth: msg.imageNaturalWidth, imageNaturalHeight: msg.imageNaturalHeight },
+            { originalUrl: '' },
+          ],
+        });
+      }
+    }
   };
 
   const updateMessage = (idx: number, patch: Partial<MessageItem>) => {
@@ -435,15 +477,16 @@ export default function BroadcastPage() {
   // --- Carousel helpers ---
   const addCarouselBubble = (msgIdx: number) => {
     const msg = messages[msgIdx];
-    if (msg.type !== 'carousel') return;
-    const bubbles = [...(msg.bubbles || []), { title: '', body: '', buttons: [] }];
+    if (!msg.isCarousel) return;
+    const newBubble: CarouselBubble = msg.type === 'image' ? { originalUrl: '' } : { title: '', body: '', buttons: [] };
+    const bubbles = [...(msg.bubbles || []), newBubble];
     updateMessage(msgIdx, { bubbles });
     setCarouselActiveTab(prev => ({ ...prev, [msgIdx]: bubbles.length - 1 }));
   };
 
   const removeCarouselBubble = (msgIdx: number, bubbleIdx: number) => {
     const msg = messages[msgIdx];
-    if (msg.type !== 'carousel') return;
+    if (!msg.isCarousel) return;
     const bubbles = (msg.bubbles || []).filter((_, i) => i !== bubbleIdx);
     updateMessage(msgIdx, { bubbles });
     setCarouselActiveTab(prev => ({ ...prev, [msgIdx]: Math.min(prev[msgIdx] ?? 0, Math.max(0, bubbles.length - 1)) }));
@@ -451,7 +494,7 @@ export default function BroadcastPage() {
 
   const updateCarouselBubble = (msgIdx: number, bubbleIdx: number, patch: Partial<CarouselBubble>) => {
     const msg = messages[msgIdx];
-    if (msg.type !== 'carousel') return;
+    if (!msg.isCarousel) return;
     const bubbles = (msg.bubbles || []).map((b, i) => i === bubbleIdx ? { ...b, ...patch } : b);
     updateMessage(msgIdx, { bubbles });
   };
@@ -1118,13 +1161,6 @@ export default function BroadcastPage() {
                 >
                   <PhotoIcon className="h-3.5 w-3.5" /> +画像
                 </button>
-                <button
-                  onClick={() => addMessage('carousel')}
-                  disabled={messages.length >= 5}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium disabled:opacity-40"
-                >
-                  <Squares2X2Icon className="h-3.5 w-3.5" /> +カルーセル
-                </button>
                 <div className="w-px h-5 bg-gray-300" />
                 <button
                   onClick={() => setShowAiModal(true)}
@@ -1145,9 +1181,19 @@ export default function BroadcastPage() {
                   <div key={idx} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {msg.type === 'text' ? 'テキスト' : msg.type === 'card' ? 'カード' : msg.type === 'carousel' ? 'カルーセル' : '画像'} #{idx + 1}
+                        {msg.type === 'text' ? 'テキスト' : msg.type === 'card' ? 'カード' : '画像'}{msg.isCarousel ? ' (カルーセル)' : ''} #{idx + 1}
                       </span>
                       <div className="flex items-center gap-0.5">
+                        {(msg.type === 'card' || msg.type === 'image') && (
+                          <button
+                            onClick={() => toggleCarousel(idx)}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${msg.isCarousel ? 'bg-[#eaae9e] text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                            title="カルーセル表示"
+                          >
+                            <Squares2X2Icon className="h-3.5 w-3.5" />
+                            カルーセル
+                          </button>
+                        )}
                         {(msg.type === 'text' || msg.type === 'card') && (
                           <button
                             onClick={() => handleTranslateMessage(idx)}
@@ -1185,6 +1231,98 @@ export default function BroadcastPage() {
                     {/* Card */}
                     {msg.type === 'card' && (
                       <div className="space-y-3">
+                        {msg.isCarousel ? (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（カルーセル全体）</span></label>
+                              <input
+                                type="text"
+                                value={msg.altText || ''}
+                                onChange={(e) => updateMessage(idx, { altText: e.target.value })}
+                                placeholder="プッシュ通知に表示されるテキスト"
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                              {(msg.bubbles || []).map((_, bi) => (
+                                <button
+                                  key={bi}
+                                  onClick={() => setCarouselActiveTab(prev => ({ ...prev, [idx]: bi }))}
+                                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
+                                    (carouselActiveTab[idx] ?? 0) === bi ? 'bg-[#eaae9e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  カード {bi + 1}
+                                  {(msg.bubbles || []).length > 2 && (
+                                    <span onClick={(e) => { e.stopPropagation(); removeCarouselBubble(idx, bi); }} className="ml-0.5 hover:text-red-300 cursor-pointer">
+                                      <XMarkIcon className="h-3 w-3" />
+                                    </span>
+                                  )}
+                                </button>
+                              ))}
+                              {(msg.bubbles || []).length < 12 && (
+                                <button onClick={() => addCarouselBubble(idx)} className="px-2 py-1 text-xs text-[#d10a1c] font-medium hover:underline whitespace-nowrap">+ カード追加</button>
+                              )}
+                            </div>
+                            {(() => {
+                              const bi = carouselActiveTab[idx] ?? 0;
+                              const bubble = (msg.bubbles || [])[bi];
+                              if (!bubble) return null;
+                              return (
+                                <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-500 mb-1 block">タイトル</label>
+                                    <input type="text" value={bubble.title || ''} onChange={(e) => updateCarouselBubble(idx, bi, { title: e.target.value })} placeholder="例: 飲食店スタッフ募集中！" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-500 mb-1 block">本文</label>
+                                    <textarea value={bubble.body || ''} onChange={(e) => updateCarouselBubble(idx, bi, { body: e.target.value })} placeholder="例: 時給1,200円〜、週3日からOK" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-500 mb-1 block">画像 (任意)</label>
+                                    {bubble.imageUrl ? (
+                                      <div className="relative inline-block">
+                                        <img src={bubble.imageUrl} alt="" className="h-20 rounded-lg object-cover border border-gray-200" />
+                                        <button onClick={() => updateCarouselBubble(idx, bi, { imageUrl: '' })} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"><XMarkIcon className="h-3 w-3" /></button>
+                                      </div>
+                                    ) : (
+                                      <label className={`inline-flex items-center gap-1.5 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#eaae9e] hover:bg-[#fdf2ef] transition-colors text-xs text-gray-500 ${uploading === idx ? 'opacity-50 pointer-events-none' : ''}`}>
+                                        <ArrowUpTrayIcon className="h-4 w-4" />
+                                        {uploading === idx ? 'アップロード中...' : '画像を選択'}
+                                        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(idx, f, 'imageUrl', bi); e.target.value = ''; }} />
+                                      </label>
+                                    )}
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-medium text-gray-500 block">ボタン</label>
+                                    {(bubble.buttons || []).map((btn, bni) => (
+                                      <div key={bni} className="border border-gray-200 rounded-lg p-2.5 space-y-2">
+                                        <div className="flex gap-2 items-center">
+                                          <div className="flex bg-gray-100 rounded-md p-0.5">
+                                            <button onClick={() => updateCarouselBubbleButton(idx, bi, bni, { actionType: 'uri' })} className={`px-2 py-1 rounded text-xs font-medium transition-all ${(!btn.actionType || btn.actionType === 'uri') ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}>URL</button>
+                                            <button onClick={() => updateCarouselBubbleButton(idx, bi, bni, { actionType: 'message' })} className={`px-2 py-1 rounded text-xs font-medium transition-all ${btn.actionType === 'message' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}>テキスト送信</button>
+                                          </div>
+                                          <input type="text" value={btn.label || ''} onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { label: e.target.value })} placeholder="ボタンラベル" className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                                          <input type="color" value={btn.color || '#f9c93e'} onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { color: e.target.value })} title="ボタンの色" className="h-8 w-8 rounded-md border border-gray-300 cursor-pointer p-0.5" />
+                                          <button onClick={() => removeCarouselBubbleButton(idx, bi, bni)} className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50"><XMarkIcon className="h-3.5 w-3.5" /></button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          {btn.actionType === 'message' ? (
+                                            <input type="text" value={btn.messageText || ''} onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { messageText: e.target.value })} placeholder="ユーザーが送信するテキスト" className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                                          ) : (
+                                            <input type="text" value={btn.url || ''} onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { url: e.target.value })} placeholder="https://..." className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <button onClick={() => addCarouselBubbleButton(idx, bi)} className="text-xs text-[#d10a1c] font-medium hover:underline">+ ボタン追加</button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                        <>
                         <div>
                           <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（メッセージ一覧に表示されます）</span></label>
                           <input
@@ -1298,173 +1436,59 @@ export default function BroadcastPage() {
                             + ボタン追加
                           </button>
                         </div>
+                        </>
+                        )}
                       </div>
                     )}
 
-                    {/* Carousel */}
-                    {msg.type === 'carousel' && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（カルーセル全体）</span></label>
-                          <input
-                            type="text"
-                            value={msg.altText || ''}
-                            onChange={(e) => updateMessage(idx, { altText: e.target.value })}
-                            placeholder="プッシュ通知に表示されるテキスト"
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                          />
-                        </div>
-                        {/* Bubble tabs */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                          {(msg.bubbles || []).map((_, bi) => (
-                            <button
-                              key={bi}
-                              onClick={() => setCarouselActiveTab(prev => ({ ...prev, [idx]: bi }))}
-                              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all ${
-                                (carouselActiveTab[idx] ?? 0) === bi
-                                  ? 'bg-[#eaae9e] text-white'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              カード {bi + 1}
-                              {(msg.bubbles || []).length > 2 && (
-                                <span
-                                  onClick={(e) => { e.stopPropagation(); removeCarouselBubble(idx, bi); }}
-                                  className="ml-0.5 hover:text-red-300 cursor-pointer"
-                                >
-                                  <XMarkIcon className="h-3 w-3" />
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                          {(msg.bubbles || []).length < 12 && (
-                            <button
-                              onClick={() => addCarouselBubble(idx)}
-                              className="px-2 py-1 text-xs text-[#d10a1c] font-medium hover:underline whitespace-nowrap"
-                            >
-                              + カード追加
-                            </button>
-                          )}
-                        </div>
-                        {/* Active bubble editor */}
-                        {(() => {
-                          const bi = carouselActiveTab[idx] ?? 0;
-                          const bubble = (msg.bubbles || [])[bi];
-                          if (!bubble) return null;
-                          return (
-                            <div className="border border-gray-200 rounded-lg p-3 space-y-3">
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">タイトル</label>
-                                <input
-                                  type="text"
-                                  value={bubble.title || ''}
-                                  onChange={(e) => updateCarouselBubble(idx, bi, { title: e.target.value })}
-                                  placeholder="例: 飲食店スタッフ募集中！"
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">本文</label>
-                                <textarea
-                                  value={bubble.body || ''}
-                                  onChange={(e) => updateCarouselBubble(idx, bi, { body: e.target.value })}
-                                  placeholder="例: 時給1,200円〜、週3日からOK"
-                                  rows={2}
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">画像 (任意)</label>
-                                {bubble.imageUrl ? (
-                                  <div className="relative inline-block">
-                                    <img src={bubble.imageUrl} alt="" className="h-20 rounded-lg object-cover border border-gray-200" />
-                                    <button
-                                      onClick={() => updateCarouselBubble(idx, bi, { imageUrl: '' })}
-                                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
-                                    >
-                                      <XMarkIcon className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <label className={`inline-flex items-center gap-1.5 px-3 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#eaae9e] hover:bg-[#fdf2ef] transition-colors text-xs text-gray-500 ${uploading === idx ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <ArrowUpTrayIcon className="h-4 w-4" />
-                                    {uploading === idx ? 'アップロード中...' : '画像を選択'}
-                                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(idx, f, 'imageUrl', bi); e.target.value = ''; }} />
-                                  </label>
-                                )}
-                              </div>
-                              {/* Buttons */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-medium text-gray-500 block">ボタン</label>
-                                {(bubble.buttons || []).map((btn, bni) => (
-                                  <div key={bni} className="border border-gray-200 rounded-lg p-2.5 space-y-2">
-                                    <div className="flex gap-2 items-center">
-                                      <div className="flex bg-gray-100 rounded-md p-0.5">
-                                        <button
-                                          onClick={() => updateCarouselBubbleButton(idx, bi, bni, { actionType: 'uri' })}
-                                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${(!btn.actionType || btn.actionType === 'uri') ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}
-                                        >
-                                          URL
-                                        </button>
-                                        <button
-                                          onClick={() => updateCarouselBubbleButton(idx, bi, bni, { actionType: 'message' })}
-                                          className={`px-2 py-1 rounded text-xs font-medium transition-all ${btn.actionType === 'message' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500'}`}
-                                        >
-                                          テキスト送信
-                                        </button>
-                                      </div>
-                                      <input
-                                        type="text"
-                                        value={btn.label || ''}
-                                        onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { label: e.target.value })}
-                                        placeholder="ボタンラベル"
-                                        className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                                      />
-                                      <input
-                                        type="color"
-                                        value={btn.color || '#f9c93e'}
-                                        onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { color: e.target.value })}
-                                        title="ボタンの色"
-                                        className="h-8 w-8 rounded-md border border-gray-300 cursor-pointer p-0.5"
-                                      />
-                                      <button onClick={() => removeCarouselBubbleButton(idx, bi, bni)} className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50">
-                                        <XMarkIcon className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      {btn.actionType === 'message' ? (
-                                        <input
-                                          type="text"
-                                          value={btn.messageText || ''}
-                                          onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { messageText: e.target.value })}
-                                          placeholder="ユーザーが送信するテキスト"
-                                          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                                        />
-                                      ) : (
-                                        <input
-                                          type="text"
-                                          value={btn.url || ''}
-                                          onChange={(e) => updateCarouselBubbleButton(idx, bi, bni, { url: e.target.value })}
-                                          placeholder="https://..."
-                                          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                                        />
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                                <button onClick={() => addCarouselBubbleButton(idx, bi)} className="text-xs text-[#d10a1c] font-medium hover:underline">
-                                  + ボタン追加
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
 
                     {/* Image */}
                     {msg.type === 'image' && (
                       <div className="space-y-3">
+                        {msg.isCarousel ? (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（カルーセル全体）</span></label>
+                              <input type="text" value={msg.altText || ''} onChange={(e) => updateMessage(idx, { altText: e.target.value })} placeholder="プッシュ通知に表示されるテキスト" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                            </div>
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                              {(msg.bubbles || []).map((_, bi) => (
+                                <button key={bi} onClick={() => setCarouselActiveTab(prev => ({ ...prev, [idx]: bi }))} className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all ${(carouselActiveTab[idx] ?? 0) === bi ? 'bg-[#eaae9e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                                  画像 {bi + 1}
+                                  {(msg.bubbles || []).length > 2 && (
+                                    <span onClick={(e) => { e.stopPropagation(); removeCarouselBubble(idx, bi); }} className="ml-0.5 hover:text-red-300 cursor-pointer"><XMarkIcon className="h-3 w-3" /></span>
+                                  )}
+                                </button>
+                              ))}
+                              {(msg.bubbles || []).length < 12 && (
+                                <button onClick={() => addCarouselBubble(idx)} className="px-2 py-1 text-xs text-[#d10a1c] font-medium hover:underline whitespace-nowrap">+ 画像追加</button>
+                              )}
+                            </div>
+                            {(() => {
+                              const bi = carouselActiveTab[idx] ?? 0;
+                              const bubble = (msg.bubbles || [])[bi];
+                              if (!bubble) return null;
+                              return (
+                                <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+                                  {bubble.originalUrl ? (
+                                    <div className="relative inline-block">
+                                      <img src={bubble.originalUrl} alt="" className="h-28 rounded-lg object-cover border border-gray-200" />
+                                      <button onClick={() => updateCarouselBubble(idx, bi, { originalUrl: '' })} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"><XMarkIcon className="h-3 w-3" /></button>
+                                    </div>
+                                  ) : (
+                                    <label className={`flex items-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#eaae9e] hover:bg-[#fdf2ef] transition-colors ${uploading === idx ? 'opacity-50 pointer-events-none' : ''}`}>
+                                      <ArrowUpTrayIcon className="h-5 w-5 text-gray-400" />
+                                      <span className="text-sm text-gray-500">{uploading === idx ? 'アップロード中...' : '画像を選択'}</span>
+                                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(idx, f, 'originalUrl', bi); e.target.value = ''; }} />
+                                    </label>
+                                  )}
+                                  <input type="text" value={bubble.linkUrl || ''} onChange={(e) => updateCarouselBubble(idx, bi, { linkUrl: e.target.value })} placeholder="リンク先URL (任意: タップ時に遷移)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
+                                </div>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          <>
                         {msg.originalUrl ? (
                           <div className="relative inline-block">
                             <img src={msg.originalUrl} alt="" className="h-28 rounded-lg object-cover border border-gray-200" />
@@ -1518,6 +1542,8 @@ export default function BroadcastPage() {
                           placeholder="リンク先URL (任意: タップ時に遷移)"
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
                         />
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2072,12 +2098,46 @@ function PreviewBubble({ msg }: { msg: MessageItem }) {
   }
 
   if (msg.type === 'image') {
+    // 画像カルーセル
+    if (msg.isCarousel && msg.bubbles && msg.bubbles.length > 0) {
+      return (
+        <div className="mb-0.5">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ width: '100%' }}>
+            {msg.bubbles.map((bubble, bi) => {
+              const ratio = bubble.imageAspectRatio || 'original';
+              const isOrig = ratio === 'original';
+              const ca = !isOrig ? ratio.split(':').map(Number) : null;
+              return (
+                <div key={bi} className="bg-white rounded-xl overflow-hidden shadow-sm flex-shrink-0 relative" style={{ width: '80%', minWidth: 160 }}>
+                  {bubble.originalUrl ? (
+                    <>
+                      <img
+                        src={bubble.originalUrl} alt=""
+                        className={`w-full ${isOrig ? '' : (bubble.imageAspectMode === 'fit' ? 'object-contain bg-gray-100' : 'object-cover')}`}
+                        style={ca && ca[0] && ca[1] ? { aspectRatio: `${ca[0]}/${ca[1]}` } : undefined}
+                      />
+                      {bubble.linkUrl && (
+                        <div className="absolute bottom-2 right-2 bg-black/50 rounded-full p-1">
+                          <LinkIcon className="h-3 w-3 text-white" />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full bg-gray-100 flex items-center justify-center text-gray-400 text-[10px]" style={{ height: 120 }}>(画像未選択)</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // 単体画像
     const isFull = msg.imageFullWidth || !!msg.linkUrl;
     const ratio = msg.imageAspectRatio || 'original';
     const isOriginal = ratio === 'original';
-    // LINE実機: mega bubble ≈ ほぼ全幅, 標準画像 ≈ 70%幅
     const bubbleW = isFull ? '100%' : '75%';
-    // アスペクト比からプレビュー高さを計算（固定比率の場合のみ）
     const calcAspect = !isOriginal ? ratio.split(':').map(Number) : null;
 
     return (
@@ -2105,12 +2165,12 @@ function PreviewBubble({ msg }: { msg: MessageItem }) {
     );
   }
 
-  // Carousel — 横スクロールで複数カードを表示
-  if (msg.type === 'carousel') {
+  // Card — カルーセル or 単体
+  if (msg.isCarousel && msg.bubbles && msg.bubbles.length > 0) {
     return (
       <div className="mb-0.5">
         <div className="flex gap-2 overflow-x-auto pb-1" style={{ width: '100%' }}>
-          {(msg.bubbles || []).map((bubble, bi) => (
+          {msg.bubbles.map((bubble, bi) => (
             <div
               key={bi}
               className="bg-white rounded-xl overflow-hidden shadow-sm flex-shrink-0"
@@ -2143,7 +2203,7 @@ function PreviewBubble({ msg }: { msg: MessageItem }) {
     );
   }
 
-  // Card (Flex bubble) — LINE実機で約85%幅
+  // Card 単体 (Flex bubble) — LINE実機で約85%幅
   return (
     <div className="mb-0.5">
       <div className="bg-white rounded-xl overflow-hidden shadow-sm" style={{ width: '85%' }}>
