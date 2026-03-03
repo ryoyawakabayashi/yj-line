@@ -1233,16 +1233,6 @@ export default function BroadcastPage() {
                       <div className="space-y-3">
                         {msg.isCarousel ? (
                           <>
-                            <div>
-                              <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（カルーセル全体）</span></label>
-                              <input
-                                type="text"
-                                value={msg.altText || ''}
-                                onChange={(e) => updateMessage(idx, { altText: e.target.value })}
-                                placeholder="プッシュ通知に表示されるテキスト"
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                              />
-                            </div>
                             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                               {(msg.bubbles || []).map((_, bi) => (
                                 <button
@@ -1323,16 +1313,6 @@ export default function BroadcastPage() {
                           </>
                         ) : (
                         <>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（メッセージ一覧に表示されます）</span></label>
-                          <input
-                            type="text"
-                            value={msg.altText || ''}
-                            onChange={(e) => updateMessage(idx, { altText: e.target.value })}
-                            placeholder="プッシュ通知に表示されるテキスト"
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                          />
-                        </div>
                         <div>
                           <label className="text-xs font-medium text-gray-500 mb-1 block">タイトル</label>
                           <input
@@ -1447,10 +1427,6 @@ export default function BroadcastPage() {
                       <div className="space-y-3">
                         {msg.isCarousel ? (
                           <>
-                            <div>
-                              <label className="text-xs font-medium text-gray-500 mb-1 block">通知テキスト <span className="font-normal text-gray-400">（カルーセル全体）</span></label>
-                              <input type="text" value={msg.altText || ''} onChange={(e) => updateMessage(idx, { altText: e.target.value })} placeholder="プッシュ通知に表示されるテキスト" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]" />
-                            </div>
                             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                               {(msg.bubbles || []).map((_, bi) => (
                                 <button key={bi} onClick={() => setCarouselActiveTab(prev => ({ ...prev, [idx]: bi }))} className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all ${(carouselActiveTab[idx] ?? 0) === bi ? 'bg-[#eaae9e] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
