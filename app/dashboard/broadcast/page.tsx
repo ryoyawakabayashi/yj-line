@@ -1109,7 +1109,7 @@ export default function BroadcastPage() {
 
             {/* 配信タイミング */}
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setScheduleMode('now')}
                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
@@ -1128,7 +1128,7 @@ export default function BroadcastPage() {
                 </button>
               </div>
               {scheduleMode === 'scheduled' && (
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mt-3">
                   <input
                     type="date"
                     value={schedDate}
@@ -1158,49 +1158,6 @@ export default function BroadcastPage() {
                   <span className="text-gray-400 text-xs">(JST)</span>
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (scheduleMode === 'scheduled') {
-                      handleSchedule(false);
-                    } else {
-                      handleSend();
-                    }
-                  }}
-                  disabled={sending || messages.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
-                  className="flex items-center gap-1.5 px-6 py-2.5 bg-[#d10a1c] hover:bg-[#b00917] text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                >
-                  {scheduleMode === 'scheduled' ? <ClockIcon className="h-4 w-4" /> : <PaperAirplaneIcon className="h-4 w-4" />}
-                  {sending ? '送信中...' : scheduleMode === 'scheduled' ? '予約する' : '配信する'}
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedTestUserIds(testUsers.map(u => u.lineUserId));
-                    if (scheduleMode === 'scheduled') {
-                      handleSchedule(true);
-                    } else {
-                      setShowTestSendModal(true);
-                    }
-                  }}
-                  disabled={sending || messages.length === 0 || testUsers.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                >
-                  <PaperAirplaneIcon className="h-4 w-4" /> {scheduleMode === 'scheduled' ? 'テスト予約' : 'テスト配信'}
-                </button>
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={saving || messages.length === 0}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50"
-                >
-                  <DocumentIcon className="h-4 w-4" /> {saving ? '保存中...' : '下書き保存'}
-                </button>
-                <Link
-                  href="/dashboard/broadcast/history"
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
-                >
-                  <BookmarkIcon className="h-4 w-4" /> 下書き読み込み
-                </Link>
-              </div>
             </div>
           </div>
 
@@ -1746,6 +1703,54 @@ export default function BroadcastPage() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ═══════ アクションバー ═══════ */}
+      <div className="sticky bottom-0 z-30 -mx-6 px-6 py-3 bg-white/90 backdrop-blur-sm border-t border-gray-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (scheduleMode === 'scheduled') {
+                handleSchedule(false);
+              } else {
+                handleSend();
+              }
+            }}
+            disabled={sending || messages.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
+            className="flex items-center gap-1.5 px-6 py-2.5 bg-[#d10a1c] hover:bg-[#b00917] text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+          >
+            {scheduleMode === 'scheduled' ? <ClockIcon className="h-4 w-4" /> : <PaperAirplaneIcon className="h-4 w-4" />}
+            {sending ? '送信中...' : scheduleMode === 'scheduled' ? '予約する' : '配信する'}
+          </button>
+          <button
+            onClick={() => {
+              setSelectedTestUserIds(testUsers.map(u => u.lineUserId));
+              if (scheduleMode === 'scheduled') {
+                handleSchedule(true);
+              } else {
+                setShowTestSendModal(true);
+              }
+            }}
+            disabled={sending || messages.length === 0 || testUsers.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+          >
+            <PaperAirplaneIcon className="h-4 w-4" /> {scheduleMode === 'scheduled' ? 'テスト予約' : 'テスト配信'}
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={handleSaveDraft}
+            disabled={saving || messages.length === 0}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+          >
+            <DocumentIcon className="h-4 w-4" /> {saving ? '保存中...' : '下書き保存'}
+          </button>
+          <Link
+            href="/dashboard/broadcast/history"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            <BookmarkIcon className="h-4 w-4" /> 下書き読み込み
+          </Link>
         </div>
       </div>
 
