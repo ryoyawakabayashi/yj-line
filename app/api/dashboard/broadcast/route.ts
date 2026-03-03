@@ -406,6 +406,18 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ counts });
       }
 
+      case 'recent_followers_count': {
+        const days = Number(request.nextUrl.searchParams.get('days') || '30');
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        const { count, error: rfErr } = await supabase
+          .from('follow_events')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'follow')
+          .gte('timestamp', since);
+        if (rfErr) throw rfErr;
+        return NextResponse.json({ count: count || 0, days });
+      }
+
       case 'narrowcast_progress': {
         // Narrowcast Progress API: 配信後の正確な送信数を取得
         const requestId = request.nextUrl.searchParams.get('requestId');
@@ -463,7 +475,7 @@ export async function POST(request: NextRequest) {
     switch (action) {
       // ─── 配信実行 ──────────────────────────
       case 'send': {
-        const { name, notificationText, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang, prefectures, testUserIds } = body;
+        const { name, notificationText, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang, prefectures, recentDays, testUserIds } = body;
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
         }
@@ -478,8 +490,8 @@ export async function POST(request: NextRequest) {
             delivery_method: deliveryMethod || 'broadcast',
             messages,
             area: area || null,
-            demographic: (genderFilter || ageRange || prefList || notificationText)
-              ? { gender: genderFilter || null, age: ageRange || null, prefectures: prefList, notificationText: notificationText || null }
+            demographic: (genderFilter || ageRange || prefList || notificationText || recentDays)
+              ? { gender: genderFilter || null, age: ageRange || null, prefectures: prefList, notificationText: notificationText || null, recentDays: recentDays || null }
               : null,
             broadcast_lang: broadcastLang || 'ja',
             executed_at: new Date().toISOString(),
@@ -536,6 +548,27 @@ export async function POST(request: NextRequest) {
             if (ok) successCount++;
           }
           result = { prefectures: prefList, targetUsers: uniqueIds.length, successCount };
+
+        } else if (deliveryMethod === 'recent_followers') {
+          // 新規友達配信: 指定期間内に友達追加したユーザーにpush
+          const days = Number(recentDays) || 30;
+          const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+          const { data: followData, error: followErr } = await supabase
+            .from('follow_events')
+            .select('user_id')
+            .eq('event_type', 'follow')
+            .gte('timestamp', since);
+          if (followErr) throw followErr;
+          const uniqueIds = [...new Set((followData || []).map((d) => d.user_id))];
+          if (uniqueIds.length === 0) {
+            return NextResponse.json({ error: '該当期間の新規友達がいません' }, { status: 400 });
+          }
+          let successCount = 0;
+          for (const uid of uniqueIds) {
+            const ok = await pushMessage(uid, lineMessages as any);
+            if (ok) successCount++;
+          }
+          result = { recentDays: days, targetUsers: uniqueIds.length, successCount };
 
         } else if (deliveryMethod === 'narrowcast') {
           // デモグラフィックフィルターを動的に構築
@@ -642,7 +675,7 @@ export async function POST(request: NextRequest) {
 
       // ─── 予約配信 ──────────────────────────
       case 'schedule': {
-        const { id, name, notificationText: schedNotifText, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, prefectures: schedPrefs, broadcastLang, scheduledAt } = body;
+        const { id, name, notificationText: schedNotifText, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, prefectures: schedPrefs, recentDays: schedRecentDays, broadcastLang, scheduledAt } = body;
         if (!scheduledAt) return NextResponse.json({ error: '予約日時が必要です' }, { status: 400 });
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
@@ -655,8 +688,8 @@ export async function POST(request: NextRequest) {
           delivery_method: deliveryMethod || 'broadcast',
           messages,
           area: area || null,
-          demographic: (schedGender || schedAge || schedPrefList || schedNotifText)
-            ? { gender: schedGender || null, age: schedAge || null, prefectures: schedPrefList, notificationText: schedNotifText || null }
+          demographic: (schedGender || schedAge || schedPrefList || schedNotifText || schedRecentDays)
+            ? { gender: schedGender || null, age: schedAge || null, prefectures: schedPrefList, notificationText: schedNotifText || null, recentDays: schedRecentDays || null }
             : null,
           broadcast_lang: broadcastLang || 'ja',
           scheduled_at: scheduledAt,

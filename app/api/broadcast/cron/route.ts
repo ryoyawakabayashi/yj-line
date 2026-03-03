@@ -249,6 +249,24 @@ export async function GET(request: NextRequest) {
           }
           result = { prefectures: prefList, targetUsers: uniqueIds.length, successCount };
 
+        } else if (campaign.delivery_method === 'recent_followers') {
+          // 新規友達配信: 指定期間内に友達追加したユーザーにpush
+          const days = Number(campaign.demographic?.recentDays) || 30;
+          const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+          const { data: followData } = await supabase
+            .from('follow_events')
+            .select('user_id')
+            .eq('event_type', 'follow')
+            .gte('timestamp', since);
+          const uniqueIds = [...new Set((followData || []).map((d: any) => d.user_id))];
+          if (uniqueIds.length === 0) throw new Error('Recent followers: no users found');
+          let successCount = 0;
+          for (const uid of uniqueIds) {
+            const ok = await pushMessage(uid, messages as any);
+            if (ok) successCount++;
+          }
+          result = { recentDays: days, targetUsers: uniqueIds.length, successCount };
+
         } else if (campaign.delivery_method === 'narrowcast') {
           // デモグラフィックフィルターを動的に構築
           const andConditions: object[] = [];

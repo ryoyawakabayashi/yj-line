@@ -105,11 +105,18 @@ const AGE_OPTIONS = [
   { value: 'age_50', label: '50歳以上' },
 ];
 
-const METHOD_OPTIONS: { value: 'broadcast' | 'narrowcast' | 'prefecture' | 'test'; label: string }[] = [
+const METHOD_OPTIONS: { value: 'broadcast' | 'narrowcast' | 'prefecture' | 'recent_followers' | 'test'; label: string }[] = [
   { value: 'broadcast', label: 'LINE友達全員' },
   { value: 'narrowcast', label: 'LINE友達（絞込）' },
   { value: 'prefecture', label: '登録ユーザー' },
+  { value: 'recent_followers', label: '新規友達' },
   { value: 'test', label: 'テスト配信' },
+];
+
+const RECENT_PERIOD_OPTIONS = [
+  { value: '7', label: '1週間以内' },
+  { value: '30', label: '1ヶ月以内' },
+  { value: '90', label: '3ヶ月以内' },
 ];
 
 // AI診断の都道府県リスト（地域別グループ）
@@ -197,7 +204,9 @@ export default function BroadcastPage() {
   const [campaignName, setCampaignName] = useState('');
   const [notificationText, setNotificationText] = useState('');
   const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [deliveryMethod, setDeliveryMethod] = useState<'broadcast' | 'narrowcast' | 'prefecture' | 'test'>('broadcast');
+  const [deliveryMethod, setDeliveryMethod] = useState<'broadcast' | 'narrowcast' | 'prefecture' | 'recent_followers' | 'test'>('broadcast');
+  const [recentDays, setRecentDays] = useState('30');
+  const [recentFollowerCount, setRecentFollowerCount] = useState<number | null>(null);
   const [area, setArea] = useState('');
   const [gender, setGender] = useState('');
   const [ageRange, setAgeRange] = useState('');
@@ -258,6 +267,10 @@ export default function BroadcastPage() {
       api('GET', { action: 'prefecture_users' }),
       api('GET', { action: 'bot_profile' }),
     ]);
+    // recent followers count
+    const rfRes = await api('GET', { action: 'recent_followers_count', days: '30' });
+    if (rfRes.count !== undefined) setRecentFollowerCount(rfRes.count);
+
     if (botRes.pictureUrl) {
       const bp = { displayName: botRes.displayName, pictureUrl: botRes.pictureUrl };
       setBotProfile(bp);
@@ -379,6 +392,14 @@ export default function BroadcastPage() {
       document.removeEventListener('visibilitychange', onVisChange);
     };
   }, [loadData]);
+
+  // 新規友達カウント: recentDays変更時に再取得
+  useEffect(() => {
+    (async () => {
+      const res = await api('GET', { action: 'recent_followers_count', days: recentDays });
+      if (res.count !== undefined) setRecentFollowerCount(res.count);
+    })();
+  }, [recentDays]);
 
   const loadDraft = async (id: string) => {
     const res = await api('GET', { action: 'campaign_detail', id });
@@ -611,6 +632,7 @@ export default function BroadcastPage() {
     const methodLabel = currentMethod === 'broadcast' ? '全友達に配信'
       : currentMethod === 'narrowcast' ? `${AREA_OPTIONS.find(a => a.value === area)?.label || area}に配信`
       : currentMethod === 'prefecture' ? `${prefectures.length}都道府県の登録ユーザーに配信`
+      : currentMethod === 'recent_followers' ? `新規友達（${RECENT_PERIOD_OPTIONS.find(o => o.value === recentDays)?.label}）${recentFollowerCount ?? '?'}人に配信`
       : `テスト配信（${testUserIds?.length || testUsers.length}人）`;
     if (!confirm(`${methodLabel}しますか？`)) return;
 
@@ -627,6 +649,7 @@ export default function BroadcastPage() {
         gender: currentMethod === 'narrowcast' && gender ? gender : undefined,
         ageRange: currentMethod === 'narrowcast' && ageRange ? ageRange : undefined,
         prefectures: currentMethod === 'prefecture' && prefectures.length > 0 ? prefectures : undefined,
+        recentDays: currentMethod === 'recent_followers' ? Number(recentDays) : undefined,
         testUserIds: testUserIds || undefined,
         broadcastLang,
       });
@@ -695,6 +718,7 @@ export default function BroadcastPage() {
         gender: deliveryMethod === 'narrowcast' && !isTest && gender ? gender : undefined,
         ageRange: deliveryMethod === 'narrowcast' && !isTest && ageRange ? ageRange : undefined,
         prefectures: deliveryMethod === 'prefecture' && !isTest && prefectures.length > 0 ? prefectures : undefined,
+        recentDays: deliveryMethod === 'recent_followers' && !isTest ? Number(recentDays) : undefined,
         broadcastLang,
         scheduledAt: isoStr,
       });
@@ -846,9 +870,11 @@ export default function BroadcastPage() {
     ? testUsers.length
     : deliveryMethod === 'prefecture'
       ? prefectureCount
-      : deliveryMethod === 'narrowcast'
-        ? narrowcastEstimate
-        : (targetedReaches ?? followerCount);
+      : deliveryMethod === 'recent_followers'
+        ? recentFollowerCount
+        : deliveryMethod === 'narrowcast'
+          ? narrowcastEstimate
+          : (targetedReaches ?? followerCount);
   const isEstimate = deliveryMethod === 'narrowcast' && (!!area || !!gender || !!ageRange);
 
   // =====================================================
@@ -1088,6 +1114,32 @@ export default function BroadcastPage() {
                       );
                     });
                   })()}
+                </div>
+              </div>
+            )}
+
+            {/* 新規友達フィルター */}
+            {deliveryMethod === 'recent_followers' && (
+              <div className="mt-4 space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                  <p className="text-sm font-medium text-green-800">最近友達追加したユーザーに配信</p>
+                  <p className="text-xs text-green-600 mt-0.5">指定期間内に友達追加したユーザーに個別配信します。</p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">期間</label>
+                  <div className="flex gap-2">
+                    {RECENT_PERIOD_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setRecentDays(opt.value)}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          recentDays === opt.value ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
