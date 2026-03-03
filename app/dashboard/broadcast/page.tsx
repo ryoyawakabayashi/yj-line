@@ -1106,6 +1106,102 @@ export default function BroadcastPage() {
                 <span className="text-xs text-gray-400 ml-1.5">（AI診断登録ユーザー）</span>
               )}
             </div>
+
+            {/* 配信タイミング */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setScheduleMode('now')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    scheduleMode === 'now' ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  今すぐ配信
+                </button>
+                <button
+                  onClick={() => setScheduleMode('scheduled')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    scheduleMode === 'scheduled' ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  予約配信
+                </button>
+              </div>
+              {scheduleMode === 'scheduled' && (
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="date"
+                    value={schedDate}
+                    onChange={(e) => setSchedDate(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                  />
+                  <select
+                    value={schedHour}
+                    onChange={(e) => setSchedHour(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={String(i)}>{String(i).padStart(2, '0')}</option>
+                    ))}
+                  </select>
+                  <span className="text-gray-500 text-sm">:</span>
+                  <select
+                    value={schedMin}
+                    onChange={(e) => setSchedMin(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const v = String(i * 5).padStart(2, '0');
+                      return <option key={v} value={v}>{v}</option>;
+                    })}
+                  </select>
+                  <span className="text-gray-400 text-xs">(JST)</span>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (scheduleMode === 'scheduled') {
+                      handleSchedule(false);
+                    } else {
+                      handleSend();
+                    }
+                  }}
+                  disabled={sending || messages.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
+                  className="flex items-center gap-1.5 px-6 py-2.5 bg-[#d10a1c] hover:bg-[#b00917] text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  {scheduleMode === 'scheduled' ? <ClockIcon className="h-4 w-4" /> : <PaperAirplaneIcon className="h-4 w-4" />}
+                  {sending ? '送信中...' : scheduleMode === 'scheduled' ? '予約する' : '配信する'}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedTestUserIds(testUsers.map(u => u.lineUserId));
+                    if (scheduleMode === 'scheduled') {
+                      handleSchedule(true);
+                    } else {
+                      setShowTestSendModal(true);
+                    }
+                  }}
+                  disabled={sending || messages.length === 0 || testUsers.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  <PaperAirplaneIcon className="h-4 w-4" /> {scheduleMode === 'scheduled' ? 'テスト予約' : 'テスト配信'}
+                </button>
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={saving || messages.length === 0}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  <DocumentIcon className="h-4 w-4" /> {saving ? '保存中...' : '下書き保存'}
+                </button>
+                <Link
+                  href="/dashboard/broadcast/history"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+                >
+                  <BookmarkIcon className="h-4 w-4" /> 下書き読み込み
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* タイトル管理テキスト + 通知テキスト */}
@@ -1527,103 +1623,6 @@ export default function BroadcastPage() {
             )}
           </div>
 
-          {/* 配信方式 */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">配信方式</h3>
-            <div className="space-y-2 mb-4">
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${scheduleMode === 'now' ? 'border-[#eaae9e] bg-[#fdf6f4]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <input type="radio" name="scheduleMode" checked={scheduleMode === 'now'} onChange={() => setScheduleMode('now')} className="accent-[#eaae9e]" />
-                <div>
-                  <span className="text-sm font-medium text-gray-800">今すぐ配信</span>
-                  <p className="text-xs text-gray-500 mt-0.5">メッセージをすぐに送信します</p>
-                </div>
-              </label>
-              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${scheduleMode === 'scheduled' ? 'border-[#eaae9e] bg-[#fdf6f4]' : 'border-gray-200 hover:bg-gray-50'}`}>
-                <input type="radio" name="scheduleMode" checked={scheduleMode === 'scheduled'} onChange={() => setScheduleMode('scheduled')} className="accent-[#eaae9e] mt-0.5" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-gray-800">予約配信</span>
-                  <p className="text-xs text-gray-500 mt-0.5">日時を指定して配信します</p>
-                  {scheduleMode === 'scheduled' && (
-                    <div className="mt-3 space-y-2">
-                      <input
-                        type="date"
-                        value={schedDate}
-                        onChange={(e) => setSchedDate(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                      />
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={schedHour}
-                          onChange={(e) => setSchedHour(e.target.value)}
-                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                        >
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <option key={i} value={String(i)}>{String(i).padStart(2, '0')}</option>
-                          ))}
-                        </select>
-                        <span className="text-gray-500 text-sm font-medium">:</span>
-                        <select
-                          value={schedMin}
-                          onChange={(e) => setSchedMin(e.target.value)}
-                          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                        >
-                          {Array.from({ length: 12 }, (_, i) => {
-                            const v = String(i * 5).padStart(2, '0');
-                            return <option key={v} value={v}>{v}</option>;
-                          })}
-                        </select>
-                        <span className="text-gray-400 text-xs">(JST)</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => {
-                  if (scheduleMode === 'scheduled') {
-                    handleSchedule(false);
-                  } else {
-                    handleSend();
-                  }
-                }}
-                disabled={sending || messages.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
-                className="flex items-center gap-1.5 px-6 py-2.5 bg-[#d10a1c] hover:bg-[#b00917] text-white rounded-lg text-sm font-medium disabled:opacity-50"
-              >
-                {scheduleMode === 'scheduled' ? <ClockIcon className="h-4 w-4" /> : <PaperAirplaneIcon className="h-4 w-4" />}
-                {sending ? '送信中...' : scheduleMode === 'scheduled' ? '予約する' : '配信する'}
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedTestUserIds(testUsers.map(u => u.lineUserId));
-                  if (scheduleMode === 'scheduled') {
-                    handleSchedule(true);
-                  } else {
-                    setShowTestSendModal(true);
-                  }
-                }}
-                disabled={sending || messages.length === 0 || testUsers.length === 0 || (scheduleMode === 'scheduled' && !schedDate)}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-              >
-                <PaperAirplaneIcon className="h-4 w-4" /> {scheduleMode === 'scheduled' ? 'テスト予約' : 'テスト配信'}
-              </button>
-              <button
-                onClick={handleSaveDraft}
-                disabled={saving || messages.length === 0}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50"
-              >
-                <DocumentIcon className="h-4 w-4" /> {saving ? '保存中...' : '下書き保存'}
-              </button>
-              <Link
-                href="/dashboard/broadcast/history"
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
-              >
-                <BookmarkIcon className="h-4 w-4" /> 下書き読み込み
-              </Link>
-            </div>
-          </div>
         </div>
 
         {/* ═══════ 右カラム: プレビュー ═══════ */}
