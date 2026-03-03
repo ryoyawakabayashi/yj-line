@@ -1031,16 +1031,13 @@ export default function BroadcastPage() {
                 {/* 地域別チェックボックス */}
                 <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
                   {(() => {
-                    const regionCounts = REGION_PREFECTURES.map((group) =>
-                      group.prefectures.reduce((sum, p) => sum + (prefectureCounts[p.value] || 0), 0)
-                    );
-                    const maxRegionCount = Math.max(...regionCounts, 0);
-                    return REGION_PREFECTURES.map((group, gi) => {
+                    const allCounts = Object.values(prefectureCounts);
+                    const maxPrefCount = allCounts.length > 0 ? Math.max(...allCounts) : 0;
+                    return REGION_PREFECTURES.map((group) => {
                       const groupCodes = group.prefectures.map(p => p.value);
                       const allSelected = groupCodes.every(c => prefectures.includes(c));
                       const someSelected = groupCodes.some(c => prefectures.includes(c));
-                      const regionCount = regionCounts[gi];
-                      const isTopRegion = maxRegionCount > 0 && regionCount === maxRegionCount;
+                      const regionCount = groupCodes.reduce((sum, c) => sum + (prefectureCounts[c] || 0), 0);
                       return (
                         <div key={group.region} className="px-3 py-1.5">
                           {/* 地域ヘッダー */}
@@ -1058,9 +1055,9 @@ export default function BroadcastPage() {
                               }}
                               className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
                             />
-                            <span className={`text-sm font-semibold ${isTopRegion ? 'text-[#d10a1c]' : 'text-gray-800'}`}>{group.label}</span>
+                            <span className="text-sm font-semibold text-gray-800">{group.label}</span>
                             {regionCount > 0 && (
-                              <span className={`text-xs ml-auto font-medium ${isTopRegion ? 'text-[#d10a1c]' : 'text-gray-400'}`}>{regionCount.toLocaleString()}人</span>
+                              <span className="text-xs text-gray-400 ml-auto">{regionCount.toLocaleString()}人</span>
                             )}
                           </label>
                           {/* 都道府県 */}
@@ -1068,6 +1065,7 @@ export default function BroadcastPage() {
                             {group.prefectures.map((p) => {
                               const checked = prefectures.includes(p.value);
                               const cnt = prefectureCounts[p.value] || 0;
+                              const isTop = maxPrefCount > 0 && cnt === maxPrefCount;
                               return (
                                 <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
                                   <input
@@ -1081,7 +1079,7 @@ export default function BroadcastPage() {
                                     className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
                                   />
                                   <span className="text-xs text-gray-700">{p.label}</span>
-                                  {cnt > 0 && <span className="text-xs text-gray-400">({cnt})</span>}
+                                  {cnt > 0 && <span className={`text-xs font-medium ${isTop ? 'text-[#d10a1c]' : 'text-gray-400'}`}>({cnt})</span>}
                                 </label>
                               );
                             })}
