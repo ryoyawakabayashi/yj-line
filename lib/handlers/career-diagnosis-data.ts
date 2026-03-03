@@ -37,6 +37,20 @@ export interface CareerTypeInfo {
 }
 
 // =====================================================
+// 軸ラベル定義（結果画面でアルファベット解説に使用）
+// =====================================================
+export const AXIS_LABELS: Record<string, Lang5> = {
+  G: { ja: 'チームで働く', en: 'Teamwork', ko: '함께 일하기', zh: '团队合作', vi: 'Làm nhóm' },
+  L: { ja: 'ひとりで働く', en: 'Work alone', ko: '혼자 일하기', zh: '独自工作', vi: 'Làm một mình' },
+  A: { ja: '体を動かす', en: 'Active work', ko: '몸을 움직이는', zh: '体力活动', vi: 'Vận động' },
+  D: { ja: 'デスクワーク', en: 'Desk work', ko: '사무직', zh: '办公室工作', vi: 'Làm văn phòng' },
+  R: { ja: 'コツコツ型', en: 'Routine', ko: '루틴형', zh: '固定模式', vi: 'Ổn định' },
+  V: { ja: '変化を楽しむ', en: 'Variety', ko: '변화를 즐기는', zh: '喜欢变化', vi: 'Đa dạng' },
+  J: { ja: '日本語を使う', en: 'Use Japanese', ko: '일본어 사용', zh: '使用日语', vi: 'Dùng tiếng Nhật' },
+  O: { ja: '日本語少なめ', en: 'Less Japanese', ko: '일본어 적게', zh: '少用日语', vi: 'Ít tiếng Nhật' },
+};
+
+// =====================================================
 // 8問の質問定義
 // =====================================================
 export const CAREER_QUESTIONS: CareerQuestion[] = [

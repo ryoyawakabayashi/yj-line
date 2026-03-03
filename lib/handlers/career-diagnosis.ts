@@ -18,6 +18,7 @@ import {
   CAREER_QUESTIONS,
   CAREER_TYPES,
   LANG_PATH_MAP,
+  AXIS_LABELS,
   type CareerTypeInfo,
 } from './career-diagnosis-data';
 
@@ -282,6 +283,30 @@ function createCareerResultFlex(
   const title = typeInfo.title[lang] || typeInfo.title.ja;
   const description = typeInfo.description[lang] || typeInfo.description.ja;
 
+  // 各アルファベットの解説行を生成
+  const axisExplanations = typeCode.split('').map((letter) => ({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      {
+        type: 'text',
+        text: letter,
+        size: 'sm',
+        weight: 'bold',
+        color: '#1DB446',
+        flex: 0,
+      },
+      {
+        type: 'text',
+        text: AXIS_LABELS[letter]?.[lang] || AXIS_LABELS[letter]?.ja || letter,
+        size: 'sm',
+        color: '#555555',
+        margin: 'md',
+      },
+    ],
+    margin: 'sm',
+  }));
+
   const industryBoxes = trackedIndustries.map((industry) => ({
     type: 'box',
     layout: 'vertical',
@@ -361,13 +386,10 @@ function createCareerResultFlex(
             margin: 'md',
           },
           {
-            type: 'text',
-            text: typeCode,
-            size: 'sm',
-            color: '#888888',
-            align: 'center',
-            margin: 'xs',
+            type: 'separator',
+            margin: 'lg',
           },
+          ...axisExplanations,
           {
             type: 'separator',
             margin: 'lg',
