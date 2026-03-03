@@ -1029,60 +1029,67 @@ export default function BroadcastPage() {
                 </div>
 
                 {/* 地域別チェックボックス */}
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[320px] overflow-y-auto">
-                  {REGION_PREFECTURES.map((group) => {
-                    const groupCodes = group.prefectures.map(p => p.value);
-                    const allSelected = groupCodes.every(c => prefectures.includes(c));
-                    const someSelected = groupCodes.some(c => prefectures.includes(c));
-                    const regionCount = groupCodes.reduce((sum, c) => sum + (prefectureCounts[c] || 0), 0);
-                    return (
-                      <div key={group.region} className="px-3 py-2">
-                        {/* 地域ヘッダー */}
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                            onChange={() => {
-                              if (allSelected) {
-                                setPrefectures(prev => prev.filter(p => !groupCodes.includes(p)));
-                              } else {
-                                setPrefectures(prev => [...new Set([...prev, ...groupCodes])]);
-                              }
-                            }}
-                            className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
-                          />
-                          <span className="text-sm font-semibold text-gray-800">{group.label}</span>
-                          {regionCount > 0 && (
-                            <span className="text-xs text-gray-400 ml-auto">{regionCount.toLocaleString()}人</span>
-                          )}
-                        </label>
-                        {/* 都道府県 */}
-                        <div className="ml-5 mt-1 flex flex-wrap gap-x-1 gap-y-0.5">
-                          {group.prefectures.map((p) => {
-                            const checked = prefectures.includes(p.value);
-                            const cnt = prefectureCounts[p.value] || 0;
-                            return (
-                              <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => {
-                                    setPrefectures(prev =>
-                                      checked ? prev.filter(v => v !== p.value) : [...prev, p.value]
-                                    );
-                                  }}
-                                  className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
-                                />
-                                <span className="text-xs text-gray-700">{p.label}</span>
-                                {cnt > 0 && <span className="text-xs text-gray-400">({cnt})</span>}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  {(() => {
+                    const regionCounts = REGION_PREFECTURES.map((group) =>
+                      group.prefectures.reduce((sum, p) => sum + (prefectureCounts[p.value] || 0), 0)
                     );
-                  })}
+                    const maxRegionCount = Math.max(...regionCounts, 0);
+                    return REGION_PREFECTURES.map((group, gi) => {
+                      const groupCodes = group.prefectures.map(p => p.value);
+                      const allSelected = groupCodes.every(c => prefectures.includes(c));
+                      const someSelected = groupCodes.some(c => prefectures.includes(c));
+                      const regionCount = regionCounts[gi];
+                      const isTopRegion = maxRegionCount > 0 && regionCount === maxRegionCount;
+                      return (
+                        <div key={group.region} className="px-3 py-1.5">
+                          {/* 地域ヘッダー */}
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                              onChange={() => {
+                                if (allSelected) {
+                                  setPrefectures(prev => prev.filter(p => !groupCodes.includes(p)));
+                                } else {
+                                  setPrefectures(prev => [...new Set([...prev, ...groupCodes])]);
+                                }
+                              }}
+                              className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
+                            />
+                            <span className={`text-sm font-semibold ${isTopRegion ? 'text-[#d10a1c]' : 'text-gray-800'}`}>{group.label}</span>
+                            {regionCount > 0 && (
+                              <span className={`text-xs ml-auto font-medium ${isTopRegion ? 'text-[#d10a1c]' : 'text-gray-400'}`}>{regionCount.toLocaleString()}人</span>
+                            )}
+                          </label>
+                          {/* 都道府県 */}
+                          <div className="ml-5 mt-0.5 flex flex-wrap gap-x-1 gap-y-0">
+                            {group.prefectures.map((p) => {
+                              const checked = prefectures.includes(p.value);
+                              const cnt = prefectureCounts[p.value] || 0;
+                              return (
+                                <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => {
+                                      setPrefectures(prev =>
+                                        checked ? prev.filter(v => v !== p.value) : [...prev, p.value]
+                                      );
+                                    }}
+                                    className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
+                                  />
+                                  <span className="text-xs text-gray-700">{p.label}</span>
+                                  {cnt > 0 && <span className="text-xs text-gray-400">({cnt})</span>}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}
