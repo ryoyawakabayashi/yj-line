@@ -28,6 +28,13 @@ interface CampaignStats {
   uniqueClick?: number;
 }
 
+interface NarrowcastProgress {
+  phase: 'waiting' | 'sending' | 'succeeded' | 'failed';
+  successCount?: number;
+  failureCount?: number;
+  targetCount?: number;
+}
+
 type TabType = 'sent' | 'scheduled' | 'draft';
 
 const TABS: { key: TabType; label: string; icon: any }[] = [
@@ -39,6 +46,7 @@ const TABS: { key: TabType; label: string; icon: any }[] = [
 const METHOD_LABELS: Record<string, string> = {
   broadcast: 'Broadcast',
   narrowcast: 'Narrowcast',
+  prefecture: '都道府県',
   test: 'テスト',
 };
 
@@ -68,10 +76,35 @@ export default function BroadcastHistoryPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [statsMap, setStatsMap] = useState<Record<string, CampaignStats | null>>({});
+  const [progressMap, setProgressMap] = useState<Record<string, NarrowcastProgress | null>>({});
+
+  const fetchNarrowcastProgress = async (campaigns: Campaign[]) => {
+    // narrowcast配信でrequestIdがあるものだけProgress APIで正確な配信数を取得
+    const narrowcasts = campaigns.filter(
+      (c) => c.delivery_method === 'narrowcast' && c.result?.requestId && c.status === 'sent'
+    );
+    const results: Record<string, NarrowcastProgress | null> = {};
+    await Promise.all(
+      narrowcasts.map(async (c) => {
+        try {
+          const data = await apiGet({ action: 'narrowcast_progress', requestId: c.result.requestId });
+          if (data.phase) {
+            results[c.id] = data;
+          } else {
+            results[c.id] = null;
+          }
+        } catch {
+          results[c.id] = null;
+        }
+      })
+    );
+    setProgressMap(results);
+  };
 
   const fetchCampaigns = async (status: string) => {
     setLoading(true);
     setStatsMap({});
+    setProgressMap({});
     try {
       if (status === 'sent') {
         const [sentRes, failedRes] = await Promise.all([
@@ -81,8 +114,9 @@ export default function BroadcastHistoryPage() {
         const all = [...(sentRes.campaigns || []), ...(failedRes.campaigns || [])];
         all.sort((a: Campaign, b: Campaign) => new Date(b.executed_at || b.created_at).getTime() - new Date(a.executed_at || a.created_at).getTime());
         setCampaigns(all);
-        // Fetch stats for each campaign with aggUnit
+        // Fetch stats and narrowcast progress in parallel
         fetchStatsForCampaigns(all);
+        fetchNarrowcastProgress(all);
       } else {
         const res = await apiGet({ action: 'campaigns', status });
         setCampaigns(res.campaigns || []);
@@ -211,7 +245,9 @@ export default function BroadcastHistoryPage() {
               <tbody>
                 {campaigns.map((c) => {
                   const stats = statsMap[c.id];
+                  const progress = progressMap[c.id];
                   const hasAggUnit = !!c.result?.aggUnit;
+                  const isNarrowcast = c.delivery_method === 'narrowcast';
                   return (
                     <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
                       {/* 名前 */}
@@ -237,18 +273,27 @@ export default function BroadcastHistoryPage() {
                         <>
                           <td className="py-3 px-4 text-gray-600">{formatDate(c.executed_at)}</td>
                           <td className="py-3 px-4 text-center text-gray-600">{Array.isArray(c.messages) ? c.messages.length : '-'}</td>
+                          {/* 送信数 */}
                           <td className="py-3 px-4 text-right font-medium text-gray-800">
                             {c.delivery_method === 'test'
                               ? (c.result?.successCount ?? '-')
-                              : (stats?.uniqueImpression !== undefined ? stats.uniqueImpression.toLocaleString() : hasAggUnit ? <span className="text-gray-400 text-xs">集計中</span> : '-')
+                              : isNarrowcast && progress
+                                ? (progress.phase === 'succeeded' || progress.phase === 'sending'
+                                  ? <span>{(progress.successCount ?? 0).toLocaleString()}<span className="text-gray-400 text-xs ml-0.5">人</span></span>
+                                  : progress.phase === 'waiting'
+                                    ? <span className="text-gray-400 text-xs">送信待ち</span>
+                                    : <span className="text-red-500 text-xs">失敗</span>)
+                                : (stats?.uniqueImpression !== undefined ? stats.uniqueImpression.toLocaleString() : hasAggUnit ? <span className="text-gray-400 text-xs">集計中</span> : '-')
                             }
                           </td>
+                          {/* 開封数 */}
                           <td className="py-3 px-4 text-right font-medium text-gray-800">
                             {c.delivery_method === 'test'
                               ? '-'
                               : (stats?.uniqueImpression !== undefined ? stats.uniqueImpression.toLocaleString() : hasAggUnit ? <span className="text-gray-400 text-xs">集計中</span> : '-')
                             }
                           </td>
+                          {/* クリック数 */}
                           <td className="py-3 px-4 text-right font-medium text-gray-800">
                             {c.delivery_method === 'test'
                               ? '-'

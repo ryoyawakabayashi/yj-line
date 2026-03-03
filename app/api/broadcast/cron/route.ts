@@ -27,17 +27,30 @@ const AREA_PRESETS: Record<string, string[]> = {
   kyushu: ['jp_40', 'jp_41', 'jp_42', 'jp_43', 'jp_44', 'jp_45', 'jp_46', 'jp_47'],
 };
 
+interface CarouselBubble {
+  imageUrl?: string;
+  title?: string;
+  body?: string;
+  buttons?: { label: string; url: string; campaign?: string; actionType?: 'uri' | 'message'; messageText?: string; color?: string }[];
+}
+
 interface MessageItem {
-  type: 'text' | 'card' | 'image';
+  type: 'text' | 'card' | 'image' | 'carousel';
   text?: string;
   imageUrl?: string;
   title?: string;
   body?: string;
   altText?: string;
-  buttons?: { label: string; url: string; campaign?: string }[];
+  buttons?: { label: string; url: string; campaign?: string; actionType?: 'uri' | 'message'; messageText?: string; color?: string }[];
   originalUrl?: string;
   linkUrl?: string;
   linkCampaign?: string;
+  imageFullWidth?: boolean;
+  imageAspectRatio?: string;
+  imageAspectMode?: 'cover' | 'fit';
+  imageNaturalWidth?: number;
+  imageNaturalHeight?: number;
+  bubbles?: CarouselBubble[];
 }
 
 function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: string): string {
@@ -50,22 +63,52 @@ function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: strin
   return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(trackedUrl)}`;
 }
 
-function buildLineMessages(items: MessageItem[], broadcastId?: string): object[] {
+function buildLineMessages(items: MessageItem[], broadcastId?: string, notificationText?: string): object[] {
   return items.map((item) => {
     if (item.type === 'text') {
       return { type: 'text', text: item.text || '' };
     }
     if (item.type === 'image') {
       const url = item.originalUrl || '';
+      const rawRatio = item.imageAspectRatio || 'original';
+      // aspectRatio計算: LINEは1:3〜3:1の範囲のみ対応
+      let ar: string;
+      if (rawRatio === 'original' && item.imageNaturalWidth && item.imageNaturalHeight) {
+        // GCDで簡約化
+        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+        const g = gcd(item.imageNaturalWidth, item.imageNaturalHeight);
+        let w = item.imageNaturalWidth / g;
+        let h = item.imageNaturalHeight / g;
+        // LINE制限: 1:3〜3:1にクランプ
+        if (w / h > 3) h = Math.round(w / 3);
+        if (h / w > 3) w = Math.round(h / 3);
+        ar = `${w}:${h}`;
+      } else if (rawRatio === 'original') {
+        ar = '20:13';
+      } else {
+        ar = rawRatio;
+      }
+      const am = rawRatio === 'original' ? 'cover' : (item.imageAspectMode || 'cover');
       if (item.linkUrl) {
         const linkUri = createLiffUrl(item.linkUrl, item.linkCampaign, broadcastId);
         return {
-          type: 'flex', altText: '画像メッセージ',
+          type: 'flex', altText: notificationText || '画像メッセージ',
           contents: {
-            type: 'bubble',
+            type: 'bubble', size: 'mega',
             hero: {
-              type: 'image', url, size: 'full', aspectRatio: '20:13', aspectMode: 'cover',
+              type: 'image', url, size: 'full', aspectRatio: ar, aspectMode: am,
               action: { type: 'uri', label: 'open', uri: linkUri },
+            },
+          },
+        };
+      }
+      if (item.imageFullWidth) {
+        return {
+          type: 'flex', altText: notificationText || '画像メッセージ',
+          contents: {
+            type: 'bubble', size: 'mega',
+            hero: {
+              type: 'image', url, size: 'full', aspectRatio: ar, aspectMode: am,
             },
           },
         };
@@ -76,16 +119,40 @@ function buildLineMessages(items: MessageItem[], broadcastId?: string): object[]
       const bodyContents: object[] = [];
       if (item.title) bodyContents.push({ type: 'text', text: item.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
       if (item.body) bodyContents.push({ type: 'text', text: item.body, size: 'md', color: '#555555', wrap: true, margin: item.title ? 'md' : 'none' });
-      const footerContents = (item.buttons || []).map((btn) => ({
-        type: 'button',
-        action: { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) },
-        style: 'primary', color: '#f9c93e', margin: 'sm',
-      }));
+      const footerContents = (item.buttons || []).map((btn: any) => {
+        const action = btn.actionType === 'message'
+          ? { type: 'message', label: btn.label, text: btn.messageText || btn.label }
+          : { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) };
+        return { type: 'button', action, style: 'primary', color: btn.color || '#f9c93e', margin: 'sm' };
+      });
       const bubble: Record<string, unknown> = { type: 'bubble' };
       if (item.imageUrl) bubble.hero = { type: 'image', url: item.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
       if (bodyContents.length > 0) bubble.body = { type: 'box', layout: 'vertical', contents: bodyContents };
       if (footerContents.length > 0) bubble.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents };
-      return { type: 'flex', altText: item.altText || item.title || item.body || 'カードメッセージ', contents: bubble };
+      return { type: 'flex', altText: notificationText || item.altText || item.title || item.body || 'カードメッセージ', contents: bubble };
+    }
+    if (item.type === 'carousel') {
+      const bubbleContents = (item.bubbles || []).map((bubble) => {
+        const bodyContents: object[] = [];
+        if (bubble.title) bodyContents.push({ type: 'text', text: bubble.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
+        if (bubble.body) bodyContents.push({ type: 'text', text: bubble.body, size: 'md', color: '#555555', wrap: true, margin: bubble.title ? 'md' : 'none' });
+        const footerContents = (bubble.buttons || []).map((btn: any) => {
+          const action = btn.actionType === 'message'
+            ? { type: 'message', label: btn.label, text: btn.messageText || btn.label }
+            : { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) };
+          return { type: 'button', action, style: 'primary', color: btn.color || '#f9c93e', margin: 'sm' };
+        });
+        const b: Record<string, unknown> = { type: 'bubble' };
+        if (bubble.imageUrl) b.hero = { type: 'image', url: bubble.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
+        if (bodyContents.length > 0) b.body = { type: 'box', layout: 'vertical', contents: bodyContents };
+        if (footerContents.length > 0) b.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents };
+        return b;
+      });
+      return {
+        type: 'flex',
+        altText: notificationText || item.altText || 'カルーセルメッセージ',
+        contents: { type: 'carousel', contents: bubbleContents },
+      };
     }
     return { type: 'text', text: '' };
   });
@@ -122,7 +189,7 @@ export async function GET(request: NextRequest) {
     for (const campaign of campaigns) {
       const campaignId = campaign.id;
       const aggUnit = generateAggregationUnit(campaignId);
-      const messages = buildLineMessages(campaign.messages as MessageItem[], campaignId);
+      const messages = buildLineMessages(campaign.messages as MessageItem[], campaignId, (campaign as any).demographic?.notificationText);
 
       try {
         let result: any = {};
@@ -137,6 +204,23 @@ export async function GET(request: NextRequest) {
             if (ok) successCount++;
           }
           result = { testUsers: (testUsers || []).length, successCount };
+
+        } else if (campaign.delivery_method === 'prefecture') {
+          // 都道府県別配信: AI診断で該当都道府県を登録したユーザーにpush（複数対応）
+          const prefList: string[] = campaign.demographic?.prefectures || (campaign.demographic?.prefecture ? [campaign.demographic.prefecture] : []);
+          if (prefList.length === 0) throw new Error('Prefecture: no prefecture specified');
+          const { data: diagUsers } = await supabase
+            .from('diagnosis_results')
+            .select('user_id')
+            .in('q4_prefecture', prefList);
+          const uniqueIds = [...new Set((diagUsers || []).map((d: any) => d.user_id))];
+          if (uniqueIds.length === 0) throw new Error(`Prefecture: no users for ${prefList.join(',')}`);
+          let successCount = 0;
+          for (const uid of uniqueIds) {
+            const ok = await pushMessage(uid, messages as any);
+            if (ok) successCount++;
+          }
+          result = { prefectures: prefList, targetUsers: uniqueIds.length, successCount };
 
         } else if (campaign.delivery_method === 'narrowcast') {
           // デモグラフィックフィルターを動的に構築

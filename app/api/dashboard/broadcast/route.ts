@@ -16,6 +16,7 @@ const BROADCAST_API = 'https://api.line.me/v2/bot/message/broadcast';
 const NARROWCAST_API = 'https://api.line.me/v2/bot/message/narrowcast';
 const INSIGHT_EVENT_API = 'https://api.line.me/v2/bot/insight/message/event/aggregation';
 const INSIGHT_DEMOGRAPHIC_API = 'https://api.line.me/v2/bot/insight/demographic';
+const NARROWCAST_PROGRESS_API = 'https://api.line.me/v2/bot/message/progress/narrowcast';
 
 // LINE Demographic API のエリア名 → エリアプリセットキーへのマッピング
 // LINE APIは「関東」「近畿」等のリージョン名で返す
@@ -50,17 +51,30 @@ const AREA_PRESETS: Record<string, string[]> = {
 // ヘルパー関数
 // =====================================================
 
+interface CarouselBubble {
+  imageUrl?: string;
+  title?: string;
+  body?: string;
+  buttons?: { label: string; url: string; campaign?: string; actionType?: 'uri' | 'message'; messageText?: string; color?: string }[];
+}
+
 interface MessageItem {
-  type: 'text' | 'card' | 'image';
+  type: 'text' | 'card' | 'image' | 'carousel';
   text?: string;
   imageUrl?: string;
   title?: string;
   body?: string;
   altText?: string;
-  buttons?: { label: string; url: string; campaign?: string }[];
+  buttons?: { label: string; url: string; campaign?: string; actionType?: 'uri' | 'message'; messageText?: string; color?: string }[];
   originalUrl?: string;
   linkUrl?: string;
   linkCampaign?: string;
+  imageFullWidth?: boolean;
+  imageAspectRatio?: string;
+  imageAspectMode?: 'cover' | 'fit';
+  imageNaturalWidth?: number;
+  imageNaturalHeight?: number;
+  bubbles?: CarouselBubble[];
 }
 
 function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: string): string {
@@ -73,23 +87,51 @@ function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: strin
   return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(trackedUrl)}`;
 }
 
-function buildLineMessages(items: MessageItem[], broadcastId?: string): object[] {
+function buildLineMessages(items: MessageItem[], broadcastId?: string, notificationText?: string): object[] {
   return items.map((item) => {
     if (item.type === 'text') {
       return { type: 'text', text: item.text || '' };
     }
     if (item.type === 'image') {
       const url = item.originalUrl || '';
+      const rawRatio = item.imageAspectRatio || 'original';
+      const alt = notificationText || '画像メッセージ';
+      // aspectRatio計算: LINEは1:3〜3:1の範囲のみ対応
+      let ar: string;
+      if (rawRatio === 'original' && item.imageNaturalWidth && item.imageNaturalHeight) {
+        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+        const g = gcd(item.imageNaturalWidth, item.imageNaturalHeight);
+        let w = item.imageNaturalWidth / g;
+        let h = item.imageNaturalHeight / g;
+        if (w / h > 3) h = Math.round(w / 3);
+        if (h / w > 3) w = Math.round(h / 3);
+        ar = `${w}:${h}`;
+      } else if (rawRatio === 'original') {
+        ar = '20:13';
+      } else {
+        ar = rawRatio;
+      }
+      const am = rawRatio === 'original' ? 'cover' : (item.imageAspectMode || 'cover');
       if (item.linkUrl) {
         const linkUri = createLiffUrl(item.linkUrl, item.linkCampaign, broadcastId);
         return {
-          type: 'flex',
-          altText: '画像メッセージ',
+          type: 'flex', altText: alt,
           contents: {
-            type: 'bubble',
+            type: 'bubble', size: 'mega',
             hero: {
-              type: 'image', url, size: 'full', aspectRatio: '20:13', aspectMode: 'cover',
+              type: 'image', url, size: 'full', aspectRatio: ar, aspectMode: am,
               action: { type: 'uri', label: 'open', uri: linkUri },
+            },
+          },
+        };
+      }
+      if (item.imageFullWidth) {
+        return {
+          type: 'flex', altText: alt,
+          contents: {
+            type: 'bubble', size: 'mega',
+            hero: {
+              type: 'image', url, size: 'full', aspectRatio: ar, aspectMode: am,
             },
           },
         };
@@ -100,16 +142,40 @@ function buildLineMessages(items: MessageItem[], broadcastId?: string): object[]
       const bodyContents: object[] = [];
       if (item.title) bodyContents.push({ type: 'text', text: item.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
       if (item.body) bodyContents.push({ type: 'text', text: item.body, size: 'md', color: '#555555', wrap: true, margin: item.title ? 'md' : 'none' });
-      const footerContents = (item.buttons || []).map((btn) => ({
-        type: 'button',
-        action: { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) },
-        style: 'primary', color: '#f9c93e', margin: 'sm',
-      }));
+      const footerContents = (item.buttons || []).map((btn: any) => {
+        const action = btn.actionType === 'message'
+          ? { type: 'message', label: btn.label, text: btn.messageText || btn.label }
+          : { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) };
+        return { type: 'button', action, style: 'primary', color: btn.color || '#f9c93e', margin: 'sm' };
+      });
       const bubble: Record<string, unknown> = { type: 'bubble' };
       if (item.imageUrl) bubble.hero = { type: 'image', url: item.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
       if (bodyContents.length > 0) bubble.body = { type: 'box', layout: 'vertical', contents: bodyContents };
       if (footerContents.length > 0) bubble.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents };
-      return { type: 'flex', altText: item.altText || item.title || item.body || 'カードメッセージ', contents: bubble };
+      return { type: 'flex', altText: notificationText || item.altText || item.title || item.body || 'カードメッセージ', contents: bubble };
+    }
+    if (item.type === 'carousel') {
+      const bubbleContents = (item.bubbles || []).map((bubble) => {
+        const bodyContents: object[] = [];
+        if (bubble.title) bodyContents.push({ type: 'text', text: bubble.title, weight: 'bold', size: 'lg', color: '#333333', wrap: true });
+        if (bubble.body) bodyContents.push({ type: 'text', text: bubble.body, size: 'md', color: '#555555', wrap: true, margin: bubble.title ? 'md' : 'none' });
+        const footerContents = (bubble.buttons || []).map((btn: any) => {
+          const action = btn.actionType === 'message'
+            ? { type: 'message', label: btn.label, text: btn.messageText || btn.label }
+            : { type: 'uri', label: btn.label, uri: createLiffUrl(btn.url, btn.campaign, broadcastId) };
+          return { type: 'button', action, style: 'primary', color: btn.color || '#f9c93e', margin: 'sm' };
+        });
+        const b: Record<string, unknown> = { type: 'bubble' };
+        if (bubble.imageUrl) b.hero = { type: 'image', url: bubble.imageUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' };
+        if (bodyContents.length > 0) b.body = { type: 'box', layout: 'vertical', contents: bodyContents };
+        if (footerContents.length > 0) b.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footerContents };
+        return b;
+      });
+      return {
+        type: 'flex',
+        altText: notificationText || item.altText || 'カルーセルメッセージ',
+        contents: { type: 'carousel', contents: bubbleContents },
+      };
     }
     return { type: 'text', text: '' };
   });
@@ -132,6 +198,15 @@ export async function GET(request: NextRequest) {
 
   try {
     switch (action) {
+      case 'bot_profile': {
+        const botRes = await fetch('https://api.line.me/v2/bot/info', {
+          headers: { Authorization: `Bearer ${config.line.channelAccessToken}` },
+        });
+        if (!botRes.ok) return NextResponse.json({ error: 'Bot info API error' }, { status: botRes.status });
+        const botData = await botRes.json();
+        return NextResponse.json({ displayName: botData.displayName, pictureUrl: botData.pictureUrl });
+      }
+
       case 'follower_count': {
         const stats = await getFollowerStatistics();
         return NextResponse.json({
@@ -150,6 +225,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Demographic API error', available: false }, { status: demoRes.status });
         }
         const demoData = await demoRes.json();
+        console.log('[Demographic API] available:', demoData.available, 'areas:', JSON.stringify(demoData.areas?.length ?? 0), 'genders:', JSON.stringify(demoData.genders?.length ?? 0));
         if (!demoData.available) {
           return NextResponse.json({ available: false, areas: [] });
         }
@@ -178,6 +254,7 @@ export async function GET(request: NextRequest) {
         for (const [presetKey, pct] of Object.entries(areaPercentages)) {
           estimates[presetKey] = Math.round(targetedReaches * pct / 100);
         }
+        console.log('[Demographic API] areaPercentages:', JSON.stringify(areaPercentages), 'estimates:', JSON.stringify(estimates), 'targetedReaches:', targetedReaches);
 
         // 性別の割合
         const genderPctMap: Record<string, number> = {};
@@ -264,6 +341,57 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ campaigns: data || [] });
       }
 
+      case 'prefecture_users': {
+        // AI診断で都道府県を登録したユーザー数を都道府県別に取得
+        const prefParam = request.nextUrl.searchParams.get('prefecture');
+        if (prefParam) {
+          // 特定の都道府県のユーザーIDリストを取得（最新の診断結果を使用）
+          const { data, error } = await supabase
+            .from('diagnosis_results')
+            .select('user_id')
+            .eq('q4_prefecture', prefParam);
+          if (error) throw error;
+          // ユニークなユーザーIDのみ
+          const uniqueIds = [...new Set((data || []).map((d) => d.user_id))];
+          return NextResponse.json({ prefecture: prefParam, userIds: uniqueIds, count: uniqueIds.length });
+        }
+        // 全都道府県のユーザー数サマリー
+        const { data, error } = await supabase
+          .from('diagnosis_results')
+          .select('q4_prefecture, user_id');
+        if (error) throw error;
+        // 都道府県ごとのユニークユーザー数を集計
+        const prefMap: Record<string, Set<string>> = {};
+        for (const row of data || []) {
+          if (!row.q4_prefecture) continue;
+          if (!prefMap[row.q4_prefecture]) prefMap[row.q4_prefecture] = new Set();
+          prefMap[row.q4_prefecture].add(row.user_id);
+        }
+        const counts: Record<string, number> = {};
+        for (const [pref, users] of Object.entries(prefMap)) {
+          counts[pref] = users.size;
+        }
+        return NextResponse.json({ counts });
+      }
+
+      case 'narrowcast_progress': {
+        // Narrowcast Progress API: 配信後の正確な送信数を取得
+        const requestId = request.nextUrl.searchParams.get('requestId');
+        if (!requestId) return NextResponse.json({ error: 'requestId parameter required' }, { status: 400 });
+
+        const progressRes = await fetch(`${NARROWCAST_PROGRESS_API}?requestId=${requestId}`, {
+          headers: { Authorization: `Bearer ${config.line.channelAccessToken}` },
+        });
+        if (!progressRes.ok) {
+          const errText = await progressRes.text();
+          return NextResponse.json({ error: errText, status: progressRes.status }, { status: progressRes.status });
+        }
+        const progress = await progressRes.json();
+        // phase: "waiting" | "sending" | "succeeded" | "failed"
+        // successCount, failureCount, targetCount, errorCode, acceptedTime, completedTime
+        return NextResponse.json(progress);
+      }
+
       case 'broadcast_stats': {
         const unit = request.nextUrl.searchParams.get('unit');
         if (!unit) return NextResponse.json({ error: 'unit parameter required' }, { status: 400 });
@@ -303,12 +431,13 @@ export async function POST(request: NextRequest) {
     switch (action) {
       // ─── 配信実行 ──────────────────────────
       case 'send': {
-        const { name, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang } = body;
+        const { name, notificationText, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang, prefectures, testUserIds } = body;
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
         }
 
         // キャンペーンレコード作成
+        const prefList: string[] | null = Array.isArray(prefectures) && prefectures.length > 0 ? prefectures : null;
         const { data: campaign, error: insertErr } = await supabase
           .from('broadcast_campaigns')
           .insert({
@@ -317,7 +446,9 @@ export async function POST(request: NextRequest) {
             delivery_method: deliveryMethod || 'broadcast',
             messages,
             area: area || null,
-            demographic: (genderFilter || ageRange) ? { gender: genderFilter || null, age: ageRange || null } : null,
+            demographic: (genderFilter || ageRange || prefList || notificationText)
+              ? { gender: genderFilter || null, age: ageRange || null, prefectures: prefList, notificationText: notificationText || null }
+              : null,
             broadcast_lang: broadcastLang || 'ja',
             executed_at: new Date().toISOString(),
             admin_email: auth.user?.email,
@@ -328,16 +459,21 @@ export async function POST(request: NextRequest) {
 
         const campaignId = campaign.id;
         const aggUnit = generateAggregationUnit(campaignId);
-        const lineMessages = buildLineMessages(messages, campaignId);
+        const lineMessages = buildLineMessages(messages, campaignId, notificationText);
 
         let result: any = {};
 
         if (deliveryMethod === 'test') {
-          // テストユーザーにpush
-          const { data: testUsers } = await supabase
-            .from('broadcast_test_users')
-            .select('line_user_id');
-          const userIds = (testUsers || []).map((u) => u.line_user_id);
+          // テスト配信: 選択されたテストユーザーにpush（未指定なら全員）
+          let userIds: string[];
+          if (Array.isArray(testUserIds) && testUserIds.length > 0) {
+            userIds = testUserIds;
+          } else {
+            const { data: testUsers } = await supabase
+              .from('broadcast_test_users')
+              .select('line_user_id');
+            userIds = (testUsers || []).map((u) => u.line_user_id);
+          }
           if (userIds.length === 0) {
             return NextResponse.json({ error: 'テストユーザーが登録されていません' }, { status: 400 });
           }
@@ -347,6 +483,27 @@ export async function POST(request: NextRequest) {
             if (ok) successCount++;
           }
           result = { testUsers: userIds.length, successCount };
+
+        } else if (deliveryMethod === 'prefecture') {
+          // 都道府県別配信: AI診断で都道府県を登録したユーザーにpush
+          if (!prefList || prefList.length === 0) {
+            return NextResponse.json({ error: '都道府県が指定されていません' }, { status: 400 });
+          }
+          const { data: diagUsers, error: diagErr } = await supabase
+            .from('diagnosis_results')
+            .select('user_id')
+            .in('q4_prefecture', prefList);
+          if (diagErr) throw diagErr;
+          const uniqueIds = [...new Set((diagUsers || []).map((d) => d.user_id))];
+          if (uniqueIds.length === 0) {
+            return NextResponse.json({ error: '選択した都道府県の登録ユーザーがいません' }, { status: 400 });
+          }
+          let successCount = 0;
+          for (const uid of uniqueIds) {
+            const ok = await pushMessage(uid, lineMessages as any);
+            if (ok) successCount++;
+          }
+          result = { prefectures: prefList, targetUsers: uniqueIds.length, successCount };
 
         } else if (deliveryMethod === 'narrowcast') {
           // デモグラフィックフィルターを動的に構築
@@ -426,14 +583,15 @@ export async function POST(request: NextRequest) {
 
       // ─── 下書き保存 ──────────────────────────
       case 'save_draft': {
-        const { id, name, messages, deliveryMethod, area, demographic, broadcastLang } = body;
+        const { id, name, notificationText: draftNotifText, messages, deliveryMethod, area, demographic, broadcastLang } = body;
+        const demo = demographic ? { ...demographic, notificationText: draftNotifText || null } : (draftNotifText ? { notificationText: draftNotifText } : null);
         const payload = {
           name: name || '無題の配信',
           status: 'draft' as const,
           delivery_method: deliveryMethod || 'broadcast',
           messages: messages || [],
           area: area || null,
-          demographic: demographic || null,
+          demographic: demo,
           broadcast_lang: broadcastLang || 'ja',
           admin_email: auth.user?.email,
           updated_at: new Date().toISOString(),
@@ -452,11 +610,12 @@ export async function POST(request: NextRequest) {
 
       // ─── 予約配信 ──────────────────────────
       case 'schedule': {
-        const { id, name, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, broadcastLang, scheduledAt } = body;
+        const { id, name, notificationText: schedNotifText, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, prefectures: schedPrefs, broadcastLang, scheduledAt } = body;
         if (!scheduledAt) return NextResponse.json({ error: '予約日時が必要です' }, { status: 400 });
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
         }
+        const schedPrefList: string[] | null = Array.isArray(schedPrefs) && schedPrefs.length > 0 ? schedPrefs : null;
 
         const payload = {
           name: name || '予約配信',
@@ -464,7 +623,9 @@ export async function POST(request: NextRequest) {
           delivery_method: deliveryMethod || 'broadcast',
           messages,
           area: area || null,
-          demographic: (schedGender || schedAge) ? { gender: schedGender || null, age: schedAge || null } : null,
+          demographic: (schedGender || schedAge || schedPrefList || schedNotifText)
+            ? { gender: schedGender || null, age: schedAge || null, prefectures: schedPrefList, notificationText: schedNotifText || null }
+            : null,
           broadcast_lang: broadcastLang || 'ja',
           scheduled_at: scheduledAt,
           admin_email: auth.user?.email,
