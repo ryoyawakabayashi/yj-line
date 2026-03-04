@@ -277,11 +277,12 @@ export default function BroadcastPage() {
   const [aiCombo, setAiCombo] = useState<Array<{ type: 'text' | 'card' | 'image'; hasImage?: boolean }>>([
     { type: 'text' }, { type: 'card', hasImage: true },
   ]);
-  const [aiUseCombo, setAiUseCombo] = useState(true);
+  const [aiUseCombo, setAiUseCombo] = useState(false);
   const [aiUploadedImages, setAiUploadedImages] = useState<Record<number, string>>({});
   const [aiUploadingIdx, setAiUploadingIdx] = useState<number | null>(null);
   const [aiExtraNote, setAiExtraNote] = useState('');
-  const [aiButtonUrl, setAiButtonUrl] = useState('https://www.yolo-japan.com/ja/job/');
+  const [aiButtonUrl, setAiButtonUrl] = useState('');
+  const [aiContentType, setAiContentType] = useState<'job' | 'event' | 'info' | 'campaign'>('job');
   // インラインAI生成
   const [aiInlineOpen, setAiInlineOpen] = useState<number | null>(null);
   const [aiInlineRole, setAiInlineRole] = useState('main');
@@ -908,11 +909,12 @@ export default function BroadcastPage() {
       const fullPrompt = aiExtraNote.trim()
         ? `${aiPrompt.trim()}\n\n## 追加の指示\n${aiExtraNote.trim()}`
         : aiPrompt.trim();
-      const payload: any = { prompt: fullPrompt };
+      const payload: any = { prompt: fullPrompt, contentType: aiContentType };
       if (aiUseCombo) {
         payload.combo = aiCombo;
       } else {
-        payload.messageType = aiMessageType;
+        // 「いつもの」= テキスト + カード(画像あり)
+        payload.combo = [{ type: 'text' }, { type: 'card', hasImage: true }];
       }
 
       const res = await fetch('/api/dashboard/broadcast/generate', {
@@ -2377,36 +2379,49 @@ export default function BroadcastPage() {
             </div>
 
             <div className="space-y-4 mb-5">
-              {/* テンプレートプリセット */}
+              {/* 何を送るか */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-2 block">テンプレート（任意）</label>
+                <label className="text-xs font-medium text-gray-500 mb-2 block">何を送る？</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: '求人告知', prompt: '以下の求人情報でLINEメッセージを作成してください。\n\n職種: \n勤務地: \n時給: \n勤務時間: \nその他: ' },
-                    { label: 'イベント案内', prompt: 'イベントの案内メッセージを作成してください。\n\nイベント名: \n日時: \n場所: \n内容: \n参加方法: ' },
-                    { label: 'お知らせ', prompt: '以下のお知らせをLINEメッセージにしてください。\n\n内容: ' },
-                    { label: 'キャンペーン', prompt: 'キャンペーンの告知メッセージを作成してください。\n\nキャンペーン名: \n期間: \n内容: \n特典: ' },
-                  ].map((t) => (
+                  {([
+                    { value: 'job', label: '求人告知', icon: '💼' },
+                    { value: 'event', label: 'イベント案内', icon: '🎉' },
+                    { value: 'info', label: 'お知らせ', icon: '📢' },
+                    { value: 'campaign', label: 'キャンペーン', icon: '🎁' },
+                  ] as const).map((ct) => (
                     <button
-                      key={t.label}
-                      onClick={() => setAiPrompt(t.prompt)}
-                      className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md text-xs font-medium"
+                      key={ct.value}
+                      onClick={() => setAiContentType(ct.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        aiContentType === ct.value
+                          ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                      }`}
                     >
-                      {t.label}
+                      {ct.icon} {ct.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* プロンプト入力（求人詳細の本文貼り付け対応） */}
+              {/* 本文入力 */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">
-                  求人ページの本文をそのまま貼り付けるだけでOK
+                  {aiContentType === 'job' ? '求人ページの本文をそのまま貼り付けるだけでOK'
+                    : aiContentType === 'event' ? 'イベントの詳細を入力'
+                    : aiContentType === 'campaign' ? 'キャンペーンの内容を入力'
+                    : 'お知らせの内容を入力'}
                 </label>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder={"求人詳細ページの本文をコピーして、ここにそのまま貼り付けてください。\nAIが自動で内容を読み取り、働きたくなるLINEメッセージを作成します。\n\n（例）\n飲食店ホールスタッフ\n時給1,300円〜 交通費支給 まかない付き\n東京都新宿区 駅チカ徒歩3分\n週3日〜OK シフト自由 未経験歓迎\n日本語N3以上 留学生・ワーホリ歓迎"}
+                  placeholder={aiContentType === 'job'
+                    ? "求人詳細ページの本文をコピーして、ここにそのまま貼り付けてください。\nAIが自動で内容を読み取り、働きたくなるLINEメッセージを作成します。"
+                    : aiContentType === 'event'
+                    ? "イベント名、日時、場所、内容、参加方法など"
+                    : aiContentType === 'campaign'
+                    ? "キャンペーン名、期間、内容、特典など"
+                    : "お知らせの内容を入力してください"}
                   rows={10}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                 />
@@ -2427,7 +2442,7 @@ export default function BroadcastPage() {
               </div>
 
               {/* ボタンURL */}
-              {(aiUseCombo ? aiCombo.some(s => s.type === 'card') : aiMessageType !== 'text') && (
+              {(aiUseCombo ? aiCombo.some(s => s.type === 'card') : true) && (
                 <div>
                   <label className="text-xs font-medium text-gray-500 mb-1 block">
                     カードボタンのリンク先URL
@@ -2436,14 +2451,13 @@ export default function BroadcastPage() {
                     type="url"
                     value={aiButtonUrl}
                     onChange={(e) => setAiButtonUrl(e.target.value)}
-                    placeholder="https://www.yolo-japan.com/ja/job/..."
+                    placeholder="https://www.yolo-japan.com/ja/recruit/job/details/..."
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                   />
-                  <p className="text-xs text-gray-400 mt-1">カードの「応募する」ボタンに設定されるURLです</p>
                 </div>
               )}
 
-              {/* メッセージ構成モード切替 */}
+              {/* メッセージ構成 */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">メッセージ構成</label>
                 <div className="flex gap-2 mb-2">
@@ -2455,7 +2469,7 @@ export default function BroadcastPage() {
                         : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
                     }`}
                   >
-                    シンプル（AIにおまかせ）
+                    いつもの
                   </button>
                   <button
                     onClick={() => setAiUseCombo(true)}
@@ -2469,59 +2483,22 @@ export default function BroadcastPage() {
                   </button>
                 </div>
 
-                {/* シンプルモード: 旧来のタイプ選択 */}
+                {/* いつもの: テキスト + カード(画像あり) 固定 */}
                 {!aiUseCombo && (
-                  <div className="flex gap-2">
-                    {([
-                      { value: 'auto', label: 'AIにおまかせ' },
-                      { value: 'text', label: 'テキストのみ' },
-                      { value: 'card', label: 'カード形式' },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setAiMessageType(opt.value)}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
-                          aiMessageType === opt.value
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-300'
-                            : 'bg-gray-50 text-gray-500 border border-transparent hover:bg-gray-100'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                  <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-500">
+                    テキスト + カード（画像あり）の2通構成
                   </div>
                 )}
 
                 {/* 構成指定モード */}
                 {aiUseCombo && (
                   <div className="space-y-2">
-                    {/* 構成プリセット */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        { label: 'テキスト+カード(画像)', combo: [{ type: 'text' as const }, { type: 'card' as const, hasImage: true }] },
-                        { label: 'テキスト+カード', combo: [{ type: 'text' as const }, { type: 'card' as const }] },
-                        { label: 'テキスト+カード+テキスト', combo: [{ type: 'text' as const }, { type: 'card' as const }, { type: 'text' as const }] },
-                        { label: 'テキスト x2', combo: [{ type: 'text' as const }, { type: 'text' as const }] },
-                        { label: 'テキスト+画像', combo: [{ type: 'text' as const }, { type: 'image' as const }] },
-                      ].map((p) => (
-                        <button
-                          key={p.label}
-                          onClick={() => { setAiCombo(p.combo); setAiUploadedImages({}); }}
-                          className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded text-xs font-medium"
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* 構成エディタ */}
                     <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                       {aiCombo.map((slot, idx) => (
                         <div key={idx} className="flex items-start gap-2">
                           <span className="text-xs text-gray-400 mt-1.5 w-4 shrink-0">{idx + 1}.</span>
                           <div className="flex-1 space-y-1.5">
                             <div className="flex items-center gap-1.5">
-                              {/* タイプ選択 */}
                               <select
                                 value={slot.type}
                                 onChange={(e) => {
@@ -2539,7 +2516,6 @@ export default function BroadcastPage() {
                                 <option value="image">画像</option>
                               </select>
 
-                              {/* カード: 画像あり/なし */}
                               {slot.type === 'card' && (
                                 <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
                                   <input
@@ -2561,13 +2537,11 @@ export default function BroadcastPage() {
                                 </label>
                               )}
 
-                              {/* 削除ボタン */}
                               {aiCombo.length > 1 && (
                                 <button
                                   onClick={() => {
                                     const newCombo = aiCombo.filter((_, i) => i !== idx);
                                     setAiCombo(newCombo);
-                                    // 画像インデックスをリマップ
                                     const newImgs: Record<number, string> = {};
                                     Object.entries(aiUploadedImages).forEach(([k, v]) => {
                                       const ki = Number(k);
@@ -2583,7 +2557,6 @@ export default function BroadcastPage() {
                               )}
                             </div>
 
-                            {/* 画像アップロード: カード(画像あり) or 画像タイプ */}
                             {((slot.type === 'card' && slot.hasImage) || slot.type === 'image') && (
                               <div className="ml-0">
                                 {aiUploadedImages[idx] ? (
@@ -2631,7 +2604,6 @@ export default function BroadcastPage() {
                         </div>
                       ))}
 
-                      {/* メッセージ追加 */}
                       {aiCombo.length < 5 && (
                         <button
                           onClick={() => setAiCombo([...aiCombo, { type: 'text' }])}

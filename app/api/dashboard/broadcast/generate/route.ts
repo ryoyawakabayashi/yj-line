@@ -217,11 +217,20 @@ ${formatInstruction}`;
     }
 
     // ─── 一括生成モード（既存） ──────────────
-    const { prompt, messageType, combo } = body;
+    const { prompt, messageType, combo, contentType } = body;
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'プロンプトが必要です' }, { status: 400 });
     }
+
+    // コンテンツタイプに応じた訴求方針
+    const CONTENT_TYPE_HINTS: Record<string, string> = {
+      job: '\n## 配信の種類: 求人告知\n求人情報として、働きたくなる魅力的なメッセージを作成してください。時給・待遇・働きやすさを前面に出してください。',
+      event: '\n## 配信の種類: イベント案内\nイベントの魅力を伝え、参加したくなるメッセージを作成してください。日時・場所・内容を分かりやすく伝えてください。',
+      info: '\n## 配信の種類: お知らせ\n重要な情報を分かりやすく伝えるメッセージを作成してください。簡潔で読みやすい内容にしてください。',
+      campaign: '\n## 配信の種類: キャンペーン\nキャンペーンの特典やお得感を強調し、参加・応募したくなるメッセージを作成してください。限定感や期間を意識してください。',
+    };
+    const contentHint = CONTENT_TYPE_HINTS[contentType] || CONTENT_TYPE_HINTS.job;
 
     // combo指定がある場合、構成を指示に含める
     let typeHint: string;
@@ -245,7 +254,7 @@ ${formatInstruction}`;
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt + typeHint },
+        { role: 'user', content: prompt + contentHint + typeHint },
       ],
       max_tokens: 2000,
       temperature: 0.7,
