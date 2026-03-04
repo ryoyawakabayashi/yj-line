@@ -296,6 +296,7 @@ export default function BroadcastPage() {
   const [translatedMessages, setTranslatedMessages] = useState<MessageItem[]>([]);
   const [translating, setTranslating] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [originalJaMessages, setOriginalJaMessages] = useState<MessageItem[] | null>(null);
   // AI生成
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -2054,6 +2055,20 @@ export default function BroadcastPage() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-900">プレビュー</h3>
               <div className="flex items-center gap-2">
+                {originalJaMessages && !showTranslation && (
+                  <button
+                    onClick={() => {
+                      setMessages(originalJaMessages);
+                      setBroadcastLang('ja');
+                      setOriginalJaMessages(null);
+                      setTranslatedMessages([]);
+                      setResultMsg({ type: 'success', text: '日本語原文に戻しました' });
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md text-xs font-medium transition-colors"
+                  >
+                    日本語に戻す
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (showTranslation) {
@@ -2156,11 +2171,12 @@ export default function BroadcastPage() {
                 </button>
                 <button
                   onClick={() => {
+                    setOriginalJaMessages([...messages]);
                     setMessages(translatedMessages);
                     setBroadcastLang('en');
                     setShowTranslation(false);
                     setTranslatedMessages([]);
-                    setResultMsg({ type: 'success', text: '英語版をメッセージに反映しました' });
+                    setResultMsg({ type: 'success', text: '英語版をメッセージに反映しました（日本語原文は保持されています）' });
                   }}
                   className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
                 >
