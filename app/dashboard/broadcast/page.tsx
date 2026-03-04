@@ -275,9 +275,9 @@ export default function BroadcastPage() {
   const [aiMessageType, setAiMessageType] = useState<'auto' | 'text' | 'card'>('auto');
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiCombo, setAiCombo] = useState<Array<{ type: 'text' | 'card' | 'image'; hasImage?: boolean }>>([
-    { type: 'text' }, { type: 'card' }, { type: 'text' },
+    { type: 'text' }, { type: 'card', hasImage: true },
   ]);
-  const [aiUseCombo, setAiUseCombo] = useState(false);
+  const [aiUseCombo, setAiUseCombo] = useState(true);
   const [aiUploadedImages, setAiUploadedImages] = useState<Record<number, string>>({});
   const [aiUploadingIdx, setAiUploadingIdx] = useState<number | null>(null);
   // インラインAI生成
@@ -2457,11 +2457,11 @@ export default function BroadcastPage() {
                     {/* 構成プリセット */}
                     <div className="flex flex-wrap gap-1.5">
                       {[
-                        { label: 'テキスト x2', combo: [{ type: 'text' as const }, { type: 'text' as const }] },
+                        { label: 'テキスト+カード(画像)', combo: [{ type: 'text' as const }, { type: 'card' as const, hasImage: true }] },
                         { label: 'テキスト+カード', combo: [{ type: 'text' as const }, { type: 'card' as const }] },
                         { label: 'テキスト+カード+テキスト', combo: [{ type: 'text' as const }, { type: 'card' as const }, { type: 'text' as const }] },
+                        { label: 'テキスト x2', combo: [{ type: 'text' as const }, { type: 'text' as const }] },
                         { label: 'テキスト+画像', combo: [{ type: 'text' as const }, { type: 'image' as const }] },
-                        { label: 'テキスト+画像+テキスト', combo: [{ type: 'text' as const }, { type: 'image' as const }, { type: 'text' as const }] },
                       ].map((p) => (
                         <button
                           key={p.label}
