@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -109,8 +110,8 @@ type DeliveryMethod = 'broadcast' | 'narrowcast' | 'prefecture' | 'recent_follow
 type DataSource = 'line' | 'db' | 'test';
 
 const DATA_SOURCE_OPTIONS: { value: DataSource; label: string }[] = [
-  { value: 'line', label: 'LINE側' },
-  { value: 'db', label: '自社DB側' },
+  { value: 'line', label: 'LINE DB' },
+  { value: 'db', label: 'YOLO JAPAN DB' },
   { value: 'test', label: 'テスト配信' },
 ];
 
@@ -223,6 +224,7 @@ async function uploadImage(file: File): Promise<{ url: string } | { error: strin
 // =====================================================
 
 export default function BroadcastPage() {
+  const router = useRouter();
   // --- State ---
   const [campaignName, setCampaignName] = useState('');
   const [notificationText, setNotificationText] = useState('');
@@ -251,6 +253,7 @@ export default function BroadcastPage() {
   const [recentCampaigns, setRecentCampaigns] = useState<RecentCampaign[]>([]);
   const [recentStats, setRecentStats] = useState<Record<string, CampaignStats | null>>({});
   const [recentProgress, setRecentProgress] = useState<Record<string, { phase: string; successCount?: number; targetCount?: number } | null>>({});
+  const [recentConversions, setRecentConversions] = useState<Record<string, number | null>>({});
   const [prefectures, setPrefectures] = useState<string[]>([]);
   const [prefectureCounts, setPrefectureCounts] = useState<Record<string, number>>({});
   const [areaEstimates, setAreaEstimates] = useState<Record<string, number>>({});
@@ -260,6 +263,8 @@ export default function BroadcastPage() {
   // テスト配信ユーザー選択
   const [showTestSendModal, setShowTestSendModal] = useState(false);
   const [selectedTestUserIds, setSelectedTestUserIds] = useState<string[]>([]);
+  // 予約確認モーダル
+  const [showScheduleConfirm, setShowScheduleConfirm] = useState<{ isTest: boolean } | null>(null);
   // 翻訳
   const [translatedMessages, setTranslatedMessages] = useState<MessageItem[]>([]);
   const [translating, setTranslating] = useState(false);
@@ -269,17 +274,32 @@ export default function BroadcastPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiMessageType, setAiMessageType] = useState<'auto' | 'text' | 'card'>('auto');
   const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiCombo, setAiCombo] = useState<Array<{ type: 'text' | 'card' | 'image'; hasImage?: boolean }>>([
+    { type: 'text' }, { type: 'card' }, { type: 'text' },
+  ]);
+  const [aiUseCombo, setAiUseCombo] = useState(false);
+  const [aiUploadedImages, setAiUploadedImages] = useState<Record<number, string>>({});
+  const [aiUploadingIdx, setAiUploadingIdx] = useState<number | null>(null);
+  // インラインAI生成
+  const [aiInlineOpen, setAiInlineOpen] = useState<number | null>(null);
+  const [aiInlineRole, setAiInlineRole] = useState('main');
+  const [aiInlineAppeal, setAiInlineAppeal] = useState('benefit');
+  const [aiInlineTone, setAiInlineTone] = useState('friendly');
+  const [aiInlineKeywords, setAiInlineKeywords] = useState('');
+  const [aiInlineGenerating, setAiInlineGenerating] = useState(false);
   // ボットプロフィール
-  const [botProfile, setBotProfile] = useState<{ displayName: string; pictureUrl: string } | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try { const c = localStorage.getItem('bc_bot_profile'); return c ? JSON.parse(c) : null; } catch { return null; }
-  });
+  const [botProfile, setBotProfile] = useState<{ displayName: string; pictureUrl: string } | null>(null);
   // 画像トリミング
   const [cropModal, setCropModal] = useState<{ imgSrc: string; msgIdx: number; field: 'originalUrl' | 'imageUrl'; bubbleIdx?: number } | null>(null);
   const [carouselActiveTab, setCarouselActiveTab] = useState<Record<number, number>>({});
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const cropImgRef = useRef<HTMLImageElement>(null);
+
+  // localStorageからボットプロフィール復元（SSR後）
+  useEffect(() => {
+    try { const c = localStorage.getItem('bc_bot_profile'); if (c) setBotProfile(JSON.parse(c)); } catch {}
+  }, []);
 
   // --- Load initial data ---
   const loadData = useCallback(async () => {
@@ -321,7 +341,8 @@ export default function BroadcastPage() {
         // Stats
         ...withUnit.map(async (c) => {
           try {
-            const data = await api('GET', { action: 'broadcast_stats', unit: c.result.aggUnit });
+            const execDate = (c.executed_at || new Date().toISOString()).slice(0, 10).replace(/-/g, '');
+            const data = await api('GET', { action: 'broadcast_stats', unit: c.result.aggUnit, from: execDate });
             if (data.overview) {
               statsResults[c.id] = { uniqueImpression: data.overview.uniqueImpression, uniqueClick: data.overview.uniqueClick };
             } else {
@@ -343,6 +364,17 @@ export default function BroadcastPage() {
       ]);
       setRecentStats(statsResults);
       setRecentProgress(progressResults);
+      // Fetch conversions
+      const convResults: Record<string, number | null> = {};
+      await Promise.all(
+        campaigns.filter((c) => c.status === 'sent' && c.delivery_method !== 'test').map(async (c) => {
+          try {
+            const data = await api('GET', { action: 'broadcast_conversions', campaignId: c.id });
+            convResults[c.id] = data.conversions ?? null;
+          } catch { convResults[c.id] = null; }
+        })
+      );
+      setRecentConversions(convResults);
     }
   }, []);
 
@@ -362,10 +394,14 @@ export default function BroadcastPage() {
     loadData();
     const params = new URLSearchParams(window.location.search);
     const draftParam = params.get('draft');
-    console.log('[BC] URL:', window.location.href, 'draft param:', draftParam);
+    const copyParam = params.get('copy');
+    console.log('[BC] URL:', window.location.href, 'draft param:', draftParam, 'copy param:', copyParam);
     if (draftParam) {
       console.log('[BC] draft読み込みモード → localStorage復元スキップ');
       loadDraft(draftParam);
+    } else if (copyParam) {
+      console.log('[BC] コピーモード → キャンペーンデータ読み込み');
+      loadCopy(copyParam);
     } else {
       try {
         const raw = window.localStorage.getItem('bc_tmp');
@@ -440,6 +476,25 @@ export default function BroadcastPage() {
       setBroadcastLang(draft.broadcast_lang || 'ja');
       setNotificationText(draft.demographic?.notificationText || '');
       // 下書き読み込み完了後、URLから?draftパラメータを除去（リロード時にlocalStorage復元が効くように）
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
+
+  const loadCopy = async (id: string) => {
+    const res = await api('GET', { action: 'campaign_detail', id });
+    const src = res.campaign;
+    if (src) {
+      // コピーなのでeditingDraftIdはセットしない（新規キャンペーンとして作成）
+      setCampaignName((src.name || '') + ' (コピー)');
+      setMessages(src.messages || []);
+      setDeliveryMethod(src.delivery_method || 'broadcast');
+      setArea(src.area || '');
+      setGender(src.demographic?.gender || '');
+      setAgeRange(src.demographic?.age || '');
+      setPrefectures(src.demographic?.prefectures || []);
+      setBroadcastLang(src.broadcast_lang || 'ja');
+      setNotificationText(src.demographic?.notificationText || '');
+      if (src.demographic?.recentDays) setRecentDays(String(src.demographic.recentDays));
       window.history.replaceState({}, '', window.location.pathname);
     }
   };
@@ -680,7 +735,7 @@ export default function BroadcastPage() {
       if (res.success) {
         setShowTestSendModal(false);
         try { window.localStorage.removeItem('bc_tmp'); } catch {}
-        setResultMsg({ type: 'success', text: `配信成功${res.requestId ? ` (requestId: ${res.requestId})` : res.successCount !== undefined ? ` (${res.successCount}/${res.targetUsers || res.testUsers}人)` : ''}` });
+        router.push('/dashboard/broadcast/history');
       } else {
         setResultMsg({ type: 'error', text: res.error || '配信に失敗しました' });
       }
@@ -747,8 +802,8 @@ export default function BroadcastPage() {
         scheduledAt: isoStr,
       });
       if (res.success) {
-        const jstStr = `${schedDate} ${schedHour.padStart(2, '0')}:${schedMin.padStart(2, '0')}`;
-        setResultMsg({ type: 'success', text: `${jstStr} (JST) に${isTest ? 'テスト' : ''}予約しました` });
+        try { window.localStorage.removeItem('bc_tmp'); } catch {}
+        router.push('/dashboard/broadcast/history');
       }
     } catch {
       setResultMsg({ type: 'error', text: '予約に失敗しました' });
@@ -828,20 +883,55 @@ export default function BroadcastPage() {
   };
 
   // --- AI生成 ---
+  const handleAiImageUpload = async (idx: number, file: File) => {
+    setAiUploadingIdx(idx);
+    try {
+      const result = await uploadImage(file);
+      if ('error' in result) {
+        setResultMsg({ type: 'error', text: result.error });
+      } else {
+        setAiUploadedImages(prev => ({ ...prev, [idx]: result.url }));
+      }
+    } catch {
+      setResultMsg({ type: 'error', text: '画像アップロードに失敗しました' });
+    } finally {
+      setAiUploadingIdx(null);
+    }
+  };
+
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
     setAiGenerating(true);
     try {
+      const payload: any = { prompt: aiPrompt.trim() };
+      if (aiUseCombo) {
+        payload.combo = aiCombo;
+      } else {
+        payload.messageType = aiMessageType;
+      }
+
       const res = await fetch('/api/dashboard/broadcast/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt.trim(), messageType: aiMessageType }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.messages && data.messages.length > 0) {
-        setMessages(data.messages);
+        // アップロード済み画像をマージ
+        const merged = data.messages.map((msg: any, idx: number) => {
+          const imgUrl = aiUploadedImages[idx];
+          if (imgUrl && msg.type === 'card') {
+            return { ...msg, imageUrl: imgUrl };
+          }
+          if (imgUrl && msg.type === 'image') {
+            return { ...msg, originalUrl: imgUrl };
+          }
+          return msg;
+        });
+        setMessages(merged);
         setShowAiModal(false);
-        setResultMsg({ type: 'success', text: `AIがメッセージを${data.messages.length}件生成しました` });
+        setAiUploadedImages({});
+        setResultMsg({ type: 'success', text: `AIがメッセージを${merged.length}件生成しました` });
       } else {
         setResultMsg({ type: 'error', text: data.error || 'AI生成に失敗しました' });
       }
@@ -849,6 +939,61 @@ export default function BroadcastPage() {
       setResultMsg({ type: 'error', text: 'AI生成中にエラーが発生しました' });
     } finally {
       setAiGenerating(false);
+    }
+  };
+
+  // ─── インラインAI生成 ──────────────────────
+  const AI_ROLES = [
+    { value: 'intro', label: '導入' },
+    { value: 'main', label: '本文' },
+    { value: 'cta', label: 'CTA' },
+    { value: 'closing', label: '締め' },
+  ];
+  const AI_APPEALS = [
+    { value: 'benefit', label: 'メリット' },
+    { value: 'urgency', label: '緊急性' },
+    { value: 'curiosity', label: '好奇心' },
+    { value: 'exclusivity', label: '限定感' },
+    { value: 'empathy', label: '共感' },
+  ];
+  const AI_TONES = [
+    { value: 'friendly', label: 'フレンドリー' },
+    { value: 'formal', label: 'フォーマル' },
+    { value: 'casual', label: 'カジュアル' },
+    { value: 'energetic', label: '熱量高め' },
+  ];
+
+  const handleAiInlineGenerate = async (msgIdx: number, msgType: 'text' | 'card') => {
+    setAiInlineGenerating(true);
+    try {
+      const res = await fetch('/api/dashboard/broadcast/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'single',
+          messageType: msgType,
+          role: aiInlineRole,
+          appeal: aiInlineAppeal,
+          tone: aiInlineTone,
+          keywords: aiInlineKeywords,
+          context: {
+            campaignName,
+            otherMessages: messages.filter((_, i) => i !== msgIdx).map(m => m.text || m.title || '').filter(Boolean),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.message) {
+        updateMessage(msgIdx, data.message);
+        setAiInlineOpen(null);
+        setAiInlineKeywords('');
+      } else {
+        setResultMsg({ type: 'error', text: data.error || 'AI生成に失敗しました' });
+      }
+    } catch {
+      setResultMsg({ type: 'error', text: 'AI生成中にエラーが発生しました' });
+    } finally {
+      setAiInlineGenerating(false);
     }
   };
 
@@ -979,216 +1124,198 @@ export default function BroadcastPage() {
           {/* 配信方式 (2段構造) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">配信方式</h3>
-            {/* データソース選択 */}
-            <div className="flex gap-2">
-              {DATA_SOURCE_OPTIONS.map((s) => (
-                <button
-                  key={s.value}
-                  onClick={() => {
-                    const firstMethod = SUB_METHOD_OPTIONS[s.value][0].value;
-                    setDeliveryMethod(firstMethod);
-                  }}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
-                    dataSource === s.value
-                      ? 'bg-[#eaae9e] text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            {/* サブ選択（2つ以上ある場合のみ表示） */}
-            {SUB_METHOD_OPTIONS[dataSource].length > 1 && (
-              <div className="flex gap-2 mt-2">
-                {SUB_METHOD_OPTIONS[dataSource].map((m) => (
-                  <button
-                    key={m.value}
-                    onClick={() => setDeliveryMethod(m.value)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-                      deliveryMethod === m.value
-                        ? 'bg-gray-800 text-white'
-                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-200'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* グループ化ラジオ */}
+            <div className="space-y-4">
+              {DATA_SOURCE_OPTIONS.map((source) => (
+                <div key={source.value}>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{source.label}</p>
+                  <div className="space-y-0.5">
+                    {SUB_METHOD_OPTIONS[source.value].map((method) => (
+                      <div key={method.value}>
+                        <label className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                          deliveryMethod === method.value ? 'bg-[#fdf2ef]' : 'hover:bg-gray-50'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="deliveryMethod"
+                            checked={deliveryMethod === method.value}
+                            onChange={() => setDeliveryMethod(method.value)}
+                            className="text-[#eaae9e] focus:ring-[#eaae9e] h-4 w-4"
+                          />
+                          <span className={`text-sm ${deliveryMethod === method.value ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
+                            {method.label}
+                          </span>
+                        </label>
 
-            {/* Narrowcast フィルター */}
-            {deliveryMethod === 'narrowcast' && (
-              <div className="mt-4 space-y-3">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-                  <p className="text-sm font-medium text-amber-800">LINE属性で絞り込んで配信</p>
-                  <p className="text-xs text-amber-600 mt-0.5">LINEが推定した属性データで絞り込みます。</p>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">エリア</label>
-                    <select
-                      value={area}
-                      onChange={(e) => setArea(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                    >
-                      {AREA_OPTIONS.map((a) => (
-                        <option key={a.value} value={a.value}>
-                          {a.label}{a.value && areaEstimates[a.value] ? ` (≈${areaEstimates[a.value].toLocaleString()}人)` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">性別</label>
-                    <select
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                    >
-                      {GENDER_OPTIONS.map((g) => (
-                        <option key={g.value} value={g.value}>{g.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">年齢</label>
-                    <select
-                      value={ageRange}
-                      onChange={(e) => setAgeRange(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                    >
-                      {AGE_OPTIONS.map((a) => (
-                        <option key={a.value} value={a.value}>{a.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* フィルター概要 */}
-                <div className="text-xs text-gray-500">
-                  フィルター: {AREA_OPTIONS.find(a => a.value === area)?.label || '全国'} / {GENDER_OPTIONS.find(g => g.value === gender)?.label || '指定なし'} / {AGE_OPTIONS.find(a => a.value === ageRange)?.label || '指定なし'}
-                </div>
-              </div>
-            )}
-
-            {/* Prefecture フィルター */}
-            {deliveryMethod === 'prefecture' && (
-              <div className="mt-4 space-y-3">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                  <p className="text-sm font-medium text-blue-800">AI診断の登録ユーザーに配信</p>
-                  <p className="text-xs text-blue-600 mt-0.5">お仕事診断で都道府県を回答したユーザーに個別配信します。</p>
-                </div>
-
-                {/* 全選択 / 全解除 */}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setPrefectures([...ALL_PREFECTURE_CODES])}
-                    className="text-xs text-[#d10a1c] font-medium hover:underline"
-                  >
-                    全選択
-                  </button>
-                  <button
-                    onClick={() => setPrefectures([])}
-                    className="text-xs text-gray-500 font-medium hover:underline"
-                  >
-                    全解除
-                  </button>
-                  <span className="text-xs text-gray-400 ml-auto">
-                    {prefectures.length > 0 && `${prefectures.length}件選択中`}
-                  </span>
-                </div>
-
-                {/* 地域別チェックボックス */}
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
-                  {(() => {
-                    const allCounts = Object.values(prefectureCounts);
-                    const maxPrefCount = allCounts.length > 0 ? Math.max(...allCounts) : 0;
-                    return REGION_PREFECTURES.map((group) => {
-                      const groupCodes = group.prefectures.map(p => p.value);
-                      const allSelected = groupCodes.every(c => prefectures.includes(c));
-                      const someSelected = groupCodes.some(c => prefectures.includes(c));
-                      const regionCount = groupCodes.reduce((sum, c) => sum + (prefectureCounts[c] || 0), 0);
-                      return (
-                        <div key={group.region} className="px-3 py-1.5">
-                          {/* 地域ヘッダー */}
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={allSelected}
-                              ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                              onChange={() => {
-                                if (allSelected) {
-                                  setPrefectures(prev => prev.filter(p => !groupCodes.includes(p)));
-                                } else {
-                                  setPrefectures(prev => [...new Set([...prev, ...groupCodes])]);
-                                }
-                              }}
-                              className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
-                            />
-                            <span className="text-sm font-semibold text-gray-800">{group.label}</span>
-                            {regionCount > 0 && (
-                              <span className="text-xs text-gray-400 ml-auto">{regionCount.toLocaleString()}人</span>
-                            )}
-                          </label>
-                          {/* 都道府県 */}
-                          <div className="ml-5 mt-0.5 flex flex-wrap gap-x-1 gap-y-0">
-                            {group.prefectures.map((p) => {
-                              const checked = prefectures.includes(p.value);
-                              const cnt = prefectureCounts[p.value] || 0;
-                              const isTop = maxPrefCount > 0 && cnt === maxPrefCount;
-                              return (
-                                <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => {
-                                      setPrefectures(prev =>
-                                        checked ? prev.filter(v => v !== p.value) : [...prev, p.value]
-                                      );
-                                    }}
-                                    className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
-                                  />
-                                  <span className="text-xs text-gray-700">{p.label}</span>
-                                  {cnt > 0 && <span className={`text-xs font-medium ${isTop ? 'text-[#d10a1c]' : 'text-gray-400'}`}>({cnt})</span>}
-                                </label>
-                              );
-                            })}
+                        {/* Narrowcast インラインフィルター */}
+                        {method.value === 'narrowcast' && deliveryMethod === 'narrowcast' && (
+                          <div className="ml-9 mr-3 mt-1 mb-2 space-y-3">
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                              <p className="text-sm font-medium text-amber-800">LINE属性で絞り込んで配信</p>
+                              <p className="text-xs text-amber-600 mt-0.5">LINEが推定した属性データで絞り込みます。</p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">エリア</label>
+                                <select
+                                  value={area}
+                                  onChange={(e) => setArea(e.target.value)}
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                                >
+                                  {AREA_OPTIONS.map((a) => (
+                                    <option key={a.value} value={a.value}>
+                                      {a.label}{a.value && areaEstimates[a.value] ? ` (≈${areaEstimates[a.value].toLocaleString()}人)` : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">性別</label>
+                                <select
+                                  value={gender}
+                                  onChange={(e) => setGender(e.target.value)}
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                                >
+                                  {GENDER_OPTIONS.map((g) => (
+                                    <option key={g.value} value={g.value}>{g.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">年齢</label>
+                                <select
+                                  value={ageRange}
+                                  onChange={(e) => setAgeRange(e.target.value)}
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                                >
+                                  {AGE_OPTIONS.map((a) => (
+                                    <option key={a.value} value={a.value}>{a.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              フィルター: {AREA_OPTIONS.find(a => a.value === area)?.label || '全国'} / {GENDER_OPTIONS.find(g => g.value === gender)?.label || '指定なし'} / {AGE_OPTIONS.find(a => a.value === ageRange)?.label || '指定なし'}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            )}
+                        )}
 
-            {/* 新規友達フィルター */}
-            {deliveryMethod === 'recent_followers' && (
-              <div className="mt-4 space-y-3">
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                  <p className="text-sm font-medium text-green-800">最近友達追加したユーザーに配信</p>
-                  <p className="text-xs text-green-600 mt-0.5">指定期間内に友達追加したユーザーに個別配信します。</p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">期間</label>
-                  <div className="flex gap-2">
-                    {RECENT_PERIOD_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setRecentDays(opt.value)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                          recentDays === opt.value ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
+                        {/* Prefecture インラインフィルター */}
+                        {method.value === 'prefecture' && deliveryMethod === 'prefecture' && (
+                          <div className="ml-9 mr-3 mt-1 mb-2 space-y-3">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                              <p className="text-sm font-medium text-blue-800">AI診断の登録ユーザーに配信</p>
+                              <p className="text-xs text-blue-600 mt-0.5">お仕事診断で都道府県を回答したユーザーに個別配信します。</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setPrefectures([...ALL_PREFECTURE_CODES])}
+                                className="text-xs text-[#d10a1c] font-medium hover:underline"
+                              >
+                                全選択
+                              </button>
+                              <button
+                                onClick={() => setPrefectures([])}
+                                className="text-xs text-gray-500 font-medium hover:underline"
+                              >
+                                全解除
+                              </button>
+                              <span className="text-xs text-gray-400 ml-auto">
+                                {prefectures.length > 0 && `${prefectures.length}件選択中`}
+                              </span>
+                            </div>
+                            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                              {(() => {
+                                const allCounts = Object.values(prefectureCounts);
+                                const maxPrefCount = allCounts.length > 0 ? Math.max(...allCounts) : 0;
+                                return REGION_PREFECTURES.map((group) => {
+                                  const groupCodes = group.prefectures.map(p => p.value);
+                                  const allSelected = groupCodes.every(c => prefectures.includes(c));
+                                  const someSelected = groupCodes.some(c => prefectures.includes(c));
+                                  const regionCount = groupCodes.reduce((sum, c) => sum + (prefectureCounts[c] || 0), 0);
+                                  return (
+                                    <div key={group.region} className="px-3 py-1.5">
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={allSelected}
+                                          ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                                          onChange={() => {
+                                            if (allSelected) {
+                                              setPrefectures(prev => prev.filter(p => !groupCodes.includes(p)));
+                                            } else {
+                                              setPrefectures(prev => [...new Set([...prev, ...groupCodes])]);
+                                            }
+                                          }}
+                                          className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
+                                        />
+                                        <span className="text-sm font-semibold text-gray-800">{group.label}</span>
+                                        {regionCount > 0 && (
+                                          <span className="text-xs text-gray-400 ml-auto">{regionCount.toLocaleString()}人</span>
+                                        )}
+                                      </label>
+                                      <div className="ml-5 mt-0.5 flex flex-wrap gap-x-1 gap-y-0">
+                                        {group.prefectures.map((p) => {
+                                          const checked = prefectures.includes(p.value);
+                                          const cnt = prefectureCounts[p.value] || 0;
+                                          const isTop = maxPrefCount > 0 && cnt === maxPrefCount;
+                                          return (
+                                            <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
+                                              <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => {
+                                                  setPrefectures(prev =>
+                                                    checked ? prev.filter(v => v !== p.value) : [...prev, p.value]
+                                                  );
+                                                }}
+                                                className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
+                                              />
+                                              <span className="text-xs text-gray-700">{p.label}</span>
+                                              {cnt > 0 && <span className={`text-xs font-medium ${isTop ? 'text-[#d10a1c]' : 'text-gray-400'}`}>({cnt})</span>}
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 新規友達 インラインフィルター */}
+                        {method.value === 'recent_followers' && deliveryMethod === 'recent_followers' && (
+                          <div className="ml-9 mr-3 mt-1 mb-2 space-y-3">
+                            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                              <p className="text-sm font-medium text-green-800">最近友達追加したユーザーに配信</p>
+                              <p className="text-xs text-green-600 mt-0.5">指定期間内に友達追加したユーザーに個別配信します。</p>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-gray-500 mb-1 block">期間</label>
+                              <div className="flex gap-2">
+                                {RECENT_PERIOD_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => setRecentDays(opt.value)}
+                                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                                      recentDays === opt.value ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
 
             {/* 配信対象数 */}
             <div className="mt-3 text-sm text-gray-600">
@@ -1375,13 +1502,77 @@ export default function BroadcastPage() {
 
                     {/* Text */}
                     {msg.type === 'text' && (
-                      <textarea
-                        value={msg.text || ''}
-                        onChange={(e) => updateMessage(idx, { text: e.target.value })}
-                        placeholder="メッセージテキスト..."
-                        rows={3}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
-                      />
+                      <div className="space-y-2">
+                        <textarea
+                          value={msg.text || ''}
+                          onChange={(e) => updateMessage(idx, { text: e.target.value })}
+                          placeholder="メッセージテキスト..."
+                          rows={3}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-[#eaae9e] focus:border-[#eaae9e]"
+                        />
+                        {/* インラインAI生成 */}
+                        <button
+                          onClick={() => setAiInlineOpen(aiInlineOpen === idx ? null : idx)}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <SparklesIcon className="h-3.5 w-3.5" />
+                          AIで作成
+                        </button>
+                        {aiInlineOpen === idx && (
+                          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 space-y-3">
+                            <div>
+                              <p className="text-xs font-semibold text-purple-700 mb-1.5">役割</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {AI_ROLES.map(r => (
+                                  <button key={r.value} onClick={() => setAiInlineRole(r.value)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${aiInlineRole === r.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'}`}>
+                                    {r.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-purple-700 mb-1.5">訴求スタイル</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {AI_APPEALS.map(a => (
+                                  <button key={a.value} onClick={() => setAiInlineAppeal(a.value)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${aiInlineAppeal === a.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'}`}>
+                                    {a.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-purple-700 mb-1.5">トーン</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {AI_TONES.map(t => (
+                                  <button key={t.value} onClick={() => setAiInlineTone(t.value)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${aiInlineTone === t.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'}`}>
+                                    {t.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                value={aiInlineKeywords}
+                                onChange={(e) => setAiInlineKeywords(e.target.value)}
+                                placeholder="キーワード・補足情報（任意）"
+                                className="w-full border border-purple-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:ring-2 focus:ring-purple-300 focus:border-purple-300"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleAiInlineGenerate(idx, 'text')}
+                              disabled={aiInlineGenerating}
+                              className="w-full py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <SparklesIcon className="h-3.5 w-3.5" />
+                              {aiInlineGenerating ? '生成中...' : '生成する'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* Card */}
@@ -1572,6 +1763,68 @@ export default function BroadcastPage() {
                             + ボタン追加
                           </button>
                         </div>
+                        {/* インラインAI生成（カード） */}
+                        <button
+                          onClick={() => setAiInlineOpen(aiInlineOpen === idx ? null : idx)}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200 text-purple-700 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <SparklesIcon className="h-3.5 w-3.5" />
+                          AIで作成
+                        </button>
+                        {aiInlineOpen === idx && (
+                          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 space-y-3">
+                            <div>
+                              <p className="text-xs font-semibold text-purple-700 mb-1.5">役割</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {AI_ROLES.map(r => (
+                                  <button key={r.value} onClick={() => setAiInlineRole(r.value)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${aiInlineRole === r.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'}`}>
+                                    {r.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-purple-700 mb-1.5">訴求スタイル</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {AI_APPEALS.map(a => (
+                                  <button key={a.value} onClick={() => setAiInlineAppeal(a.value)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${aiInlineAppeal === a.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'}`}>
+                                    {a.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-purple-700 mb-1.5">トーン</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {AI_TONES.map(t => (
+                                  <button key={t.value} onClick={() => setAiInlineTone(t.value)}
+                                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${aiInlineTone === t.value ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-purple-100 border border-gray-200'}`}>
+                                    {t.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                value={aiInlineKeywords}
+                                onChange={(e) => setAiInlineKeywords(e.target.value)}
+                                placeholder="キーワード・補足情報（任意）"
+                                className="w-full border border-purple-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:ring-2 focus:ring-purple-300 focus:border-purple-300"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleAiInlineGenerate(idx, 'card')}
+                              disabled={aiInlineGenerating}
+                              className="w-full py-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <SparklesIcon className="h-3.5 w-3.5" />
+                              {aiInlineGenerating ? '生成中...' : '生成する'}
+                            </button>
+                          </div>
+                        )}
                         </>
                         )}
                       </div>
@@ -1816,7 +2069,7 @@ export default function BroadcastPage() {
           <button
             onClick={() => {
               if (scheduleMode === 'scheduled') {
-                handleSchedule(false);
+                setShowScheduleConfirm({ isTest: false });
               } else {
                 handleSend();
               }
@@ -1831,7 +2084,7 @@ export default function BroadcastPage() {
             onClick={() => {
               setSelectedTestUserIds(testUsers.map(u => u.lineUserId));
               if (scheduleMode === 'scheduled') {
-                handleSchedule(true);
+                setShowScheduleConfirm({ isTest: true });
               } else {
                 setShowTestSendModal(true);
               }
@@ -1909,6 +2162,9 @@ export default function BroadcastPage() {
                             開封: <span className="font-medium text-gray-700">{stats.uniqueImpression?.toLocaleString() ?? '-'}人</span>
                             {stats.uniqueImpression ? <span className="text-gray-400 ml-0.5">({((stats.uniqueClick || 0) / stats.uniqueImpression * 100).toFixed(0)}%クリック)</span> : null}
                             {' '}クリック: <span className="font-medium text-gray-700">{stats.uniqueClick?.toLocaleString() ?? '-'}人</span>
+                            {recentConversions[c.id] !== undefined && recentConversions[c.id] !== null && (
+                              <>{' '}応募: <span className={`font-medium ${recentConversions[c.id]! > 0 ? 'text-green-700' : 'text-gray-400'}`}>{recentConversions[c.id]}</span></>
+                            )}
                           </>
                         ) : c.result?.aggUnit ? (
                           <>{!isNarrowcast || !progress ? <span className="text-gray-400">統計データ集計中...</span> : null}</>
@@ -1958,6 +2214,63 @@ export default function BroadcastPage() {
                 className="px-4 py-2 text-sm text-white bg-[#d10a1c] hover:bg-[#b00818] rounded-lg disabled:opacity-50"
               >
                 {uploading !== null ? 'アップロード中...' : completedCrop ? 'トリミングして確定' : 'そのまま確定'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ 予約確認モーダル ═══════ */}
+      {showScheduleConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => !sending && setShowScheduleConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-5">
+              <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                <ClockIcon className="h-6 w-6 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                {showScheduleConfirm.isTest ? 'テスト予約の確認' : '予約配信の確認'}
+              </h3>
+            </div>
+            <div className="space-y-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-4 mb-5">
+              <div className="flex justify-between">
+                <span className="text-gray-500">配信日時</span>
+                <span className="font-medium text-gray-900">{schedDate} {schedHour.padStart(2, '0')}:{schedMin.padStart(2, '0')} JST</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">配信方式</span>
+                <span className="font-medium text-gray-900">
+                  {showScheduleConfirm.isTest ? 'テスト' : deliveryMethod === 'broadcast' ? '全員' : deliveryMethod === 'narrowcast' ? '絞り込み' : deliveryMethod === 'prefecture' ? '都道府県' : deliveryMethod === 'recent_followers' ? '新規友達' : deliveryMethod}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">メッセージ数</span>
+                <span className="font-medium text-gray-900">{messages.length}件</span>
+              </div>
+              {campaignName && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">キャンペーン名</span>
+                  <span className="font-medium text-gray-900 truncate ml-2">{campaignName}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowScheduleConfirm(null)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => {
+                  const isTest = showScheduleConfirm.isTest;
+                  setShowScheduleConfirm(null);
+                  handleSchedule(isTest);
+                }}
+                disabled={sending}
+                className="flex-1 py-2.5 bg-[#d10a1c] hover:bg-[#b00917] text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                予約する
               </button>
             </div>
           </div>
@@ -2045,7 +2358,7 @@ export default function BroadcastPage() {
       {/* ═══════ AI生成モーダル ═══════ */}
       {showAiModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => !aiGenerating && setShowAiModal(false)}>
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg">
                 <SparklesIcon className="h-5 w-5 text-white" />
@@ -2054,7 +2367,7 @@ export default function BroadcastPage() {
             </div>
 
             <div className="space-y-4 mb-5">
-              {/* プリセット */}
+              {/* テンプレートプリセット */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-2 block">テンプレート（任意）</label>
                 <div className="flex flex-wrap gap-1.5">
@@ -2075,40 +2388,220 @@ export default function BroadcastPage() {
                 </div>
               </div>
 
-              {/* プロンプト入力 */}
+              {/* プロンプト入力（求人詳細の本文貼り付け対応） */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">作りたいメッセージの内容</label>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                  メッセージの内容・求人詳細ページの本文を貼り付け
+                </label>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder={"タイトル: 飲食店スタッフ募集\n文章: 東京の人気レストランでスタッフ募集中！\n時給: 1,200円〜\n勤務地: 東京都新宿区\n条件: 週3日からOK、日本語N3以上\nその他: まかない付き、交通費支給"}
-                  rows={6}
+                  placeholder={"求人詳細ページの本文をそのまま貼り付けてください。\nまたは、以下のように入力:\n\nタイトル: 飲食店スタッフ募集\n文章: 東京の人気レストランでスタッフ募集中！\n時給: 1,200円〜\n勤務地: 東京都新宿区\n条件: 週3日からOK、日本語N3以上\nその他: まかない付き、交通費支給"}
+                  rows={8}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                 />
               </div>
 
-              {/* メッセージタイプ */}
+              {/* メッセージ構成モード切替 */}
               <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">メッセージ形式</label>
-                <div className="flex gap-2">
-                  {([
-                    { value: 'auto', label: 'AIにおまかせ' },
-                    { value: 'text', label: 'テキストのみ' },
-                    { value: 'card', label: 'カード形式' },
-                  ] as const).map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setAiMessageType(opt.value)}
-                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
-                        aiMessageType === opt.value
-                          ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                          : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                <label className="text-xs font-medium text-gray-500 mb-1 block">メッセージ構成</label>
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={() => setAiUseCombo(false)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                      !aiUseCombo
+                        ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+                        : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                    }`}
+                  >
+                    シンプル（AIにおまかせ）
+                  </button>
+                  <button
+                    onClick={() => setAiUseCombo(true)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                      aiUseCombo
+                        ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+                        : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                    }`}
+                  >
+                    構成を指定
+                  </button>
                 </div>
+
+                {/* シンプルモード: 旧来のタイプ選択 */}
+                {!aiUseCombo && (
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'auto', label: 'AIにおまかせ' },
+                      { value: 'text', label: 'テキストのみ' },
+                      { value: 'card', label: 'カード形式' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setAiMessageType(opt.value)}
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                          aiMessageType === opt.value
+                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-300'
+                            : 'bg-gray-50 text-gray-500 border border-transparent hover:bg-gray-100'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* 構成指定モード */}
+                {aiUseCombo && (
+                  <div className="space-y-2">
+                    {/* 構成プリセット */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'テキスト x2', combo: [{ type: 'text' as const }, { type: 'text' as const }] },
+                        { label: 'テキスト+カード', combo: [{ type: 'text' as const }, { type: 'card' as const }] },
+                        { label: 'テキスト+カード+テキスト', combo: [{ type: 'text' as const }, { type: 'card' as const }, { type: 'text' as const }] },
+                        { label: 'テキスト+画像', combo: [{ type: 'text' as const }, { type: 'image' as const }] },
+                        { label: 'テキスト+画像+テキスト', combo: [{ type: 'text' as const }, { type: 'image' as const }, { type: 'text' as const }] },
+                      ].map((p) => (
+                        <button
+                          key={p.label}
+                          onClick={() => { setAiCombo(p.combo); setAiUploadedImages({}); }}
+                          className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded text-xs font-medium"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 構成エディタ */}
+                    <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                      {aiCombo.map((slot, idx) => (
+                        <div key={idx} className="flex items-start gap-2">
+                          <span className="text-xs text-gray-400 mt-1.5 w-4 shrink-0">{idx + 1}.</span>
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              {/* タイプ選択 */}
+                              <select
+                                value={slot.type}
+                                onChange={(e) => {
+                                  const newCombo = [...aiCombo];
+                                  newCombo[idx] = { type: e.target.value as 'text' | 'card' | 'image' };
+                                  setAiCombo(newCombo);
+                                  const newImgs = { ...aiUploadedImages };
+                                  delete newImgs[idx];
+                                  setAiUploadedImages(newImgs);
+                                }}
+                                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                              >
+                                <option value="text">テキスト</option>
+                                <option value="card">カード</option>
+                                <option value="image">画像</option>
+                              </select>
+
+                              {/* カード: 画像あり/なし */}
+                              {slot.type === 'card' && (
+                                <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!slot.hasImage}
+                                    onChange={(e) => {
+                                      const newCombo = [...aiCombo];
+                                      newCombo[idx] = { ...slot, hasImage: e.target.checked };
+                                      setAiCombo(newCombo);
+                                      if (!e.target.checked) {
+                                        const newImgs = { ...aiUploadedImages };
+                                        delete newImgs[idx];
+                                        setAiUploadedImages(newImgs);
+                                      }
+                                    }}
+                                    className="rounded text-purple-500"
+                                  />
+                                  画像あり
+                                </label>
+                              )}
+
+                              {/* 削除ボタン */}
+                              {aiCombo.length > 1 && (
+                                <button
+                                  onClick={() => {
+                                    const newCombo = aiCombo.filter((_, i) => i !== idx);
+                                    setAiCombo(newCombo);
+                                    // 画像インデックスをリマップ
+                                    const newImgs: Record<number, string> = {};
+                                    Object.entries(aiUploadedImages).forEach(([k, v]) => {
+                                      const ki = Number(k);
+                                      if (ki < idx) newImgs[ki] = v;
+                                      else if (ki > idx) newImgs[ki - 1] = v;
+                                    });
+                                    setAiUploadedImages(newImgs);
+                                  }}
+                                  className="ml-auto text-gray-400 hover:text-red-500 text-xs"
+                                >
+                                  x
+                                </button>
+                              )}
+                            </div>
+
+                            {/* 画像アップロード: カード(画像あり) or 画像タイプ */}
+                            {((slot.type === 'card' && slot.hasImage) || slot.type === 'image') && (
+                              <div className="ml-0">
+                                {aiUploadedImages[idx] ? (
+                                  <div className="flex items-center gap-2">
+                                    <img src={aiUploadedImages[idx]} alt="" className="h-10 w-14 object-cover rounded border" />
+                                    <button
+                                      onClick={() => {
+                                        const newImgs = { ...aiUploadedImages };
+                                        delete newImgs[idx];
+                                        setAiUploadedImages(newImgs);
+                                      }}
+                                      className="text-xs text-red-500 hover:text-red-700"
+                                    >
+                                      削除
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer ${
+                                    aiUploadingIdx === idx ? 'bg-gray-200 text-gray-400' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                                  }`}>
+                                    {aiUploadingIdx === idx ? (
+                                      'アップロード中...'
+                                    ) : (
+                                      <>
+                                        <PhotoIcon className="h-3.5 w-3.5" />
+                                        画像をアップロード
+                                      </>
+                                    )}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      disabled={aiUploadingIdx === idx}
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) handleAiImageUpload(idx, f);
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* メッセージ追加 */}
+                      {aiCombo.length < 5 && (
+                        <button
+                          onClick={() => setAiCombo([...aiCombo, { type: 'text' }])}
+                          className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+                        >
+                          + メッセージを追加
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {messages.length > 0 && (
