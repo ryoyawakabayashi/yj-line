@@ -281,6 +281,7 @@ export default function BroadcastPage() {
   const [aiUploadedImages, setAiUploadedImages] = useState<Record<number, string>>({});
   const [aiUploadingIdx, setAiUploadingIdx] = useState<number | null>(null);
   const [aiExtraNote, setAiExtraNote] = useState('');
+  const [aiButtonUrl, setAiButtonUrl] = useState('https://www.yolo-japan.com/ja/job/');
   // インラインAI生成
   const [aiInlineOpen, setAiInlineOpen] = useState<number | null>(null);
   const [aiInlineRole, setAiInlineRole] = useState('main');
@@ -921,16 +922,21 @@ export default function BroadcastPage() {
       });
       const data = await res.json();
       if (data.messages && data.messages.length > 0) {
-        // アップロード済み画像をマージ
+        // アップロード済み画像をマージ + ボタンURLを差し替え
         const merged = data.messages.map((msg: any, idx: number) => {
+          let m = { ...msg };
           const imgUrl = aiUploadedImages[idx];
-          if (imgUrl && msg.type === 'card') {
-            return { ...msg, imageUrl: imgUrl };
+          if (imgUrl && m.type === 'card') {
+            m = { ...m, imageUrl: imgUrl };
           }
-          if (imgUrl && msg.type === 'image') {
-            return { ...msg, originalUrl: imgUrl };
+          if (imgUrl && m.type === 'image') {
+            m = { ...m, originalUrl: imgUrl };
           }
-          return msg;
+          // カードのボタンURLを指定URLに差し替え
+          if (m.type === 'card' && m.buttons && aiButtonUrl.trim()) {
+            m.buttons = m.buttons.map((b: any) => ({ ...b, url: aiButtonUrl.trim() }));
+          }
+          return m;
         });
         setMessages(merged);
         setShowAiModal(false);
@@ -2419,6 +2425,23 @@ export default function BroadcastPage() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                 />
               </div>
+
+              {/* ボタンURL */}
+              {(aiUseCombo ? aiCombo.some(s => s.type === 'card') : aiMessageType !== 'text') && (
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">
+                    カードボタンのリンク先URL
+                  </label>
+                  <input
+                    type="url"
+                    value={aiButtonUrl}
+                    onChange={(e) => setAiButtonUrl(e.target.value)}
+                    placeholder="https://www.yolo-japan.com/ja/job/..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">カードの「応募する」ボタンに設定されるURLです</p>
+                </div>
+              )}
 
               {/* メッセージ構成モード切替 */}
               <div>
