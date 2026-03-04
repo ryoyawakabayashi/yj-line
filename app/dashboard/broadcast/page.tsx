@@ -280,6 +280,7 @@ export default function BroadcastPage() {
   const [aiUseCombo, setAiUseCombo] = useState(true);
   const [aiUploadedImages, setAiUploadedImages] = useState<Record<number, string>>({});
   const [aiUploadingIdx, setAiUploadingIdx] = useState<number | null>(null);
+  const [aiExtraNote, setAiExtraNote] = useState('');
   // インラインAI生成
   const [aiInlineOpen, setAiInlineOpen] = useState<number | null>(null);
   const [aiInlineRole, setAiInlineRole] = useState('main');
@@ -903,7 +904,10 @@ export default function BroadcastPage() {
     if (!aiPrompt.trim()) return;
     setAiGenerating(true);
     try {
-      const payload: any = { prompt: aiPrompt.trim() };
+      const fullPrompt = aiExtraNote.trim()
+        ? `${aiPrompt.trim()}\n\n## 追加の指示\n${aiExtraNote.trim()}`
+        : aiPrompt.trim();
+      const payload: any = { prompt: fullPrompt };
       if (aiUseCombo) {
         payload.combo = aiCombo;
       } else {
@@ -2399,6 +2403,20 @@ export default function BroadcastPage() {
                   placeholder={"求人詳細ページの本文をコピーして、ここにそのまま貼り付けてください。\nAIが自動で内容を読み取り、働きたくなるLINEメッセージを作成します。\n\n（例）\n飲食店ホールスタッフ\n時給1,300円〜 交通費支給 まかない付き\n東京都新宿区 駅チカ徒歩3分\n週3日〜OK シフト自由 未経験歓迎\n日本語N3以上 留学生・ワーホリ歓迎"}
                   rows={10}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
+                />
+              </div>
+
+              {/* 追加の指示 */}
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                  追加で記載してほしい内容（任意）
+                </label>
+                <input
+                  type="text"
+                  value={aiExtraNote}
+                  onChange={(e) => setAiExtraNote(e.target.value)}
+                  placeholder="例: 高時給を強調して、急募感を出してほしい"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                 />
               </div>
 
