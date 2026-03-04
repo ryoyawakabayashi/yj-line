@@ -2391,13 +2391,13 @@ export default function BroadcastPage() {
               {/* プロンプト入力（求人詳細の本文貼り付け対応） */}
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">
-                  メッセージの内容・求人詳細ページの本文を貼り付け
+                  求人ページの本文をそのまま貼り付けるだけでOK
                 </label>
                 <textarea
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder={"求人詳細ページの本文をそのまま貼り付けてください。\nまたは、以下のように入力:\n\nタイトル: 飲食店スタッフ募集\n文章: 東京の人気レストランでスタッフ募集中！\n時給: 1,200円〜\n勤務地: 東京都新宿区\n条件: 週3日からOK、日本語N3以上\nその他: まかない付き、交通費支給"}
-                  rows={8}
+                  placeholder={"求人詳細ページの本文をコピーして、ここにそのまま貼り付けてください。\nAIが自動で内容を読み取り、働きたくなるLINEメッセージを作成します。\n\n（例）\n飲食店ホールスタッフ\n時給1,300円〜 交通費支給 まかない付き\n東京都新宿区 駅チカ徒歩3分\n週3日〜OK シフト自由 未経験歓迎\n日本語N3以上 留学生・ワーホリ歓迎"}
+                  rows={10}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                 />
               </div>
