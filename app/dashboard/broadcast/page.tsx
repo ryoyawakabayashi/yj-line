@@ -143,19 +143,19 @@ const RECENT_PERIOD_OPTIONS = [
 ];
 
 const JP_LEVEL_OPTIONS = [
-  { value: 'N1', label: 'N1' },
-  { value: 'N2', label: 'N2' },
-  { value: 'N3', label: 'N3' },
-  { value: 'N4', label: 'N4' },
-  { value: 'N5', label: 'N5' },
-  { value: 'none', label: 'なし' },
+  { value: 'n1', label: 'N1' },
+  { value: 'n2', label: 'N2' },
+  { value: 'n3', label: 'N3' },
+  { value: 'n4', label: 'N4' },
+  { value: 'n5', label: 'N5' },
+  { value: 'no_japanese', label: '話せない' },
 ];
 
 const URGENCY_OPTIONS = [
   { value: '', label: 'すべて' },
-  { value: 'now', label: '今すぐ' },
-  { value: 'soon', label: '近いうち' },
-  { value: 'not_yet', label: 'まだ' },
+  { value: 'immediate', label: '今すぐ' },
+  { value: 'within_2weeks', label: '1〜2週間' },
+  { value: 'not_urgent', label: '急ぎでない' },
 ];
 
 const DB_GENDER_OPTIONS = [
