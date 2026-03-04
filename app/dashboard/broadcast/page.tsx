@@ -2451,7 +2451,7 @@ export default function BroadcastPage() {
                     type="url"
                     value={aiButtonUrl}
                     onChange={(e) => setAiButtonUrl(e.target.value)}
-                    placeholder="https://www.yolo-japan.com/ja/recruit/job/details/..."
+                    placeholder="https://www.yolo-japan.com/en/recruit/job/details/<求人ID>"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400"
                   />
                 </div>
@@ -2483,10 +2483,50 @@ export default function BroadcastPage() {
                   </button>
                 </div>
 
-                {/* いつもの: テキスト + カード(画像あり) 固定 */}
+                {/* いつもの: テキスト + カード(画像あり) 固定 + 画像アップロード */}
                 {!aiUseCombo && (
-                  <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-500">
-                    テキスト + カード（画像あり）の2通構成
+                  <div className="bg-gray-50 rounded-lg px-3 py-2.5 space-y-2">
+                    <div className="text-xs text-gray-500">テキスト + カード（画像あり）の2通構成</div>
+                    <div>
+                      <span className="text-xs text-gray-500 mr-2">カード画像:</span>
+                      {aiUploadedImages[1] ? (
+                        <div className="inline-flex items-center gap-2">
+                          <img src={aiUploadedImages[1]} alt="" className="h-10 w-14 object-cover rounded border" />
+                          <button
+                            onClick={() => {
+                              const newImgs = { ...aiUploadedImages };
+                              delete newImgs[1];
+                              setAiUploadedImages(newImgs);
+                            }}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      ) : (
+                        <label className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer ${
+                          aiUploadingIdx === 1 ? 'bg-gray-200 text-gray-400' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                        }`}>
+                          {aiUploadingIdx === 1 ? 'アップロード中...' : (
+                            <>
+                              <PhotoIcon className="h-3.5 w-3.5" />
+                              画像をアップロード
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={aiUploadingIdx === 1}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleAiImageUpload(1, f);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
                 )}
 
