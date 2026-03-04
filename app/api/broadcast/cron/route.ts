@@ -62,14 +62,23 @@ interface MessageItem {
   bubbles?: CarouselBubble[];
 }
 
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://line-bot-next-omega.vercel.app';
+
 function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: string): string {
   const type = campaign || 'other';
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const uid = broadcastId || Math.random().toString(36).slice(2, 8);
   const campaignValue = `line_push_${type}_${today}_${uid}`;
-  const separator = targetUrl.includes('?') ? '&' : '?';
-  const trackedUrl = targetUrl + `${separator}utm_source=line&utm_medium=push&utm_campaign=${encodeURIComponent(campaignValue)}`;
-  return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(trackedUrl)}`;
+  // /api/r/ 経由でクリックトラッキング + UTMパラメータをサーバー側で付与
+  const token = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 8);
+  const params = new URLSearchParams({
+    url: targetUrl,
+    medium: 'push',
+    campaign: campaignValue,
+  });
+  if (broadcastId) params.set('bcid', broadcastId);
+  const redirectUrl = `${APP_BASE_URL}/api/r/${token}?${params.toString()}`;
+  return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(redirectUrl)}`;
 }
 
 function buildLineMessages(items: MessageItem[], broadcastId?: string, notificationText?: string): object[] {
@@ -232,40 +241,56 @@ export async function GET(request: NextRequest) {
           }
           result = { testUsers: (testUsers || []).length, successCount };
 
-        } else if (campaign.delivery_method === 'prefecture') {
-          // 都道府県別配信: AI診断で該当都道府県を登録したユーザーにpush（複数対応）
-          const prefList: string[] = campaign.demographic?.prefectures || (campaign.demographic?.prefecture ? [campaign.demographic.prefecture] : []);
-          if (prefList.length === 0) throw new Error('Prefecture: no prefecture specified');
-          const { data: diagUsers } = await supabase
-            .from('diagnosis_results')
-            .select('user_id')
-            .in('q4_prefecture', prefList);
-          const uniqueIds = [...new Set((diagUsers || []).map((d: any) => d.user_id))];
-          if (uniqueIds.length === 0) throw new Error(`Prefecture: no users for ${prefList.join(',')}`);
-          let successCount = 0;
-          for (const uid of uniqueIds) {
-            const ok = await pushMessage(uid, messages as any);
-            if (ok) successCount++;
-          }
-          result = { prefectures: prefList, targetUsers: uniqueIds.length, successCount };
+        } else if (campaign.delivery_method === 'db_users' || campaign.delivery_method === 'prefecture' || campaign.delivery_method === 'recent_followers') {
+          // DB登録ユーザー配信: 複合フィルターで絞り込んで個別push
+          const demo = campaign.demographic || {};
+          const prefList: string[] = demo.prefectures || [];
+          const jpLevel: string[] = demo.japaneseLevel || [];
 
-        } else if (campaign.delivery_method === 'recent_followers') {
-          // 新規友達配信: 指定期間内に友達追加したユーザーにpush
-          const days = Number(campaign.demographic?.recentDays) || 30;
-          const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-          const { data: followData } = await supabase
-            .from('follow_events')
-            .select('user_id')
-            .eq('event_type', 'follow')
-            .gte('timestamp', since);
-          const uniqueIds = [...new Set((followData || []).map((d: any) => d.user_id))];
-          if (uniqueIds.length === 0) throw new Error('Recent followers: no users found');
+          // フィルター構築
+          let diagUserIds: Set<string> | null = null;
+          let followUserIds: Set<string> | null = null;
+
+          const hasDiagFilter = prefList.length > 0 || jpLevel.length > 0 || demo.urgency || demo.gender;
+          if (hasDiagFilter) {
+            let query = supabase.from('diagnosis_results').select('user_id');
+            if (prefList.length > 0) query = query.in('q4_prefecture', prefList);
+            if (jpLevel.length > 0) query = query.in('q5_japanese_level', jpLevel);
+            if (demo.urgency) query = query.eq('q3_urgency', demo.urgency);
+            if (demo.gender) query = query.eq('q2_gender', demo.gender);
+            const { data } = await query;
+            diagUserIds = new Set((data || []).map((d: any) => d.user_id));
+          }
+
+          if (demo.recentDays) {
+            const days = Number(demo.recentDays);
+            const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            const { data } = await supabase
+              .from('follow_events')
+              .select('user_id')
+              .eq('event_type', 'follow')
+              .gte('timestamp', since);
+            followUserIds = new Set((data || []).map((d: any) => d.user_id));
+          }
+
+          let uniqueIds: string[];
+          if (diagUserIds && followUserIds) {
+            uniqueIds = [...diagUserIds].filter((id) => followUserIds!.has(id));
+          } else if (diagUserIds) {
+            uniqueIds = [...diagUserIds];
+          } else if (followUserIds) {
+            uniqueIds = [...followUserIds];
+          } else {
+            throw new Error('DB users: no filters specified');
+          }
+
+          if (uniqueIds.length === 0) throw new Error('DB users: no matching users');
           let successCount = 0;
           for (const uid of uniqueIds) {
             const ok = await pushMessage(uid, messages as any);
             if (ok) successCount++;
           }
-          result = { recentDays: days, targetUsers: uniqueIds.length, successCount };
+          result = { targetUsers: uniqueIds.length, successCount };
 
         } else if (campaign.delivery_method === 'narrowcast') {
           // デモグラフィックフィルターを動的に構築

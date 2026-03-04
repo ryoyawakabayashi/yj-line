@@ -106,7 +106,7 @@ const AGE_OPTIONS = [
   { value: 'age_50', label: '50歳以上' },
 ];
 
-type DeliveryMethod = 'broadcast' | 'narrowcast' | 'prefecture' | 'recent_followers' | 'test';
+type DeliveryMethod = 'broadcast' | 'narrowcast' | 'db_users' | 'test';
 type DataSource = 'line' | 'db' | 'test';
 
 const DATA_SOURCE_OPTIONS: { value: DataSource; label: string }[] = [
@@ -121,8 +121,7 @@ const SUB_METHOD_OPTIONS: Record<DataSource, { value: DeliveryMethod; label: str
     { value: 'narrowcast', label: '絞り込み' },
   ],
   db: [
-    { value: 'prefecture', label: '登録ユーザー（都道府県）' },
-    { value: 'recent_followers', label: '新規友達（期間）' },
+    { value: 'db_users', label: '登録ユーザー' },
   ],
   test: [
     { value: 'test', label: 'テストユーザーに配信' },
@@ -132,15 +131,37 @@ const SUB_METHOD_OPTIONS: Record<DataSource, { value: DeliveryMethod; label: str
 const METHOD_TO_SOURCE: Record<DeliveryMethod, DataSource> = {
   broadcast: 'line',
   narrowcast: 'line',
-  prefecture: 'db',
-  recent_followers: 'db',
+  db_users: 'db',
   test: 'test',
 };
 
 const RECENT_PERIOD_OPTIONS = [
+  { value: '', label: 'すべて' },
   { value: '7', label: '1週間以内' },
   { value: '30', label: '1ヶ月以内' },
   { value: '90', label: '3ヶ月以内' },
+];
+
+const JP_LEVEL_OPTIONS = [
+  { value: 'N1', label: 'N1' },
+  { value: 'N2', label: 'N2' },
+  { value: 'N3', label: 'N3' },
+  { value: 'N4', label: 'N4' },
+  { value: 'N5', label: 'N5' },
+  { value: 'none', label: 'なし' },
+];
+
+const URGENCY_OPTIONS = [
+  { value: '', label: 'すべて' },
+  { value: 'now', label: '今すぐ' },
+  { value: 'soon', label: '近いうち' },
+  { value: 'not_yet', label: 'まだ' },
+];
+
+const DB_GENDER_OPTIONS = [
+  { value: '', label: 'すべて' },
+  { value: 'male', label: '男性' },
+  { value: 'female', label: '女性' },
 ];
 
 // AI診断の都道府県リスト（地域別グループ）
@@ -231,11 +252,17 @@ export default function BroadcastPage() {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('broadcast');
   const dataSource = METHOD_TO_SOURCE[deliveryMethod];
-  const [recentDays, setRecentDays] = useState('30');
+  const [recentDays, setRecentDays] = useState('');
   const [recentFollowerCount, setRecentFollowerCount] = useState<number | null>(null);
   const [area, setArea] = useState('');
   const [gender, setGender] = useState('');
   const [ageRange, setAgeRange] = useState('');
+  // DB Users フィルター
+  const [dbJapaneseLevel, setDbJapaneseLevel] = useState<string[]>([]);
+  const [dbUrgency, setDbUrgency] = useState('');
+  const [dbGender, setDbGender] = useState('');
+  const [dbUserCount, setDbUserCount] = useState<number | null>(null);
+  const [dbCountLoading, setDbCountLoading] = useState(false);
   const [broadcastLang, setBroadcastLang] = useState('ja');
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [testUsers, setTestUsers] = useState<TestUser[]>([]);
@@ -458,11 +485,34 @@ export default function BroadcastPage() {
 
   // 新規友達カウント: recentDays変更時に再取得
   useEffect(() => {
+    if (!recentDays) return;
     (async () => {
       const res = await api('GET', { action: 'recent_followers_count', days: recentDays });
       if (res.count !== undefined) setRecentFollowerCount(res.count);
     })();
   }, [recentDays]);
+
+  // DB Users: フィルター変更時に対象ユーザー数を再取得
+  useEffect(() => {
+    if (deliveryMethod !== 'db_users') return;
+    const hasFilter = prefectures.length > 0 || recentDays || dbJapaneseLevel.length > 0 || dbUrgency || dbGender;
+    if (!hasFilter) { setDbUserCount(null); return; }
+
+    setDbCountLoading(true);
+    const params: Record<string, string> = { action: 'db_users_count' };
+    if (prefectures.length > 0) params.prefectures = prefectures.join(',');
+    if (recentDays) params.recentDays = recentDays;
+    if (dbJapaneseLevel.length > 0) params.japaneseLevel = dbJapaneseLevel.join(',');
+    if (dbUrgency) params.urgency = dbUrgency;
+    if (dbGender) params.gender = dbGender;
+
+    const timer = setTimeout(() => {
+      api('GET', params).then((res) => {
+        if (res.count !== undefined) setDbUserCount(res.count);
+      }).finally(() => setDbCountLoading(false));
+    }, 300); // debounce
+    return () => clearTimeout(timer);
+  }, [deliveryMethod, prefectures, recentDays, dbJapaneseLevel, dbUrgency, dbGender]);
 
   const loadDraft = async (id: string) => {
     const res = await api('GET', { action: 'campaign_detail', id });
@@ -478,6 +528,10 @@ export default function BroadcastPage() {
       setPrefectures(draft.demographic?.prefectures || (draft.demographic?.prefecture ? [draft.demographic.prefecture] : []));
       setBroadcastLang(draft.broadcast_lang || 'ja');
       setNotificationText(draft.demographic?.notificationText || '');
+      setRecentDays(draft.demographic?.recentDays || '');
+      setDbJapaneseLevel(draft.demographic?.japaneseLevel || []);
+      setDbUrgency(draft.demographic?.urgency || '');
+      setDbGender(draft.demographic?.gender || '');
       // 下書き読み込み完了後、URLから?draftパラメータを除去（リロード時にlocalStorage復元が効くように）
       window.history.replaceState({}, '', window.location.pathname);
     }
@@ -713,8 +767,7 @@ export default function BroadcastPage() {
     const currentMethod = testUserIds ? 'test' : deliveryMethod;
     const methodLabel = currentMethod === 'broadcast' ? '全友達に配信'
       : currentMethod === 'narrowcast' ? `${AREA_OPTIONS.find(a => a.value === area)?.label || area}に配信`
-      : currentMethod === 'prefecture' ? `${prefectures.length}都道府県の登録ユーザーに配信`
-      : currentMethod === 'recent_followers' ? `新規友達（${RECENT_PERIOD_OPTIONS.find(o => o.value === recentDays)?.label}）${recentFollowerCount ?? '?'}人に配信`
+      : currentMethod === 'db_users' ? `登録ユーザー${dbUserCount != null ? `（${dbUserCount}人）` : ''}に配信`
       : `テスト配信（${testUserIds?.length || testUsers.length}人）`;
     if (!confirm(`${methodLabel}しますか？`)) return;
 
@@ -728,10 +781,12 @@ export default function BroadcastPage() {
         messages,
         deliveryMethod: currentMethod,
         area: currentMethod === 'narrowcast' && area ? area : undefined,
-        gender: currentMethod === 'narrowcast' && gender ? gender : undefined,
+        gender: currentMethod === 'narrowcast' ? (gender || undefined) : (currentMethod === 'db_users' ? (dbGender || undefined) : undefined),
         ageRange: currentMethod === 'narrowcast' && ageRange ? ageRange : undefined,
-        prefectures: currentMethod === 'prefecture' && prefectures.length > 0 ? prefectures : undefined,
-        recentDays: currentMethod === 'recent_followers' ? Number(recentDays) : undefined,
+        prefectures: currentMethod === 'db_users' && prefectures.length > 0 ? prefectures : undefined,
+        recentDays: currentMethod === 'db_users' && recentDays ? Number(recentDays) : undefined,
+        japaneseLevel: currentMethod === 'db_users' && dbJapaneseLevel.length > 0 ? dbJapaneseLevel : undefined,
+        urgency: currentMethod === 'db_users' && dbUrgency ? dbUrgency : undefined,
         testUserIds: testUserIds || undefined,
         broadcastLang,
       });
@@ -762,8 +817,14 @@ export default function BroadcastPage() {
         area: deliveryMethod === 'narrowcast' && area ? area : undefined,
         demographic: deliveryMethod === 'narrowcast'
           ? { gender: gender || undefined, age: ageRange || undefined }
-          : deliveryMethod === 'prefecture'
-            ? { prefectures: prefectures.length > 0 ? prefectures : undefined }
+          : deliveryMethod === 'db_users'
+            ? {
+                prefectures: prefectures.length > 0 ? prefectures : undefined,
+                recentDays: recentDays || undefined,
+                japaneseLevel: dbJapaneseLevel.length > 0 ? dbJapaneseLevel : undefined,
+                urgency: dbUrgency || undefined,
+                gender: dbGender || undefined,
+              }
             : undefined,
         broadcastLang,
       });
@@ -797,10 +858,12 @@ export default function BroadcastPage() {
         messages,
         deliveryMethod: isTest ? 'test' : deliveryMethod,
         area: deliveryMethod === 'narrowcast' && !isTest && area ? area : undefined,
-        gender: deliveryMethod === 'narrowcast' && !isTest && gender ? gender : undefined,
+        gender: deliveryMethod === 'narrowcast' && !isTest ? (gender || undefined) : (deliveryMethod === 'db_users' && !isTest ? (dbGender || undefined) : undefined),
         ageRange: deliveryMethod === 'narrowcast' && !isTest && ageRange ? ageRange : undefined,
-        prefectures: deliveryMethod === 'prefecture' && !isTest && prefectures.length > 0 ? prefectures : undefined,
-        recentDays: deliveryMethod === 'recent_followers' && !isTest ? Number(recentDays) : undefined,
+        prefectures: deliveryMethod === 'db_users' && !isTest && prefectures.length > 0 ? prefectures : undefined,
+        recentDays: deliveryMethod === 'db_users' && !isTest && recentDays ? Number(recentDays) : undefined,
+        japaneseLevel: deliveryMethod === 'db_users' && !isTest && dbJapaneseLevel.length > 0 ? dbJapaneseLevel : undefined,
+        urgency: deliveryMethod === 'db_users' && !isTest && dbUrgency ? dbUrgency : undefined,
         broadcastLang,
         scheduledAt: isoStr,
       });
@@ -1044,18 +1107,13 @@ export default function BroadcastPage() {
   };
 
   const narrowcastEstimate = calcNarrowcastEstimate();
-  const prefectureCount = deliveryMethod === 'prefecture' && prefectures.length > 0
-    ? prefectures.reduce((sum, p) => sum + (prefectureCounts[p] || 0), 0)
-    : null;
   const targetCount = deliveryMethod === 'test'
     ? testUsers.length
-    : deliveryMethod === 'prefecture'
-      ? prefectureCount
-      : deliveryMethod === 'recent_followers'
-        ? recentFollowerCount
-        : deliveryMethod === 'narrowcast'
-          ? narrowcastEstimate
-          : (targetedReaches ?? followerCount);
+    : deliveryMethod === 'db_users'
+      ? dbUserCount
+      : deliveryMethod === 'narrowcast'
+        ? narrowcastEstimate
+        : (targetedReaches ?? followerCount);
   const isEstimate = deliveryMethod === 'narrowcast' && (!!area || !!gender || !!ageRange);
 
   // =====================================================
@@ -1212,106 +1270,76 @@ export default function BroadcastPage() {
                           </div>
                         )}
 
-                        {/* Prefecture インラインフィルター */}
-                        {method.value === 'prefecture' && deliveryMethod === 'prefecture' && (
-                          <div className="ml-9 mr-3 mt-1 mb-2 space-y-3">
+                        {/* DB Users 複合フィルター */}
+                        {method.value === 'db_users' && deliveryMethod === 'db_users' && (
+                          <div className="ml-9 mr-3 mt-1 mb-2 space-y-4">
                             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                              <p className="text-sm font-medium text-blue-800">AI診断の登録ユーザーに配信</p>
-                              <p className="text-xs text-blue-600 mt-0.5">お仕事診断で都道府県を回答したユーザーに個別配信します。</p>
+                              <p className="text-sm font-medium text-blue-800">DB登録ユーザーに個別配信</p>
+                              <p className="text-xs text-blue-600 mt-0.5">条件を組み合わせて対象を絞り込めます（AND条件）</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => setPrefectures([...ALL_PREFECTURE_CODES])}
-                                className="text-xs text-[#d10a1c] font-medium hover:underline"
-                              >
-                                全選択
-                              </button>
-                              <button
-                                onClick={() => setPrefectures([])}
-                                className="text-xs text-gray-500 font-medium hover:underline"
-                              >
-                                全解除
-                              </button>
-                              <span className="text-xs text-gray-400 ml-auto">
-                                {prefectures.length > 0 && `${prefectures.length}件選択中`}
-                              </span>
-                            </div>
-                            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
-                              {(() => {
-                                const allCounts = Object.values(prefectureCounts);
-                                const maxPrefCount = allCounts.length > 0 ? Math.max(...allCounts) : 0;
-                                return REGION_PREFECTURES.map((group) => {
-                                  const groupCodes = group.prefectures.map(p => p.value);
-                                  const allSelected = groupCodes.every(c => prefectures.includes(c));
-                                  const someSelected = groupCodes.some(c => prefectures.includes(c));
-                                  const regionCount = groupCodes.reduce((sum, c) => sum + (prefectureCounts[c] || 0), 0);
-                                  return (
-                                    <div key={group.region} className="px-3 py-1.5">
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                          type="checkbox"
-                                          checked={allSelected}
-                                          ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                                          onChange={() => {
-                                            if (allSelected) {
-                                              setPrefectures(prev => prev.filter(p => !groupCodes.includes(p)));
-                                            } else {
-                                              setPrefectures(prev => [...new Set([...prev, ...groupCodes])]);
-                                            }
-                                          }}
-                                          className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
-                                        />
-                                        <span className="text-sm font-semibold text-gray-800">{group.label}</span>
-                                        {regionCount > 0 && (
-                                          <span className="text-xs text-gray-400 ml-auto">{regionCount.toLocaleString()}人</span>
-                                        )}
-                                      </label>
-                                      <div className="ml-5 mt-0.5 flex flex-wrap gap-x-1 gap-y-0">
-                                        {group.prefectures.map((p) => {
-                                          const checked = prefectures.includes(p.value);
-                                          const cnt = prefectureCounts[p.value] || 0;
-                                          const isTop = maxPrefCount > 0 && cnt === maxPrefCount;
-                                          return (
-                                            <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
-                                              <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                onChange={() => {
-                                                  setPrefectures(prev =>
-                                                    checked ? prev.filter(v => v !== p.value) : [...prev, p.value]
-                                                  );
-                                                }}
-                                                className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
-                                              />
-                                              <span className="text-xs text-gray-700">{p.label}</span>
-                                              {cnt > 0 && <span className={`text-xs font-medium ${isTop ? 'text-[#d10a1c]' : 'text-gray-400'}`}>({cnt})</span>}
-                                            </label>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          </div>
-                        )}
 
-                        {/* 新規友達 インラインフィルター */}
-                        {method.value === 'recent_followers' && deliveryMethod === 'recent_followers' && (
-                          <div className="ml-9 mr-3 mt-1 mb-2 space-y-3">
-                            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                              <p className="text-sm font-medium text-green-800">最近友達追加したユーザーに配信</p>
-                              <p className="text-xs text-green-600 mt-0.5">指定期間内に友達追加したユーザーに個別配信します。</p>
-                            </div>
+                            {/* 都道府県 */}
                             <div>
-                              <label className="text-xs font-medium text-gray-500 mb-1 block">期間</label>
+                              <div className="flex items-center gap-3 mb-1.5">
+                                <label className="text-xs font-semibold text-gray-700">都道府県</label>
+                                <button onClick={() => setPrefectures([...ALL_PREFECTURE_CODES])} className="text-xs text-[#d10a1c] font-medium hover:underline">全選択</button>
+                                <button onClick={() => setPrefectures([])} className="text-xs text-gray-500 font-medium hover:underline">全解除</button>
+                                {prefectures.length > 0 && <span className="text-xs text-gray-400 ml-auto">{prefectures.length}件選択中</span>}
+                              </div>
+                              <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                                {(() => {
+                                  const allCounts = Object.values(prefectureCounts);
+                                  const maxPrefCount = allCounts.length > 0 ? Math.max(...allCounts) : 0;
+                                  return REGION_PREFECTURES.map((group) => {
+                                    const groupCodes = group.prefectures.map(p => p.value);
+                                    const allSelected = groupCodes.every(c => prefectures.includes(c));
+                                    const someSelected = groupCodes.some(c => prefectures.includes(c));
+                                    const regionCount = groupCodes.reduce((sum, c) => sum + (prefectureCounts[c] || 0), 0);
+                                    return (
+                                      <div key={group.region} className="px-3 py-1.5">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                          <input type="checkbox" checked={allSelected}
+                                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                                            onChange={() => {
+                                              if (allSelected) setPrefectures(prev => prev.filter(p => !groupCodes.includes(p)));
+                                              else setPrefectures(prev => [...new Set([...prev, ...groupCodes])]);
+                                            }}
+                                            className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3.5 w-3.5"
+                                          />
+                                          <span className="text-sm font-semibold text-gray-800">{group.label}</span>
+                                          {regionCount > 0 && <span className="text-xs text-gray-400 ml-auto">{regionCount.toLocaleString()}人</span>}
+                                        </label>
+                                        <div className="ml-5 mt-0.5 flex flex-wrap gap-x-1 gap-y-0">
+                                          {group.prefectures.map((p) => {
+                                            const checked = prefectures.includes(p.value);
+                                            const cnt = prefectureCounts[p.value] || 0;
+                                            const isTop = maxPrefCount > 0 && cnt === maxPrefCount;
+                                            return (
+                                              <label key={p.value} className="flex items-center gap-1 cursor-pointer min-w-[120px]">
+                                                <input type="checkbox" checked={checked}
+                                                  onChange={() => setPrefectures(prev => checked ? prev.filter(v => v !== p.value) : [...prev, p.value])}
+                                                  className="rounded border-gray-300 text-[#eaae9e] focus:ring-[#eaae9e] h-3 w-3"
+                                                />
+                                                <span className="text-xs text-gray-700">{p.label}</span>
+                                                {cnt > 0 && <span className={`text-xs font-medium ${isTop ? 'text-[#d10a1c]' : 'text-gray-400'}`}>({cnt})</span>}
+                                              </label>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            </div>
+
+                            {/* 友達追加時期 */}
+                            <div>
+                              <label className="text-xs font-semibold text-gray-700 mb-1.5 block">友達追加時期</label>
                               <div className="flex gap-2">
                                 {RECENT_PERIOD_OPTIONS.map((opt) => (
-                                  <button
-                                    key={opt.value}
-                                    onClick={() => setRecentDays(opt.value)}
-                                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                                  <button key={opt.value} onClick={() => setRecentDays(opt.value)}
+                                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
                                       recentDays === opt.value ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                                   >
@@ -1319,6 +1347,75 @@ export default function BroadcastPage() {
                                   </button>
                                 ))}
                               </div>
+                            </div>
+
+                            {/* 日本語レベル */}
+                            <div>
+                              <label className="text-xs font-semibold text-gray-700 mb-1.5 block">日本語レベル</label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {JP_LEVEL_OPTIONS.map((opt) => {
+                                  const selected = dbJapaneseLevel.includes(opt.value);
+                                  return (
+                                    <button key={opt.value}
+                                      onClick={() => setDbJapaneseLevel(prev => selected ? prev.filter(v => v !== opt.value) : [...prev, opt.value])}
+                                      className={`py-1 px-3 rounded-lg text-xs font-medium transition-all ${
+                                        selected ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  );
+                                })}
+                                {dbJapaneseLevel.length > 0 && (
+                                  <button onClick={() => setDbJapaneseLevel([])} className="text-xs text-gray-400 hover:text-gray-600 ml-1">クリア</button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 求職緊急度 + 性別 */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">求職緊急度</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {URGENCY_OPTIONS.map((opt) => (
+                                    <button key={opt.value} onClick={() => setDbUrgency(opt.value)}
+                                      className={`py-1 px-3 rounded-lg text-xs font-medium transition-all ${
+                                        dbUrgency === opt.value ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-gray-700 mb-1.5 block">性別</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {DB_GENDER_OPTIONS.map((opt) => (
+                                    <button key={opt.value} onClick={() => setDbGender(opt.value)}
+                                      className={`py-1 px-3 rounded-lg text-xs font-medium transition-all ${
+                                        dbGender === opt.value ? 'bg-[#eaae9e] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 対象ユーザー数 */}
+                            <div className="bg-gray-50 rounded-lg px-4 py-3 flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">対象ユーザー</span>
+                              <span className="text-lg font-bold text-gray-900">
+                                {dbCountLoading ? (
+                                  <span className="text-sm text-gray-400">計算中...</span>
+                                ) : dbUserCount != null ? (
+                                  `${dbUserCount.toLocaleString()}人`
+                                ) : (
+                                  <span className="text-sm text-gray-400">条件を選択してください</span>
+                                )}
+                              </span>
                             </div>
                           </div>
                         )}
@@ -1335,8 +1432,8 @@ export default function BroadcastPage() {
               <span className="font-bold text-gray-900">
                 {targetCount !== null
                   ? `${isEstimate ? '≈ ' : ''}${targetCount.toLocaleString()}人`
-                  : deliveryMethod === 'prefecture' && prefectures.length === 0
-                    ? '都道府県を選択してください'
+                  : deliveryMethod === 'db_users'
+                    ? (dbCountLoading ? '計算中...' : '条件を選択してください')
                     : deliveryMethod === 'narrowcast' && (area || gender || ageRange)
                       ? '推定データなし'
                       : '取得中...'}
@@ -1344,8 +1441,8 @@ export default function BroadcastPage() {
               {isEstimate && (
                 <span className="text-xs text-gray-400 ml-1.5">（デモグラフィック推定）</span>
               )}
-              {deliveryMethod === 'prefecture' && prefectures.length > 0 && (
-                <span className="text-xs text-gray-400 ml-1.5">（AI診断登録ユーザー）</span>
+              {deliveryMethod === 'db_users' && dbUserCount != null && (
+                <span className="text-xs text-gray-400 ml-1.5">（DB登録ユーザー）</span>
               )}
             </div>
 
@@ -2252,7 +2349,7 @@ export default function BroadcastPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">配信方式</span>
                 <span className="font-medium text-gray-900">
-                  {showScheduleConfirm.isTest ? 'テスト' : deliveryMethod === 'broadcast' ? '全員' : deliveryMethod === 'narrowcast' ? '絞り込み' : deliveryMethod === 'prefecture' ? '都道府県' : deliveryMethod === 'recent_followers' ? '新規友達' : deliveryMethod}
+                  {showScheduleConfirm.isTest ? 'テスト' : deliveryMethod === 'broadcast' ? '全員' : deliveryMethod === 'narrowcast' ? '絞り込み' : deliveryMethod === 'db_users' ? '登録ユーザー' : deliveryMethod}
                 </span>
               </div>
               <div className="flex justify-between">

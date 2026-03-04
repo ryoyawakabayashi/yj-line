@@ -86,14 +86,23 @@ interface MessageItem {
   bubbles?: CarouselBubble[];
 }
 
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://line-bot-next-omega.vercel.app';
+
 function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: string): string {
   const type = campaign || 'other';
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const uid = broadcastId || Math.random().toString(36).slice(2, 8);
   const campaignValue = `line_push_${type}_${today}_${uid}`;
-  const separator = targetUrl.includes('?') ? '&' : '?';
-  const trackedUrl = targetUrl + `${separator}utm_source=line&utm_medium=push&utm_campaign=${encodeURIComponent(campaignValue)}`;
-  return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(trackedUrl)}`;
+  // /api/r/ 経由でクリックトラッキング + UTMパラメータをサーバー側で付与
+  const token = crypto.createHash('sha256').update(uid).digest('hex').slice(0, 8);
+  const params = new URLSearchParams({
+    url: targetUrl,
+    medium: 'push',
+    campaign: campaignValue,
+  });
+  if (broadcastId) params.set('bcid', broadcastId);
+  const redirectUrl = `${APP_BASE_URL}/api/r/${token}?${params.toString()}`;
+  return `https://liff.line.me/${LIFF_ID}#url=${encodeURIComponent(redirectUrl)}`;
 }
 
 function buildLineMessages(items: MessageItem[], broadcastId?: string, notificationText?: string): object[] {
@@ -216,6 +225,69 @@ function buildLineMessages(items: MessageItem[], broadcastId?: string, notificat
 function generateAggregationUnit(campaignId: string): string {
   const hash = crypto.createHash('sha256').update(campaignId).digest('hex').slice(0, 8);
   return `bc_${hash}`;
+}
+
+// =====================================================
+// DB Users 複合フィルタークエリ
+// =====================================================
+
+interface DbUserFilters {
+  prefectures?: string[];
+  recentDays?: number;
+  japaneseLevel?: string[];
+  urgency?: string;
+  gender?: string;
+}
+
+async function queryDbUsers(filters: DbUserFilters): Promise<string[]> {
+  let diagUserIds: Set<string> | null = null;
+  let followUserIds: Set<string> | null = null;
+
+  const hasDiagFilter =
+    (filters.prefectures && filters.prefectures.length > 0) ||
+    (filters.japaneseLevel && filters.japaneseLevel.length > 0) ||
+    !!filters.urgency ||
+    !!filters.gender;
+
+  if (hasDiagFilter) {
+    let query = supabase.from('diagnosis_results').select('user_id');
+    if (filters.prefectures && filters.prefectures.length > 0) {
+      query = query.in('q4_prefecture', filters.prefectures);
+    }
+    if (filters.japaneseLevel && filters.japaneseLevel.length > 0) {
+      query = query.in('q5_japanese_level', filters.japaneseLevel);
+    }
+    if (filters.urgency) {
+      query = query.eq('q3_urgency', filters.urgency);
+    }
+    if (filters.gender) {
+      query = query.eq('q2_gender', filters.gender);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    diagUserIds = new Set((data || []).map((d) => d.user_id));
+  }
+
+  if (filters.recentDays) {
+    const since = new Date(Date.now() - filters.recentDays * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('follow_events')
+      .select('user_id')
+      .eq('event_type', 'follow')
+      .gte('timestamp', since);
+    if (error) throw error;
+    followUserIds = new Set((data || []).map((d) => d.user_id));
+  }
+
+  // AND結合: 両方あれば交差、片方のみならそちらを使用
+  if (diagUserIds && followUserIds) {
+    return [...diagUserIds].filter((id) => followUserIds!.has(id));
+  } else if (diagUserIds) {
+    return [...diagUserIds];
+  } else if (followUserIds) {
+    return [...followUserIds];
+  }
+  return [];
 }
 
 // =====================================================
@@ -440,7 +512,13 @@ export async function GET(request: NextRequest) {
         const unit = request.nextUrl.searchParams.get('unit');
         if (!unit) return NextResponse.json({ error: 'unit parameter required' }, { status: 400 });
 
-        const res = await fetch(`${INSIGHT_EVENT_API}?customAggregationUnit=${unit}`, {
+        // from: 配信日（yyyyMMdd）、to: 今日（最大90日間）
+        const fromParam = request.nextUrl.searchParams.get('from');
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const from = fromParam || today;
+        const to = today;
+
+        const res = await fetch(`${INSIGHT_EVENT_API}?customAggregationUnit=${unit}&from=${from}&to=${to}`, {
           headers: { Authorization: `Bearer ${config.line.channelAccessToken}` },
         });
         if (!res.ok) {
@@ -449,6 +527,36 @@ export async function GET(request: NextRequest) {
         }
         const stats = await res.json();
         return NextResponse.json(stats);
+      }
+
+      case 'broadcast_conversions': {
+        const campaignId = request.nextUrl.searchParams.get('campaignId');
+        if (!campaignId) return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
+        const { count, error: convErr } = await supabase
+          .from('tracking_tokens')
+          .select('*', { count: 'exact', head: true })
+          .eq('broadcast_campaign_id', campaignId)
+          .not('converted_at', 'is', null);
+        if (convErr) throw convErr;
+        return NextResponse.json({ conversions: count || 0 });
+      }
+
+      case 'db_users_count': {
+        // 複合フィルターでの対象ユーザー数カウント
+        const filters: DbUserFilters = {};
+        const prefsParam = request.nextUrl.searchParams.get('prefectures');
+        if (prefsParam) filters.prefectures = prefsParam.split(',').filter(Boolean);
+        const daysParam = request.nextUrl.searchParams.get('recentDays');
+        if (daysParam) filters.recentDays = Number(daysParam);
+        const jpLevelParam = request.nextUrl.searchParams.get('japaneseLevel');
+        if (jpLevelParam) filters.japaneseLevel = jpLevelParam.split(',').filter(Boolean);
+        const urgencyParam = request.nextUrl.searchParams.get('urgency');
+        if (urgencyParam) filters.urgency = urgencyParam;
+        const genderParam = request.nextUrl.searchParams.get('gender');
+        if (genderParam) filters.gender = genderParam;
+
+        const userIds = await queryDbUsers(filters);
+        return NextResponse.json({ count: userIds.length });
       }
 
       default:
@@ -475,13 +583,14 @@ export async function POST(request: NextRequest) {
     switch (action) {
       // ─── 配信実行 ──────────────────────────
       case 'send': {
-        const { name, notificationText, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang, prefectures, recentDays, testUserIds } = body;
+        const { name, notificationText, messages, deliveryMethod, area, gender: genderFilter, ageRange, broadcastLang, prefectures, recentDays, testUserIds, japaneseLevel, urgency } = body;
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
         }
 
         // キャンペーンレコード作成
         const prefList: string[] | null = Array.isArray(prefectures) && prefectures.length > 0 ? prefectures : null;
+        const jpLevel: string[] | null = Array.isArray(japaneseLevel) && japaneseLevel.length > 0 ? japaneseLevel : null;
         const { data: campaign, error: insertErr } = await supabase
           .from('broadcast_campaigns')
           .insert({
@@ -490,8 +599,8 @@ export async function POST(request: NextRequest) {
             delivery_method: deliveryMethod || 'broadcast',
             messages,
             area: area || null,
-            demographic: (genderFilter || ageRange || prefList || notificationText || recentDays)
-              ? { gender: genderFilter || null, age: ageRange || null, prefectures: prefList, notificationText: notificationText || null, recentDays: recentDays || null }
+            demographic: (genderFilter || ageRange || prefList || notificationText || recentDays || jpLevel || urgency)
+              ? { gender: genderFilter || null, age: ageRange || null, prefectures: prefList, notificationText: notificationText || null, recentDays: recentDays || null, japaneseLevel: jpLevel, urgency: urgency || null }
               : null,
             broadcast_lang: broadcastLang || 'ja',
             executed_at: new Date().toISOString(),
@@ -528,47 +637,30 @@ export async function POST(request: NextRequest) {
           }
           result = { testUsers: userIds.length, successCount };
 
-        } else if (deliveryMethod === 'prefecture') {
-          // 都道府県別配信: AI診断で都道府県を登録したユーザーにpush
-          if (!prefList || prefList.length === 0) {
-            return NextResponse.json({ error: '都道府県が指定されていません' }, { status: 400 });
-          }
-          const { data: diagUsers, error: diagErr } = await supabase
-            .from('diagnosis_results')
-            .select('user_id')
-            .in('q4_prefecture', prefList);
-          if (diagErr) throw diagErr;
-          const uniqueIds = [...new Set((diagUsers || []).map((d) => d.user_id))];
-          if (uniqueIds.length === 0) {
-            return NextResponse.json({ error: '選択した都道府県の登録ユーザーがいません' }, { status: 400 });
-          }
-          let successCount = 0;
-          for (const uid of uniqueIds) {
-            const ok = await pushMessage(uid, lineMessages as any);
-            if (ok) successCount++;
-          }
-          result = { prefectures: prefList, targetUsers: uniqueIds.length, successCount };
+        } else if (deliveryMethod === 'db_users' || deliveryMethod === 'prefecture' || deliveryMethod === 'recent_followers') {
+          // DB登録ユーザー配信: 複合フィルターで絞り込んで個別push
+          const filters: DbUserFilters = {};
+          if (prefList && prefList.length > 0) filters.prefectures = prefList;
+          if (recentDays) filters.recentDays = Number(recentDays);
+          if (jpLevel && jpLevel.length > 0) filters.japaneseLevel = jpLevel;
+          if (urgency) filters.urgency = urgency;
+          if (genderFilter) filters.gender = genderFilter;
 
-        } else if (deliveryMethod === 'recent_followers') {
-          // 新規友達配信: 指定期間内に友達追加したユーザーにpush
-          const days = Number(recentDays) || 30;
-          const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-          const { data: followData, error: followErr } = await supabase
-            .from('follow_events')
-            .select('user_id')
-            .eq('event_type', 'follow')
-            .gte('timestamp', since);
-          if (followErr) throw followErr;
-          const uniqueIds = [...new Set((followData || []).map((d) => d.user_id))];
+          const hasAnyFilter = Object.keys(filters).length > 0;
+          if (!hasAnyFilter) {
+            return NextResponse.json({ error: '少なくとも1つのフィルター条件を指定してください' }, { status: 400 });
+          }
+
+          const uniqueIds = await queryDbUsers(filters);
           if (uniqueIds.length === 0) {
-            return NextResponse.json({ error: '該当期間の新規友達がいません' }, { status: 400 });
+            return NextResponse.json({ error: '条件に一致するユーザーがいません' }, { status: 400 });
           }
           let successCount = 0;
           for (const uid of uniqueIds) {
             const ok = await pushMessage(uid, lineMessages as any);
             if (ok) successCount++;
           }
-          result = { recentDays: days, targetUsers: uniqueIds.length, successCount };
+          result = { filters, targetUsers: uniqueIds.length, successCount };
 
         } else if (deliveryMethod === 'narrowcast') {
           // デモグラフィックフィルターを動的に構築
@@ -675,12 +767,13 @@ export async function POST(request: NextRequest) {
 
       // ─── 予約配信 ──────────────────────────
       case 'schedule': {
-        const { id, name, notificationText: schedNotifText, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, prefectures: schedPrefs, recentDays: schedRecentDays, broadcastLang, scheduledAt } = body;
+        const { id, name, notificationText: schedNotifText, messages, deliveryMethod, area, gender: schedGender, ageRange: schedAge, prefectures: schedPrefs, recentDays: schedRecentDays, japaneseLevel: schedJpLevel, urgency: schedUrgency, broadcastLang, scheduledAt } = body;
         if (!scheduledAt) return NextResponse.json({ error: '予約日時が必要です' }, { status: 400 });
         if (!messages || messages.length === 0) {
           return NextResponse.json({ error: 'メッセージが空です' }, { status: 400 });
         }
         const schedPrefList: string[] | null = Array.isArray(schedPrefs) && schedPrefs.length > 0 ? schedPrefs : null;
+        const schedJpLevelList: string[] | null = Array.isArray(schedJpLevel) && schedJpLevel.length > 0 ? schedJpLevel : null;
 
         const payload = {
           name: name || '予約配信',
@@ -688,8 +781,8 @@ export async function POST(request: NextRequest) {
           delivery_method: deliveryMethod || 'broadcast',
           messages,
           area: area || null,
-          demographic: (schedGender || schedAge || schedPrefList || schedNotifText || schedRecentDays)
-            ? { gender: schedGender || null, age: schedAge || null, prefectures: schedPrefList, notificationText: schedNotifText || null, recentDays: schedRecentDays || null }
+          demographic: (schedGender || schedAge || schedPrefList || schedNotifText || schedRecentDays || schedJpLevelList || schedUrgency)
+            ? { gender: schedGender || null, age: schedAge || null, prefectures: schedPrefList, notificationText: schedNotifText || null, recentDays: schedRecentDays || null, japaneseLevel: schedJpLevelList, urgency: schedUrgency || null }
             : null,
           broadcast_lang: broadcastLang || 'ja',
           scheduled_at: scheduledAt,
