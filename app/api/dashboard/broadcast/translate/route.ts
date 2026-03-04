@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.2',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: JSON.stringify(messages, null, 2) },
