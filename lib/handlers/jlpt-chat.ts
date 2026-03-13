@@ -172,10 +172,10 @@ export async function handleJlptChatMessage(
     return;
   }
 
-  // 回答
-  const ansMatch = text.match(/^JLPT_ANS_([0-3])$/);
-  if (ansMatch) {
-    await handleAnswer(userId, replyToken, parseInt(ansMatch[1]), lang, state);
+  // 回答（選択肢テキストで判定）
+  const shuffledOptions: string[] = (state as any)?.jlptShuffledOptions || [];
+  if (shuffledOptions.length > 0 && shuffledOptions.includes(text)) {
+    await handleAnswer(userId, replyToken, text, lang, state);
     return;
   }
 
@@ -285,7 +285,6 @@ async function startQuizSet(
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  const shuffledCorrectIndex = shuffled.indexOf(correctOpt);
 
   await saveConversationState(userId, {
     mode: 'jlpt_chat',
@@ -295,7 +294,8 @@ async function startQuizSet(
     jlptCurrentIndex: 0,
     jlptCorrectCount: 0,
     jlptCurrentQuestionId: questionIds[0],
-    jlptShuffledCorrectIndex: shuffledCorrectIndex,
+    jlptShuffledOptions: shuffled,
+    jlptCorrectOption: correctOpt,
   } as any);
 
   await sendQuestion(replyToken, firstQ.question_text, shuffled, 0, questions.length, lang);
@@ -332,7 +332,7 @@ async function sendNextQuestion(
     return;
   }
 
-  // 選択肢をシャッフルして正解位置をstateに保存
+  // 選択肢をシャッフルしてstateに保存
   const options = (data as JlptQuestion).options as string[];
   const correctIndex = (data as JlptQuestion).correct_index;
   const correctOption = options[correctIndex];
@@ -342,13 +342,13 @@ async function sendNextQuestion(
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  const shuffledCorrectIndex = shuffled.indexOf(correctOption);
 
   await saveConversationState(userId, {
     ...state,
     jlptCurrentIndex: currentIndex,
     jlptCurrentQuestionId: questionId,
-    jlptShuffledCorrectIndex: shuffledCorrectIndex,
+    jlptShuffledOptions: shuffled,
+    jlptCorrectOption: correctOption,
   } as any);
 
   await sendQuestion(replyToken, (data as JlptQuestion).question_text, shuffled, currentIndex, questionIds.length, lang);
@@ -375,7 +375,7 @@ async function sendQuestion(
     action: {
       type: 'message' as const,
       label: `${numberEmoji[i]} ${opt}`.slice(0, 20),
-      text: `JLPT_ANS_${i}`,
+      text: opt,
     },
   }));
 
@@ -385,7 +385,7 @@ async function sendQuestion(
 async function handleAnswer(
   userId: string,
   replyToken: string,
-  answerIndex: number,
+  answerText: string,
   lang: string,
   state: any
 ): Promise<void> {
@@ -395,24 +395,8 @@ async function handleAnswer(
     return;
   }
 
-  // DBから問題を取得
-  const { supabase } = await import('../database/supabase');
-  const { data: question } = await supabase
-    .from('jlpt_questions')
-    .select('id, question_text, options, correct_index')
-    .eq('id', questionId)
-    .single();
-
-  if (!question) {
-    await startJlptMode(userId, replyToken, lang);
-    return;
-  }
-
-  // stateに保存されたシャッフル後の正解位置で判定
-  const shuffledCorrectIndex = state?.jlptShuffledCorrectIndex ?? question.correct_index;
-  const isCorrect = answerIndex === shuffledCorrectIndex;
-  const options = question.options as string[];
-  const correctOption = options[question.correct_index];
+  const correctOption: string = state?.jlptCorrectOption || '';
+  const isCorrect = answerText === correctOption;
 
   // 進捗を保存
   await saveJlptAnswer(userId, questionId, isCorrect);
