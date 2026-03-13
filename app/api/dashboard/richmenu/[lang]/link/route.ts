@@ -46,11 +46,14 @@ export async function POST(
       );
     }
 
-    // DBからrich_menu_idを取得
+    const variant = body.variant || 'default';
+
+    // DBからrich_menu_idを取得（variant対応）
     const { data, error } = await supabase
       .from('richmenu_configs')
       .select('rich_menu_id')
       .eq('lang', lang)
+      .eq('variant', variant)
       .single();
 
     if (error || !data?.rich_menu_id) {

@@ -220,7 +220,7 @@ async function handleAppliedAnswer(
     // サイトで探す用のトラッキングURL生成
     const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
     const baseUrl = `https://www.yolo-japan.com/${langPath}/`;
-    const siteTrackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_site');
+    const siteTrackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_site', 'line_bot_followup_site');
 
     await replyWithQuickReply(replyToken, getMessage('ask_next_action', lang), [
       {
@@ -303,8 +303,8 @@ async function handleCountAnswer(
     const visaSupportUrl = `https://www.yolo-japan.com/${langPath}/recruit/feature/visa_support`;
     const dormitoryUrl = `https://www.yolo-japan.com/${langPath}/recruit/feature/dormitory_or_company_housing_available`;
 
-    const visaTrackingUrl = await generateTrackingUrl(userId, visaSupportUrl, 'followup_visa');
-    const dormitoryTrackingUrl = await generateTrackingUrl(userId, dormitoryUrl, 'followup_dormitory');
+    const visaTrackingUrl = await generateTrackingUrl(userId, visaSupportUrl, 'followup_visa', 'line_bot_followup_visa');
+    const dormitoryTrackingUrl = await generateTrackingUrl(userId, dormitoryUrl, 'followup_dormitory', 'line_bot_followup_dormitory');
 
     await replyWithQuickReply(replyToken, encourageMessage, [
       {
@@ -333,7 +333,7 @@ async function handleCountAnswer(
     // ユニークIDを付与したトラッキングURL生成
     const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
     const baseUrl = `https://www.yolo-japan.com/${langPath}/`;
-    const trackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_encourage');
+    const trackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_encourage', 'line_bot_followup_encourage');
 
     await replyWithQuickReply(replyToken, encourageMessage, [
       {
@@ -392,7 +392,7 @@ async function handleTroubleAnswer(
   // ユニークIDを付与したトラッキングURL生成
   const langPath = lang === 'ja' ? 'ja' : lang === 'ko' ? 'ko' : lang === 'zh' ? 'zh' : lang === 'vi' ? 'vi' : 'en';
   const baseUrl = `https://www.yolo-japan.com/${langPath}/`;
-  const trackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_trouble');
+  const trackingUrl = await generateTrackingUrl(userId, baseUrl, 'followup_trouble', 'line_bot_followup_trouble');
 
   await replyWithQuickReply(replyToken, troubleMessage, [
     {

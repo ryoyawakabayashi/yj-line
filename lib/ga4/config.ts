@@ -56,6 +56,8 @@ export const LINE_SOURCES = [
   'line / chatbot',  // AI診断（旧パラメータ ～2025年1月中旬）
   'line / bot',      // AI診断（新パラメータ 2025年1月中旬～）
   'instagram / line',
+  'line / inquiry',  // お問い合わせ（旧パラメータ）
+  'line / contact',  // お問い合わせ（新パラメータ）
 ] as const;
 
 // AI診断のソース（新旧両方）- 統合表示用
@@ -64,13 +66,19 @@ export const DIAGNOSIS_SOURCES = [
   'line / bot',      // 新パラメータ
 ] as const;
 
-// 5種類のコンバージョンファネルソース定義
+// コンバージョンファネルソース定義
+// お問い合わせのソース（新パラメータ）
+export const CONTACT_SOURCES = [
+  'line / contact',  // お問い合わせ
+] as const;
+
 export const FUNNEL_SOURCES = {
   diagnosis: DIAGNOSIS_SOURCES,      // AI診断（新旧両方）
   menu: ['line / menu'],             // メニュータップ
   feature: ['line / feature'],       // 特集タップ
-  message: ['line / message'],       // メッセージ配信
+  message: ['line / message', 'line / inquiry'],  // メッセージ配信（inquiryは間違えて配信に設定したもの）
   autochat: ['line / autochat'],     // AIトーク
+  contact: CONTACT_SOURCES,          // お問い合わせ
 } as const;
 
 export type FunnelType = keyof typeof FUNNEL_SOURCES;
@@ -82,6 +90,7 @@ export const FUNNEL_LABELS: Record<FunnelType, string> = {
   feature: '特集タップ',
   message: 'メッセージ配信',
   autochat: 'AIトーク',
+  contact: 'お問い合わせ',
 };
 
 // LINE Bot funnel sources (for accurate funnel calculation)
@@ -127,4 +136,6 @@ export const SOURCE_LABELS: Record<string, string> = {
   'line / chatbot': 'AI診断',  // 旧パラメータ
   'line / bot': 'AI診断',      // 新パラメータ（同じラベルで統合表示）
   'instagram / line': 'Instagram 経由',
+  'line / inquiry': 'お問い合わせ',   // 旧パラメータ
+  'line / contact': 'お問い合わせ',   // 新パラメータ（同じラベルで統合表示）
 };

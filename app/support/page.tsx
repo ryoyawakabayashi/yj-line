@@ -104,61 +104,53 @@ export default function SupportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-slate-200 rounded w-1/4" />
-            <div className="grid grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 bg-slate-200 rounded-lg" />
-              ))}
-            </div>
-            <div className="h-64 bg-slate-200 rounded-lg" />
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-slate-200 rounded w-1/4" />
+          <div className="grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-slate-200 rounded-lg" />
+            ))}
           </div>
+          <div className="h-64 bg-slate-200 rounded-lg" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                サポートチケット管理
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                お問い合わせの管理と有人対応
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/support/glossary"
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                用語集
-              </Link>
-              <Link
-                href="/support/faq"
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                FAQ管理
-              </Link>
-              <button
-                onClick={fetchData}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                更新
-              </button>
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            サポートチケット管理
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            お問い合わせの管理と有人対応
+          </p>
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/support/glossary"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm"
+          >
+            用語集
+          </Link>
+          <Link
+            href="/support/faq"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm"
+          >
+            FAQ管理
+          </Link>
+          <button
+            onClick={fetchData}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+          >
+            更新
+          </button>
+        </div>
+      </div>
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -315,7 +307,6 @@ export default function SupportPage() {
             </tbody>
           </table>
         </div>
-      </main>
     </div>
   );
 }

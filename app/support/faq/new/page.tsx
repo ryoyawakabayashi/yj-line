@@ -115,31 +115,23 @@ export default function FAQNewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/support/faq" className="text-gray-500 hover:text-gray-700">
-                ← FAQ一覧
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">FAQ新規作成</h1>
-              </div>
-            </div>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition"
-            >
-              {saving ? '作成中...' : '作成'}
-            </button>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Link href="/support/faq" className="text-blue-600 hover:underline text-sm">
+            &larr; FAQ一覧
+          </Link>
+          <h1 className="text-2xl font-bold text-slate-900 mt-2">FAQ新規作成</h1>
         </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition text-sm"
+        >
+          {saving ? '作成中...' : '作成'}
+        </button>
+      </div>
         {/* 基本情報 */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">基本情報</h2>
@@ -325,7 +317,6 @@ export default function FAQNewPage() {
             })}
           </div>
         </div>
-      </main>
     </div>
   );
 }

@@ -16,6 +16,7 @@ const ALLOWED_DOMAINS = [
   'www.yolo-japan.co.jp',
   'www.yolo-japan.com',
   'home.yolo-japan.com',
+  'info.yolo-japan.com',
 ];
 
 const FALLBACK_URL = 'https://www.yolo-japan.com';
@@ -75,6 +76,7 @@ export async function GET(
 
     // uid パラメータからユーザー特定（LIFF経由で付与される）
     const uid = request.nextUrl.searchParams.get('uid');
+    const bcid = request.nextUrl.searchParams.get('bcid'); // 配信キャンペーンID
     let utmContent = token; // デフォルト: キャンペーン/既存トークン
 
     if (uid) {
@@ -83,18 +85,17 @@ export async function GET(
       utmContent = userToken;
 
       // per-user tracking_tokensレコードをupsert
+      const upsertData: Record<string, unknown> = {
+        token: userToken,
+        user_id: uid,
+        url_type: 'narrowcast',
+        destination_url: destinationUrl,
+        clicked_at: new Date().toISOString(),
+      };
+      if (bcid) upsertData.broadcast_campaign_id = bcid;
       const { error: upsertError } = await supabase
         .from('tracking_tokens')
-        .upsert(
-          {
-            token: userToken,
-            user_id: uid,
-            url_type: 'narrowcast',
-            destination_url: destinationUrl,
-            clicked_at: new Date().toISOString(),
-          },
-          { onConflict: 'token' }
-        );
+        .upsert(upsertData, { onConflict: 'token' });
 
       if (upsertError) {
         console.error('❌ per-userトークンupsertエラー:', upsertError);

@@ -58,6 +58,7 @@ export async function getUserStatus(userId: string): Promise<UserStatus | null> 
     userId: data.user_id,
     lang: data.lang,
     richMenuId: data.rich_menu_id || undefined,
+    visaType: data.visa_type || undefined,
     ai_chat_count: data.ai_chat_count,
     diagnosis_count: data.diagnosis_count,
     total_usage_count: data.total_usage_count,
@@ -77,6 +78,30 @@ export async function incrementAIChatCount(userId: string): Promise<void> {
   } else {
     console.log('✅ AI相談回数更新');
   }
+}
+
+export async function getUserVisaType(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('user_status')
+    .select('visa_type')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) return null;
+  return (data as { visa_type: string | null }).visa_type;
+}
+
+export async function saveUserVisaType(userId: string, visaType: string): Promise<void> {
+  const { error } = await supabase
+    .from('user_status')
+    .update({ visa_type: visaType })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('❌ saveUserVisaType エラー:', error);
+    throw error;
+  }
+  console.log('✅ 在留資格保存完了:', visaType);
 }
 
 export async function incrementDiagnosisCount(userId: string): Promise<void> {
@@ -302,6 +327,134 @@ export async function saveCareerDiagnosisResult(
   } else {
     console.log('✅ キャリア診断結果を保存:', typeCode);
   }
+}
+
+// ============ JLPT問題 ============
+
+export interface JlptQuestion {
+  id: string;
+  level: string;
+  category: string;
+  question_text: string;
+  options: string[];
+  correct_index: number;
+  explanation: Record<string, string>;
+}
+
+/**
+ * 未回答 or 不正解の承認済み問題をランダムに取得
+ * 正解済みの問題は除外し、苦手な問題を優先的に出題
+ */
+export async function getJlptQuestions(
+  userId: string,
+  level: string,
+  category: string,
+  limit: number = 10
+): Promise<JlptQuestion[]> {
+  // 既に正解済みの問題IDを取得
+  const { data: correctAnswers } = await supabase
+    .from('jlpt_user_progress')
+    .select('question_id')
+    .eq('user_id', userId)
+    .eq('is_correct', true);
+
+  const correctIds = (correctAnswers || []).map((a: any) => a.question_id);
+
+  // 承認済み問題を取得（正解済みを除外）
+  let query = supabase
+    .from('jlpt_questions')
+    .select('id, level, category, question_text, options, correct_index, explanation')
+    .eq('level', level)
+    .eq('is_approved', true);
+
+  // category が 'all' 以外ならカテゴリで絞り込み
+  if (category !== 'all') {
+    query = query.eq('category', category);
+  }
+
+  if (correctIds.length > 0) {
+    query = query.not('id', 'in', `(${correctIds.join(',')})`);
+  }
+
+  const { data, error } = await query.limit(limit * 3); // 多めに取得してシャッフル
+
+  if (error || !data || data.length === 0) {
+    return [];
+  }
+
+  // シャッフルしてlimit件に絞る
+  const shuffled = (data as JlptQuestion[]).sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, limit);
+}
+
+/**
+ * 回答結果を保存
+ */
+export async function saveJlptAnswer(
+  userId: string,
+  questionId: string,
+  isCorrect: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from('jlpt_user_progress')
+    .insert({
+      user_id: userId,
+      question_id: questionId,
+      is_correct: isCorrect,
+    });
+
+  if (error) {
+    console.error('❌ saveJlptAnswer エラー:', error);
+  }
+}
+
+/**
+ * ユーザーの進捗サマリーを取得
+ */
+export async function getJlptProgress(
+  userId: string,
+  level: string
+): Promise<{ total: number; correct: number; byCategory: Record<string, { total: number; correct: number }> }> {
+  // level に対応する問題IDを取得
+  const { data: questions } = await supabase
+    .from('jlpt_questions')
+    .select('id, category')
+    .eq('level', level)
+    .eq('is_approved', true);
+
+  if (!questions || questions.length === 0) {
+    return { total: 0, correct: 0, byCategory: {} };
+  }
+
+  const questionIds = questions.map((q: any) => q.id);
+  const questionCategoryMap: Record<string, string> = {};
+  for (const q of questions) {
+    questionCategoryMap[q.id] = (q as any).category;
+  }
+
+  // ユーザーの回答を取得
+  const { data: answers } = await supabase
+    .from('jlpt_user_progress')
+    .select('question_id, is_correct')
+    .eq('user_id', userId)
+    .in('question_id', questionIds);
+
+  const byCategory: Record<string, { total: number; correct: number }> = {};
+  let total = 0;
+  let correct = 0;
+
+  for (const ans of answers || []) {
+    const cat = questionCategoryMap[(ans as any).question_id] || 'unknown';
+    if (!byCategory[cat]) byCategory[cat] = { total: 0, correct: 0 };
+    byCategory[cat].total++;
+    total++;
+    if ((ans as any).is_correct) {
+      byCategory[cat].correct++;
+      correct++;
+    }
+  }
+
+  return { total, correct, byCategory };
 }
 
 // 会話状態をクリア(診断リセット用)

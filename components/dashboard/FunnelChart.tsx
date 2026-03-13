@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { FunnelIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 
 // ファネルタイプ定義
-type FunnelType = 'diagnosis' | 'menu' | 'feature' | 'message' | 'autochat';
+type FunnelType = 'diagnosis' | 'menu' | 'feature' | 'message' | 'autochat' | 'contact';
 
 // ファネルタイプのラベル
 const FUNNEL_LABELS: Record<FunnelType, string> = {
@@ -13,6 +13,7 @@ const FUNNEL_LABELS: Record<FunnelType, string> = {
   feature: '特集タップ',
   message: 'メッセージ配信',
   autochat: 'AIトーク',
+  contact: 'お問い合わせ',
 };
 
 interface FunnelStage {

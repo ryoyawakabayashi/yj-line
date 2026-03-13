@@ -40,14 +40,14 @@ export interface CareerTypeInfo {
 // 軸ラベル定義（結果画面でアルファベット解説に使用）
 // =====================================================
 export const AXIS_LABELS: Record<string, Lang5> = {
-  G: { ja: 'チームで働く', en: 'Teamwork', ko: '함께 일하기', zh: '团队合作', vi: 'Làm nhóm' },
-  L: { ja: 'ひとりで働く', en: 'Work alone', ko: '혼자 일하기', zh: '独自工作', vi: 'Làm một mình' },
-  A: { ja: '体を動かす', en: 'Active work', ko: '몸을 움직이는', zh: '体力活动', vi: 'Vận động' },
-  D: { ja: 'デスクワーク', en: 'Desk work', ko: '사무직', zh: '办公室工作', vi: 'Làm văn phòng' },
-  R: { ja: 'コツコツ型', en: 'Routine', ko: '루틴형', zh: '固定模式', vi: 'Ổn định' },
-  V: { ja: '変化を楽しむ', en: 'Variety', ko: '변화를 즐기는', zh: '喜欢变化', vi: 'Đa dạng' },
-  J: { ja: '日本語を使う', en: 'Use Japanese', ko: '일본어 사용', zh: '使用日语', vi: 'Dùng tiếng Nhật' },
-  O: { ja: '日本語少なめ', en: 'Less Japanese', ko: '일본어 적게', zh: '少用日语', vi: 'Ít tiếng Nhật' },
+  G: { ja: 'Group - 人と関わるのが得意', en: 'Group - People-oriented', ko: 'Group - 사람과 함께하는', zh: 'Group - 擅长与人合作', vi: 'Group - Giỏi giao tiếp' },
+  L: { ja: 'Lone - 自分のペースが得意', en: 'Lone - Work at own pace', ko: 'Lone - 자기 페이스', zh: 'Lone - 按自己节奏', vi: 'Lone - Theo nhịp mình' },
+  A: { ja: 'Active - 現場で動く', en: 'Active - On-site work', ko: 'Active - 현장에서 움직이는', zh: 'Active - 在现场工作', vi: 'Active - Tại hiện trường' },
+  D: { ja: 'Desk - デスクで考える', en: 'Desk - Office / planning', ko: 'Desk - 데스크에서 생각', zh: 'Desk - 办公桌思考', vi: 'Desk - Làm tại bàn' },
+  R: { ja: 'Regular - 安定ルーティン', en: 'Regular - Stable routine', ko: 'Regular - 안정적인 루틴', zh: 'Regular - 稳定日常', vi: 'Regular - Ổn định' },
+  V: { ja: 'Variety - 変化・刺激が好き', en: 'Variety - Loves change', ko: 'Variety - 변화를 좋아함', zh: 'Variety - 喜欢变化', vi: 'Variety - Thích thay đổi' },
+  J: { ja: 'Japanese - 日本語多めでもOK', en: 'Japanese - Heavy JP OK', ko: 'Japanese - 일본어 많아도 OK', zh: 'Japanese - 日语多也OK', vi: 'Japanese - Nhiều tiếng Nhật OK' },
+  O: { ja: 'Open - 言語ハードル低め', en: 'Open - Low language barrier', ko: 'Open - 언어 허들 낮은', zh: 'Open - 语言门槛低', vi: 'Open - Rào cản thấp' },
 };
 
 // =====================================================

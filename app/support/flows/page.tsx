@@ -33,57 +33,48 @@ export default function FlowManagementPage() {
   const [activeTab, setActiveTab] = useState<Tab>('flows');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/support" className="text-gray-500 hover:text-gray-700">
-                ← サポート
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">チャットフロー管理</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  フローとリプライテンプレートを管理
-                </p>
-              </div>
-            </div>
-            {activeTab === 'flows' && (
-              <Link
-                href="/support/flows/new"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                + 新規フロー
-              </Link>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 mt-4">
-            <button
-              onClick={() => setActiveTab('flows')}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition ${
-                activeTab === 'flows'
-                  ? 'bg-gray-50 text-blue-600 border border-b-0 border-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              フロー
-            </button>
-            <button
-              onClick={() => setActiveTab('templates')}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition ${
-                activeTab === 'templates'
-                  ? 'bg-gray-50 text-blue-600 border border-b-0 border-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              リプライテンプレート
-            </button>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">チャットフロー管理</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            フローとリプライテンプレートを管理
+          </p>
         </div>
-      </header>
+        {activeTab === 'flows' && (
+          <Link
+            href="/support/flows/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+          >
+            + 新規フロー
+          </Link>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('flows')}
+          className={`px-4 py-2 text-sm font-medium transition ${
+            activeTab === 'flows'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          フロー
+        </button>
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`px-4 py-2 text-sm font-medium transition ${
+            activeTab === 'templates'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          リプライテンプレート
+        </button>
+      </div>
 
       {activeTab === 'flows' ? <FlowsTab /> : <TemplatesTab />}
     </div>
@@ -181,7 +172,7 @@ function FlowsTab() {
   });
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-wrap gap-4 items-center">
@@ -358,7 +349,7 @@ function FlowsTab() {
           表示中: {filteredFlows.length}件 / 全{flows.length}件
         </p>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -490,7 +481,7 @@ function TemplatesTab() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <div className="space-y-6">
       {/* 新規作成 / 編集フォーム */}
       {showForm ? (
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
@@ -683,6 +674,6 @@ function TemplatesTab() {
           テンプレート数: {templates.length}件
         </p>
       </div>
-    </main>
+    </div>
   );
 }

@@ -173,7 +173,7 @@ export default function SupportTicketPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center h-64">
         <div className="text-gray-500">読み込み中...</div>
       </div>
     );
@@ -181,7 +181,7 @@ export default function SupportTicketPage() {
 
   if (!ticket) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+      <div className="p-6 flex flex-col items-center justify-center h-64">
         <p className="text-gray-500 mb-4">チケットが見つかりません</p>
         <Link href="/support" className="text-blue-600 hover:underline">
           一覧に戻る
@@ -191,56 +191,52 @@ export default function SupportTicketPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="p-6 flex flex-col h-full">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/support"
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ← 戻る
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  チケット #{ticket.id.slice(0, 8)}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {ticket.userDisplayName || ticket.userId} - {SERVICE_LABELS[ticket.service || ''] || '未選択'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <select
-                value={ticket.status}
-                onChange={(e) => updateStatus(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm"
-              >
-                <option value="open">未対応</option>
-                <option value="in_progress">対応中</option>
-                <option value="resolved">解決済</option>
-              </select>
-
-              <button
-                onClick={toggleHumanTakeover}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  isHumanMode
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {isHumanMode ? '👤 有人対応中' : '🤖 AI対応中'}
-              </button>
-            </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/support"
+            className="text-blue-600 hover:underline text-sm"
+          >
+            &larr; サポート一覧
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              チケット #{ticket.id.slice(0, 8)}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {ticket.userDisplayName || ticket.userId} - {SERVICE_LABELS[ticket.service || ''] || '未選択'}
+            </p>
           </div>
         </div>
-      </header>
+
+        <div className="flex items-center gap-3">
+          <select
+            value={ticket.status}
+            onChange={(e) => updateStatus(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm"
+          >
+            <option value="open">未対応</option>
+            <option value="in_progress">対応中</option>
+            <option value="resolved">解決済</option>
+          </select>
+
+          <button
+            onClick={toggleHumanTakeover}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              isHumanMode
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {isHumanMode ? '有人対応中' : 'AI対応中'}
+          </button>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-6 flex gap-6">
+      <div className="flex-1 flex gap-6 min-h-0">
         {/* Chat Area */}
         <div className="flex-1 bg-white rounded-lg shadow flex flex-col min-h-[600px]">
           {/* Messages */}
@@ -377,7 +373,7 @@ export default function SupportTicketPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -1184,9 +1184,9 @@
         "y": 1995.6551190375606
       },
       "data": {
-        "label": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
+        "label": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=contact&utm_campaign=line_contact\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
         "config": {
-          "content": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
+          "content": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=contact&utm_campaign=line_contact\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
           "messageType": "text"
         },
         "service": "YOLO_JAPAN",
@@ -1828,7 +1828,7 @@
       "target": "send_message-1771316685153",
       "sourceHandle": "bottom",
       "targetHandle": "top",
-      "label": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
+      "label": "SOFAビザを持っている人は、基地の中でのみ働けます。\n\nYOLO JAPANで応募できる人は\n\na,日本に住んでいて、仕事ができる在留カードをもっている人\nb,日本永住者の人《永住ビザを持つ人》\nc,日本国籍の人\n\nです。\n「仕事について」のFAQはhttps://www.yolo-japan.com/ja/help/#job-faq?utm_source=line&utm_medium=contact&utm_campaign=line_contact\n\nわからないことがありましたら、アメリカ大使館へお問い合わせください。",
       "order": 0
     },
     {

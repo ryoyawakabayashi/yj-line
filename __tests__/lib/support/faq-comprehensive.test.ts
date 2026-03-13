@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { SERVICE_FAQ, COMMON_FAQ, searchFAQ } from '@/lib/support/faq';
 
 // UTMパラメータ
-const UTM = '?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry';
+const UTM = '?utm_source=line&utm_medium=contact&utm_campaign=line_contact';
 
 describe('FAQ Comprehensive Tests - 60 Templates', () => {
   describe('YOLO_HOME FAQs (6 items)', () => {

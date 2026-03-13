@@ -26,11 +26,13 @@ export async function GET(
 ) {
   try {
     const { lang } = await params;
+    const variant = request.nextUrl.searchParams.get('variant') || 'default';
 
     const { data, error } = await supabase
       .from('richmenu_configs')
       .select('*')
       .eq('lang', lang)
+      .eq('variant', variant)
       .single();
 
     if (error || !data) {
@@ -77,10 +79,13 @@ export async function PATCH(
       );
     }
 
+    const variant = body.variant || 'default';
+
     const { data: updated, error } = await supabase
       .from('richmenu_configs')
       .update(updateData)
       .eq('lang', lang)
+      .eq('variant', variant)
       .select()
       .single();
 

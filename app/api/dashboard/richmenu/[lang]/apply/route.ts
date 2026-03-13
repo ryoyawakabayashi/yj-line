@@ -118,9 +118,10 @@ export async function POST(
   try {
     const { lang } = await params;
 
-    // FormDataから画像を取得（任意）
+    // FormDataから画像とvariantを取得
     const formData = await request.formData();
     const imageFile = formData.get('image') as File | null;
+    const variant = (formData.get('variant') as string) || 'default';
 
     if (imageFile) {
       if (!ALLOWED_TYPES.includes(imageFile.type)) {
@@ -137,11 +138,12 @@ export async function POST(
       }
     }
 
-    // DBから現在の設定を取得
+    // DBから現在の設定を取得（variant対応）
     const { data: configData, error: dbError } = await supabase
       .from('richmenu_configs')
       .select('*')
       .eq('lang', lang)
+      .eq('variant', variant)
       .single();
 
     if (dbError || !configData) {
@@ -215,14 +217,15 @@ export async function POST(
       }
     }
 
-    // 4. DBを更新
+    // 4. DBを更新（variant対応）
     const { error: updateError } = await supabase
       .from('richmenu_configs')
       .update({
         rich_menu_id: newRichMenuId,
         last_applied_at: new Date().toISOString(),
       })
-      .eq('lang', lang);
+      .eq('lang', lang)
+      .eq('variant', variant);
 
     if (updateError) {
       console.error('DB更新失敗:', updateError);

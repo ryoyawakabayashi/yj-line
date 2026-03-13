@@ -8,12 +8,14 @@ export async function GET(
 ) {
   try {
     const { lang } = await params;
+    const variant = request.nextUrl.searchParams.get('variant') || 'default';
 
-    // DBからrich_menu_idを取得
+    // DBからrich_menu_idを取得（variant対応）
     const { data, error } = await supabase
       .from('richmenu_configs')
       .select('rich_menu_id')
       .eq('lang', lang)
+      .eq('variant', variant)
       .single();
 
     if (error || !data?.rich_menu_id) {

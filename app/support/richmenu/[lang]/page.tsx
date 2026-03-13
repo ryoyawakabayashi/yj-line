@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 const LANG_FLAGS: Record<string, string> = {
@@ -21,8 +21,10 @@ interface ButtonArea {
 
 export default function RichmenuEditorPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const lang = params.lang as string;
+  const variant = searchParams.get('variant') || 'default';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [menuName, setMenuName] = useState('');
@@ -48,7 +50,7 @@ export default function RichmenuEditorPage() {
   const [settingDefault, setSettingDefault] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/dashboard/richmenu/${lang}`, { cache: 'no-store' })
+    fetch(`/api/dashboard/richmenu/${lang}?variant=${variant}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.config) {
@@ -65,7 +67,7 @@ export default function RichmenuEditorPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [lang]);
+  }, [lang, variant]);
 
   const updateArea = useCallback(
     (position: number, field: keyof ButtonArea, value: string) => {
@@ -79,7 +81,7 @@ export default function RichmenuEditorPage() {
   );
 
   const reloadConfig = async () => {
-    const res = await fetch(`/api/dashboard/richmenu/${lang}`, { cache: 'no-store' });
+    const res = await fetch(`/api/dashboard/richmenu/${lang}?variant=${variant}`, { cache: 'no-store' });
     const data = await res.json();
     if (data.success && data.config) {
       setMenuName(data.config.menu_name);
@@ -100,7 +102,7 @@ export default function RichmenuEditorPage() {
       const res = await fetch(`/api/dashboard/richmenu/${lang}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ menuName, chatBarText, areas }),
+        body: JSON.stringify({ menuName, chatBarText, areas, variant }),
       });
       const data = await res.json();
       if (data.success) {
@@ -166,7 +168,7 @@ export default function RichmenuEditorPage() {
     const saveRes = await fetch(`/api/dashboard/richmenu/${lang}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ menuName, chatBarText, areas }),
+      body: JSON.stringify({ menuName, chatBarText, areas, variant }),
     });
     const saveData = await saveRes.json();
     if (!saveData.success) {
@@ -179,6 +181,7 @@ export default function RichmenuEditorPage() {
       : 'メニュー作成中（既存画像を再利用）...'
     );
     const formData = new FormData();
+    formData.append('variant', variant);
     if (selectedImage) {
       formData.append('image', selectedImage);
     }
@@ -316,7 +319,7 @@ export default function RichmenuEditorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center h-64">
         <div className="text-gray-500">読み込み中...</div>
       </div>
     );
@@ -327,23 +330,27 @@ export default function RichmenuEditorPage() {
     : null;
 
   const currentImageUrl = richMenuId
-    ? `/api/dashboard/richmenu/${lang}/image?t=${Date.now()}`
+    ? `/api/dashboard/richmenu/${lang}/image?variant=${variant}&t=${Date.now()}`
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="p-6 space-y-6">
         {/* ヘッダー */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div>
             <Link
               href="/support/richmenu"
               className="text-blue-600 hover:underline text-sm"
             >
-              ← リッチメニュー管理
+              &larr; リッチメニュー管理
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900 mt-2">
+            <h1 className="text-2xl font-bold text-slate-900 mt-2">
               {LANG_FLAGS[lang]} {LANG_NAMES[lang] || lang} リッチメニュー
+              {variant !== 'default' && (
+                <span className="ml-2 px-2 py-0.5 rounded-full text-sm font-medium bg-purple-100 text-purple-700">
+                  {variant}
+                </span>
+              )}
             </h1>
           </div>
           <button
@@ -754,7 +761,6 @@ export default function RichmenuEditorPage() {
             </pre>
           </details>
         </div>
-      </div>
     </div>
   );
 }

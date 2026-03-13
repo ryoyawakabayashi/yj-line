@@ -11,7 +11,7 @@ import {
 } from '@/lib/database/faq-queries';
 
 // UTMパラメータ（統一）
-const UTM = '?utm_source=line&utm_medium=inquiry&utm_campaign=line_inquiry';
+const UTM = '?utm_source=line&utm_medium=contact&utm_campaign=line_contact';
 
 /**
  * サービス別FAQ

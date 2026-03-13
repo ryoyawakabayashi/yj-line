@@ -80,6 +80,7 @@ export async function handleContact(
   event: any,
   lang: string
 ): Promise<void> {
+  const userId = event.source.userId;
   const replyToken = event.replyToken;
 
   const baseUrls: Record<string, string> = {
@@ -90,7 +91,7 @@ export async function handleContact(
     vi: 'https://www.yolo-japan.com/vi/inquiry/input',
   };
 
-  const url = addUtmParams(baseUrls[lang] || baseUrls.ja, 'contact');
+  const url = baseUrls[lang] || baseUrls.ja;
 
   const messages: Record<string, string> = {
     ja: `お問い合わせはこちらから↓\n${url}`,
@@ -100,9 +101,12 @@ export async function handleContact(
     vi: `Liên hệ với chúng tôi tại đây↓\n${url}`,
   };
 
+  const rawText = messages[lang] || messages.ja;
+  const text = await processUrlsInText(rawText, userId, 'richmenu', 'line_bot_contact');
+
   await replyMessage(replyToken, {
     type: 'text',
-    text: messages[lang] || messages.ja,
+    text,
   });
 }
 
@@ -189,7 +193,7 @@ export async function handleSiteMode(
   };
 
   const rawText = messages[lang] || messages.ja;
-  const text = await processUrlsInText(rawText, userId, 'support', 'line_chatbot_site_mode');
+  const text = await processUrlsInText(rawText, userId, 'support', 'line_bot_site_mode');
 
   await replyMessage(replyToken, {
     type: 'text',
@@ -219,7 +223,7 @@ export async function handleSiteModeAutochat(
   };
 
   const rawText = messages[lang] || messages.ja;
-  const text = await processUrlsInText(rawText, userId, 'support', 'line_chatbot_site_mode_autochat');
+  const text = await processUrlsInText(rawText, userId, 'support', 'line_bot_site_mode_autochat');
 
   await replyMessage(replyToken, {
     type: 'text',
@@ -231,7 +235,9 @@ export async function handleViewFeatures(
   event: any,
   lang: string
 ): Promise<void> {
-  const replyToken = event.replyToken;  const featureUrl = buildYoloFeatureUrl(lang);
+  const userId = event.source.userId;
+  const replyToken = event.replyToken;
+  const featureUrl = buildYoloFeatureUrl(lang);
 
   const messages: Record<string, string> = {
     ja: `おすすめの求人特集はこちら：\n${featureUrl}`,
@@ -241,9 +247,12 @@ export async function handleViewFeatures(
     vi: `Đặc sản đề xuất:\n${featureUrl}`,
   };
 
+  const rawText = messages[lang] || messages.ja;
+  const text = await processUrlsInText(rawText, userId, 'richmenu', 'line_bot_feature');
+
   await replyMessage(replyToken, {
     type: 'text',
-    text: messages[lang] || messages.ja,
+    text,
   });
 }
 
@@ -347,9 +356,12 @@ Chỉ cần cài đặt ngôn ngữ và khu vực sinh sống để bắt đầu
 https://lin.ee/bRDMgVx`,
   };
 
+  const rawText = messages[lang] || messages.ja;
+  const text = await processUrlsInText(rawText, userId, 'richmenu', 'line_bot_discover');
+
   await replyMessage(replyToken, {
     type: 'text',
-    text: messages[lang] || messages.ja,
+    text,
   });
 }
 // リッチメニューボタンアクションのハンドラー

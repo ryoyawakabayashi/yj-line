@@ -12,6 +12,7 @@ const LANG_FLAGS: Record<string, string> = { ja: '🇯🇵', en: '🇬🇧', ko:
 interface DiagnosisUser {
   userId: string;
   displayName: string | null;
+  pictureUrl: string | null;
   lang: string;
   typeCode: string;
   typeName: string;
@@ -82,7 +83,7 @@ export default function CareerDiagnosisPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">キャリア診断分析</h1>
         <p className="text-sm text-slate-500 mt-1">キャリアタイプ診断の利用状況・タイプ分布・CV分析</p>
@@ -245,8 +246,23 @@ export default function CareerDiagnosisPage() {
               {data.users.map((user, idx) => (
                 <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="py-2.5 px-2">
-                    <div className="font-medium text-slate-700">{user.displayName || '—'}</div>
-                    <div className="text-xs text-slate-400 font-mono">{user.userId.substring(0, 12)}...</div>
+                    <div className="flex items-center gap-2.5">
+                      {user.pictureUrl ? (
+                        <img
+                          src={user.pictureUrl}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs text-slate-500">?</span>
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium text-slate-700">{user.displayName || '—'}</div>
+                        <div className="text-xs text-slate-400 font-mono">{user.userId.substring(0, 12)}...</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="py-2.5 px-2">{LANG_FLAGS[user.lang] || ''} {user.lang}</td>
                   <td className="py-2.5 px-2 font-mono text-xs font-medium text-slate-700">{user.typeCode}</td>

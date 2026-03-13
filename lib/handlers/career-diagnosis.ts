@@ -389,6 +389,15 @@ function createCareerResultFlex(
             type: 'separator',
             margin: 'lg',
           },
+          {
+            type: 'text',
+            text: typeCode,
+            size: 'xl',
+            weight: 'bold',
+            color: '#1DB446',
+            align: 'center',
+            margin: 'lg',
+          },
           ...axisExplanations,
           {
             type: 'separator',

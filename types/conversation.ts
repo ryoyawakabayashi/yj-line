@@ -1,6 +1,6 @@
 import { SupportModeState } from './support';
 
-export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support' | 'flow' | 'career_diagnosis';
+export type ConversationMode = 'diagnosis' | 'ai_chat' | 'followup' | 'support' | 'flow' | 'career_diagnosis' | 'jlpt_chat';
 
 export type FollowupStep = 'ask_applied' | 'ask_count' | 'ask_trouble' | 'complete';
 
@@ -54,6 +54,7 @@ export interface UserStatus {
   userId: string;
   lang: string;
   richMenuId?: string;
+  visaType?: string;
   ai_chat_count: number;
   diagnosis_count: number;
   total_usage_count: number;

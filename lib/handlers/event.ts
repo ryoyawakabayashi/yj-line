@@ -1,8 +1,8 @@
 import { LineEvent } from '@/types/line';
-import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile, saveConversationState } from '../database/queries';
+import { saveUserLang, getUserLang, getConversationState, clearConversationState, recordFollowEvent, fetchAndSaveUserProfile, saveConversationState, saveUserVisaType, getUserVisaType } from '../database/queries';
 import { getActiveTicketByUserId, saveMessage } from '../database/support-queries';
 import { replyMessage, pushMessage, linkRichMenu } from '../line/client';
-import { syncRichMenuToUserLang } from './richmenu';
+import { syncRichMenuToUser } from './richmenu';
 import { config } from '../config';
 import { CONSTANTS } from '../constants';
 import { handleConversation } from './conversation';
@@ -372,6 +372,30 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         return;
       }
 
+      // 在留資格選択の処理
+      const visaMap: Record<string, string> = {
+        'VISA_STUDENT': 'student',
+        'VISA_WORK': 'work',
+        'VISA_OTHER': 'other',
+      };
+
+      if (visaMap[messageText]) {
+        console.log('📋 在留資格選択:', messageText);
+        await saveUserVisaType(userId, visaMap[messageText]);
+        await syncRichMenuToUser(userId);
+
+        const dbLang = await getUserLang(userId);
+        const confirmMessages: Record<string, string> = {
+          ja: '設定（せってい）が完了（かんりょう）しました ✅\n\n「しごとをさがす」から求人検索を始められます。',
+          en: 'Setup complete ✅\n\nYou can start job search from "Find Job".',
+          ko: '설정이 완료되었습니다 ✅\n\n"일자리 찾기"에서 구직 검색을 시작할 수 있습니다.',
+          zh: '设置完成 ✅\n\n您可以从"找工作"开始求职搜索。',
+          vi: 'Thiết lập hoàn tất ✅\n\nBạn có thể bắt đầu tìm việc từ "Tìm việc".',
+        };
+        await replyMessage(event.replyToken, { type: 'text', text: confirmMessages[dbLang] || confirmMessages.en });
+        return;
+      }
+
       // リッチメニューボタンの処理
       const richMenuButtons = [
         'FIND_JOB',
@@ -384,6 +408,8 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         'CONTACT',
         'LANG_CHANGE',
         'YOLO_DISCOVER',
+        'JLPT_QUIZ',
+        'VISA_CHANGE',
       ];
 
       if (richMenuButtons.includes(messageText)) {
@@ -418,6 +444,22 @@ export async function handleEvent(event: LineEvent): Promise<void> {
         // LANG_CHANGE: 言語選択画面表示
         if (messageText === 'LANG_CHANGE') {
           await handleChangeLanguage(event.replyToken);
+          return;
+        }
+
+        // JLPT_QUIZ: JLPT学習モード開始
+        if (messageText === 'JLPT_QUIZ') {
+          if (currentState?.mode) {
+            await clearConversationState(userId);
+          }
+          const { startJlptMode } = await import('./jlpt-chat');
+          await startJlptMode(userId, event.replyToken, await getUserLang(userId));
+          return;
+        }
+
+        // VISA_CHANGE: 在留資格変更画面表示
+        if (messageText === 'VISA_CHANGE') {
+          await handleVisaTypeSelection(userId, event.replyToken);
           return;
         }
 
@@ -506,7 +548,7 @@ export async function handleEvent(event: LineEvent): Promise<void> {
             // 通常ハンドラーに引き継ぐ（returnしない）
             const reDispatchButtons = [
               'FIND_JOB', 'AI_MODE', 'CAREER_DIAGNOSIS', 'Job_Aptitude_Test', 'SITE_MODE', 'SITE_MODE_AUTOCHAT',
-              'VIEW_FEATURES', 'CONTACT', 'LANG_CHANGE', 'YOLO_DISCOVER',
+              'VIEW_FEATURES', 'CONTACT', 'LANG_CHANGE', 'YOLO_DISCOVER', 'JLPT_MODE', 'VISA_CHANGE',
             ];
             if (reDispatchButtons.includes(messageText)) {
               console.log('🔄 フロー完了後、通常ハンドラーに引き継ぎ:', messageText);
@@ -637,31 +679,85 @@ async function handleLanguageSelection(
       console.error('⚠️ プロフィール取得失敗:', err)
     );
 
-    // DB（richmenu_configs）を優先してリッチメニューを切り替え
-    console.log('🔄 リッチメニュー切り替え中...');
-    await syncRichMenuToUserLang(userId);
-    console.log('✅ リッチメニュー切り替え成功');
+    // 既に visa_type が設定済みならスキップ → 即メニュー同期
+    const existingVisaType = await getUserVisaType(userId);
+    if (existingVisaType) {
+      console.log('📋 visa_type設定済み、即メニュー同期:', existingVisaType);
+      await syncRichMenuToUser(userId);
 
-    const confirmMessages: Record<string, string> = {
-      ja: '言語を日本語に設定しました ✅\n\n「しごとをさがす」から求人検索を始められます。',
-      en: 'Language set to English ✅\n\nYou can start job search from "Find Job".',
-      ko: '언어를 한국어로 設정했습니다 ✅\n\n"일자리 찾기"에서 구직 검색을 시작할 수 있습니다.',
-      zh: '语言已设置为中文 ✅\n\n您可以从"找工作"开始求职搜索。',
-      vi: 'Đã đặt ngôn ngữ thành Tiếng Việt ✅\n\nBạn có thể bắt đầu tìm việc từ "Tìm việc".',
-    };
+      const confirmMessages: Record<string, string> = {
+        ja: '言語（げんご）を日本語（にほんご）に設定（せってい）しました ✅\n\n「しごとをさがす」から求人検索を始められます。',
+        en: 'Language set to English ✅\n\nYou can start job search from "Find Job".',
+        ko: '언어를 한국어로 설정했습니다 ✅\n\n"일자리 찾기"에서 구직 검색을 시작할 수 있습니다.',
+        zh: '语言已设置为中文 ✅\n\n您可以从"找工作"开始求职搜索。',
+        vi: 'Đã đặt ngôn ngữ thành Tiếng Việt ✅\n\nBạn có thể bắt đầu tìm việc từ "Tìm việc".',
+      };
 
-    await replyMessage(replyToken, [
-      {
-        type: 'text',
-        text: confirmMessages[selectedLang] || confirmMessages.en
-      }
-    ]);
+      await replyMessage(replyToken, [
+        { type: 'text', text: confirmMessages[selectedLang] || confirmMessages.en }
+      ]);
+    } else {
+      // visa_type 未設定 → 在留資格を質問
+      console.log('📋 visa_type未設定、在留資格を質問');
+      await handleVisaTypeSelection(userId, replyToken);
+    }
 
     console.log('✅ 言語選択処理完了');
   } catch (error) {
     console.error('❌ 言語選択エラー:', error);
     throw error;
   }
+}
+
+/**
+ * 在留資格の選択画面を表示
+ */
+async function handleVisaTypeSelection(userId: string, replyToken: string): Promise<void> {
+  const lang = await getUserLang(userId);
+
+  const questionMessages: Record<string, string> = {
+    ja: 'あなたの在留資格（ざいりゅうしかく）を教（おし）えてください',
+    en: 'What is your visa type?',
+    ko: '체류 자격을 알려주세요',
+    zh: '请告诉我您的签证类型',
+    vi: 'Vui lòng cho biết loại visa của bạn',
+  };
+
+  const studentLabel: Record<string, string> = {
+    ja: '🎓 留学（りゅうがく）',
+    en: '🎓 Student',
+    ko: '🎓 유학',
+    zh: '🎓 留学',
+    vi: '🎓 Du học',
+  };
+
+  const workLabel: Record<string, string> = {
+    ja: '💼 就労（しゅうろう）ビザ',
+    en: '💼 Work Visa',
+    ko: '💼 취업 비자',
+    zh: '💼 工作签证',
+    vi: '💼 Visa lao động',
+  };
+
+  const otherLabel: Record<string, string> = {
+    ja: '📋 その他（た）',
+    en: '📋 Other',
+    ko: '📋 기타',
+    zh: '📋 其他',
+    vi: '📋 Khác',
+  };
+
+  await replyMessage(replyToken, {
+    type: 'text',
+    text: questionMessages[lang] || questionMessages.en,
+    quickReply: {
+      items: [
+        { type: 'action', action: { type: 'message', label: studentLabel[lang] || studentLabel.en, text: 'VISA_STUDENT' } },
+        { type: 'action', action: { type: 'message', label: workLabel[lang] || workLabel.en, text: 'VISA_WORK' } },
+        { type: 'action', action: { type: 'message', label: otherLabel[lang] || otherLabel.en, text: 'VISA_OTHER' } },
+      ],
+    },
+  });
 }
 
 async function handleChangeLanguage(replyToken: string): Promise<void> {

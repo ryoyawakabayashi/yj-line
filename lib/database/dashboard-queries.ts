@@ -894,6 +894,7 @@ export async function getCareerDiagnosisKpi(): Promise<{ totalDiagnoses: number;
 export async function getCareerDiagnosisUsers(limit = 100): Promise<Array<{
   userId: string;
   displayName: string | null;
+  pictureUrl: string | null;
   lang: string;
   typeCode: string;
   typeName: string;
@@ -909,21 +910,22 @@ export async function getCareerDiagnosisUsers(limit = 100): Promise<Array<{
     if (error) throw error;
     if (!data || data.length === 0) return [];
 
-    // user_statusからdisplay_name, langを取得
+    // user_statusからdisplay_name, picture_url, langを取得
     const userIds = [...new Set(data.map((r) => r.user_id))];
     const { data: users } = await supabase
       .from('user_status')
-      .select('user_id, display_name, lang')
+      .select('user_id, display_name, picture_url, lang')
       .in('user_id', userIds);
 
-    const userMap: Record<string, { displayName: string | null; lang: string }> = {};
+    const userMap: Record<string, { displayName: string | null; pictureUrl: string | null; lang: string }> = {};
     for (const u of users || []) {
-      userMap[u.user_id] = { displayName: u.display_name, lang: u.lang || 'en' };
+      userMap[u.user_id] = { displayName: u.display_name, pictureUrl: u.picture_url || null, lang: u.lang || 'en' };
     }
 
     return data.map((row) => ({
       userId: row.user_id,
       displayName: userMap[row.user_id]?.displayName || null,
+      pictureUrl: userMap[row.user_id]?.pictureUrl || null,
       lang: userMap[row.user_id]?.lang || 'en',
       typeCode: row.type_code,
       typeName: CAREER_TYPE_NAMES[row.type_code] || row.type_code,

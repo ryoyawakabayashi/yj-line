@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('richmenu_configs')
       .select('*')
+      .order('variant')
       .order('lang');
 
     if (error) {

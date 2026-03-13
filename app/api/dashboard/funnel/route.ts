@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       const diagnosisCount = diagnosisCountResult.count || 0;
 
       // 各ファネルタイプのデータを構築
-      const funnelTypes: FunnelType[] = ['diagnosis', 'menu', 'feature', 'message', 'autochat'];
+      const funnelTypes: FunnelType[] = ['diagnosis', 'menu', 'feature', 'message', 'autochat', 'contact'];
       const allFunnels = funnelTypes.map((type) => {
         const metrics = allFunnelMetrics[type];
         return {
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 特定ファネルタイプ指定モード（type パラメータ）
-    const targetFunnelType: FunnelType = funnelType && ['diagnosis', 'menu', 'feature', 'message', 'autochat'].includes(funnelType)
+    const targetFunnelType: FunnelType = funnelType && ['diagnosis', 'menu', 'feature', 'message', 'autochat', 'contact'].includes(funnelType)
       ? funnelType
       : 'diagnosis';
 

@@ -1224,7 +1224,7 @@ export async function getAllFunnelMetricsByDateRange(
   yjRegistrations: number;
   yjApplications: number;
 }>> {
-  const funnelTypes: FunnelType[] = ['diagnosis', 'menu', 'feature', 'message', 'autochat'];
+  const funnelTypes: FunnelType[] = ['diagnosis', 'menu', 'feature', 'message', 'autochat', 'contact'];
 
   const results = await Promise.all(
     funnelTypes.map((type) => getFunnelMetricsByType(type, startDate, endDate))
@@ -1236,6 +1236,7 @@ export async function getAllFunnelMetricsByDateRange(
     feature: results[2],
     message: results[3],
     autochat: results[4],
+    contact: results[5],
   };
 }
 

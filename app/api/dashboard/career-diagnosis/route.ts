@@ -6,9 +6,15 @@ import {
   getCareerDiagnosisKpi,
   getCareerDiagnosisUsers,
 } from '@/lib/database/dashboard-queries';
+import { syncGa4Conversions } from '@/lib/tracking/sync-ga4';
 
 export async function GET() {
   try {
+    // GA4のCVデータをapplication_logsに同期（バックグラウンド、失敗しても続行）
+    await syncGa4Conversions(30).catch((err) =>
+      console.error('GA4 CV同期エラー（続行）:', err)
+    );
+
     const [trend, distribution, conversion, kpi, users] = await Promise.all([
       getCareerDiagnosisTrend(30),
       getCareerTypeDistribution(),

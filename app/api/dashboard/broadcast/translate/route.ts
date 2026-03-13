@@ -30,8 +30,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'メッセージが必要です' }, { status: 400 });
     }
 
+    // gpt-4oで翻訳（安定性重視）
     const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-5.2-chat-latest',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: JSON.stringify(messages, null, 2) },
@@ -56,8 +57,9 @@ export async function POST(request: NextRequest) {
     const translated = Array.isArray(parsed) ? parsed : (parsed.messages || [parsed]);
 
     return NextResponse.json({ messages: translated });
-  } catch (error) {
-    console.error('Translate error:', error);
-    return NextResponse.json({ error: '翻訳中にエラーが発生しました' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Translate error:', error?.message || error, error?.status, error?.code);
+    const detail = error?.message || 'Unknown error';
+    return NextResponse.json({ error: `翻訳中にエラーが発生しました: ${detail}` }, { status: 500 });
   }
 }

@@ -310,7 +310,7 @@ export default function BroadcastPage() {
   const [aiUploadingIdx, setAiUploadingIdx] = useState<number | null>(null);
   const [aiExtraNote, setAiExtraNote] = useState('');
   const [aiButtonUrl, setAiButtonUrl] = useState('');
-  const [aiContentType, setAiContentType] = useState<'job' | 'event' | 'info' | 'campaign'>('job');
+  const [aiContentType, setAiContentType] = useState<'job' | 'event' | 'info' | 'campaign' | 'contact'>('job');
   // インラインAI生成
   const [aiInlineOpen, setAiInlineOpen] = useState<number | null>(null);
   const [aiInlineRole, setAiInlineRole] = useState('main');
@@ -2501,6 +2501,7 @@ export default function BroadcastPage() {
                     { value: 'event', label: 'イベント案内', icon: '🎉' },
                     { value: 'info', label: 'お知らせ', icon: '📢' },
                     { value: 'campaign', label: 'キャンペーン', icon: '🎁' },
+                    { value: 'contact', label: 'お問い合わせ', icon: '📩' },
                   ] as const).map((ct) => (
                     <button
                       key={ct.value}
@@ -2523,6 +2524,7 @@ export default function BroadcastPage() {
                   {aiContentType === 'job' ? '求人ページの本文をそのまま貼り付けるだけでOK'
                     : aiContentType === 'event' ? 'イベントの詳細を入力'
                     : aiContentType === 'campaign' ? 'キャンペーンの内容を入力'
+                    : aiContentType === 'contact' ? 'お問い合わせに関する内容を入力'
                     : 'お知らせの内容を入力'}
                 </label>
                 <textarea
@@ -2534,6 +2536,8 @@ export default function BroadcastPage() {
                     ? "イベント名、日時、場所、内容、参加方法など"
                     : aiContentType === 'campaign'
                     ? "キャンペーン名、期間、内容、特典など"
+                    : aiContentType === 'contact'
+                    ? "お問い合わせ先、受付内容、対応時間、連絡方法など"
                     : "お知らせの内容を入力してください"}
                   rows={10}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-y focus:ring-2 focus:ring-purple-400 focus:border-purple-400"

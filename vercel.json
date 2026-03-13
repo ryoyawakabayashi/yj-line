@@ -5,8 +5,8 @@
       "schedule": "0 3 * * *"
     },
     {
-      "path": "/api/broadcast/scheduled",
-      "schedule": "0 3 24 2 *"
+      "path": "/api/broadcast/cron",
+      "schedule": "0 0 * * *"
     }
   ]
 }

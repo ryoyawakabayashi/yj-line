@@ -47,6 +47,13 @@ export async function handleConversation(
     return;
   }
 
+  if (state.mode === 'jlpt_chat') {
+    console.log('📚 JLPT学習チャットモードで処理');
+    const { handleJlptChatMessage } = await import('./jlpt-chat');
+    await handleJlptChatMessage(userId, replyToken, text, lang);
+    return;
+  }
+
   if (state.mode === 'ai_chat') {
     console.log('🤖 AIチャットモードで処理');
 

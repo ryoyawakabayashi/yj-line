@@ -20,6 +20,10 @@ import {
   Bars3BottomLeftIcon,
   InboxIcon,
   PaperAirplaneIcon,
+  PencilSquareIcon,
+  ListBulletIcon,
+  PresentationChartLineIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 
 interface NavItem {
@@ -67,7 +71,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'メッセージ配信',
     items: [
-      { label: '配信管理', href: '/dashboard/broadcast', icon: PaperAirplaneIcon },
+      { label: 'メッセージを作成', href: '/dashboard/broadcast', icon: PencilSquareIcon },
+      { label: 'メッセージリスト', href: '/dashboard/broadcast/history', icon: ListBulletIcon },
+      { label: '配信分析', href: '/dashboard/broadcast/analytics', icon: PresentationChartLineIcon },
     ],
   },
   {
@@ -76,6 +82,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'チケット一覧', href: '/dashboard/support', icon: LifebuoyIcon },
       { label: 'FAQ管理', href: '/support/faq', icon: QuestionMarkCircleIcon },
       { label: 'フロー管理', href: '/support/flows', icon: Squares2X2Icon },
+      { label: 'JLPTクイズ', href: '/support/jlpt', icon: AcademicCapIcon },
       { label: 'リッチメニュー', href: '/support/richmenu', icon: Bars3BottomLeftIcon },
     ],
   },
@@ -130,7 +137,7 @@ export function Sidebar({ onOpenChat }: SidebarProps) {
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                const isActive = pathname === item.href || (pathname.startsWith(item.href + '/') && !section.items.some(other => other.href !== item.href && pathname.startsWith(other.href)));
 
                 return (
                   <Link

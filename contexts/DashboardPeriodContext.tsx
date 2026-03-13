@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
 export type PeriodType = 'today' | 'yesterday' | 'week' | '2week' | 'month';
-export type FunnelType = 'all' | 'diagnosis' | 'menu' | 'feature' | 'message' | 'autochat';
+export type FunnelType = 'all' | 'diagnosis' | 'menu' | 'feature' | 'message' | 'autochat' | 'contact';
 
 // 経由タイプのラベル
 export const FUNNEL_TYPE_LABELS: Record<FunnelType, string> = {
@@ -13,6 +13,7 @@ export const FUNNEL_TYPE_LABELS: Record<FunnelType, string> = {
   feature: '特集',
   message: '配信',
   autochat: 'AIトーク',
+  contact: 'お問い合わせ',
 };
 
 interface DashboardPeriodContextType {

@@ -169,7 +169,7 @@ export default function FAQEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center h-64">
         <div className="text-gray-500">読み込み中...</div>
       </div>
     );
@@ -177,7 +177,7 @@ export default function FAQEditPage() {
 
   if (!faq) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+      <div className="p-6 flex flex-col items-center justify-center h-64">
         <p className="text-gray-500 mb-4">FAQが見つかりません</p>
         <Link href="/support/faq" className="text-blue-600 hover:underline">
           一覧に戻る
@@ -187,42 +187,34 @@ export default function FAQEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/support/faq" className="text-gray-500 hover:text-gray-700">
-                ← FAQ一覧
-              </Link>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">FAQ編集</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  <code className="bg-gray-100 px-2 py-0.5 rounded">{faq.faqKey}</code>
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-              >
-                無効化
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition"
-              >
-                {saving ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Link href="/support/faq" className="text-blue-600 hover:underline text-sm">
+            &larr; FAQ一覧
+          </Link>
+          <h1 className="text-2xl font-bold text-slate-900 mt-2">FAQ編集</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            <code className="bg-gray-100 px-2 py-0.5 rounded">{faq.faqKey}</code>
+          </p>
         </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition text-sm"
+          >
+            無効化
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition text-sm"
+          >
+            {saving ? '保存中...' : '保存'}
+          </button>
+        </div>
+      </div>
         {/* 基本情報 */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">基本情報</h2>
@@ -385,7 +377,6 @@ export default function FAQEditPage() {
             })}
           </div>
         </div>
-      </main>
     </div>
   );
 }

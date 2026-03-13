@@ -108,7 +108,18 @@ function createLiffUrl(targetUrl: string, campaign?: string, broadcastId?: strin
 function buildLineMessages(items: MessageItem[], broadcastId?: string, notificationText?: string): object[] {
   return items.map((item) => {
     if (item.type === 'text') {
-      return { type: 'text', text: item.text || '' };
+      let text = item.text || '';
+      // テキスト内のURLを自動的にLIFFトラッキングURLに変換
+      // これにより access.line.me / referral ではなく utm_campaign が記録される
+      if (broadcastId) {
+        const urlRegex = /(https?:\/\/[^\s<>。、）)」』]+)/g;
+        text = text.replace(urlRegex, (url) => {
+          // 既にLIFF/トラッキングURL化済みの場合はスキップ
+          if (url.includes('liff.line.me') || url.includes('/api/r/')) return url;
+          return createLiffUrl(url, 'text_link', broadcastId);
+        });
+      }
+      return { type: 'text', text };
     }
     if (item.type === 'image') {
       // 画像カルーセル

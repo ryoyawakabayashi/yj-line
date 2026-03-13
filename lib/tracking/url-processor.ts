@@ -12,6 +12,7 @@ const TRACKABLE_DOMAINS = [
   'www.yolo-japan.co.jp',
   'www.yolo-japan.com',
   'home.yolo-japan.com',
+  'info.yolo-japan.com',
 ];
 
 /**
@@ -81,7 +82,7 @@ export async function processUrlsInText(
 
       if (isTrackable) {
         // トラッキングURLを生成（campaignがなければsourceTypeからデフォルト生成）
-        const campaignName = campaign || `line_chatbot_${sourceType}`;
+        const campaignName = campaign || `line_bot_${sourceType}`;
         let trackingUrl = await generateTrackingUrl(userId, originalUrl, sourceType, campaignName);
 
         // LIFF URL経由にする（外部ブラウザで開く）
@@ -127,7 +128,7 @@ export async function processUrl(
     const isTrackable = TRACKABLE_DOMAINS.includes(urlObj.hostname);
 
     if (isTrackable) {
-      const campaignName = campaign || `line_chatbot_${sourceType}`;
+      const campaignName = campaign || `line_bot_${sourceType}`;
       let trackingUrl = await generateTrackingUrl(userId, url, sourceType, campaignName);
 
       // LIFF URL経由にする（外部ブラウザで開く）

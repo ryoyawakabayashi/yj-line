@@ -16,6 +16,7 @@ const FUNNEL_OPTIONS: { value: FunnelType; label: string }[] = [
   { value: 'feature', label: '特集' },
   { value: 'message', label: '配信' },
   { value: 'autochat', label: 'AIトーク' },
+  { value: 'contact', label: 'お問い合わせ' },
 ];
 
 // 過去12ヶ月分の選択肢を生成
