@@ -32,14 +32,14 @@ const CATEGORY_LABELS: Record<string, Record<string, string>> = {
 
 const MSG = {
   welcome: {
-    ja: '日本語（にほんご）の勉強（べんきょう）を始（はじ）めましょう！\n\nレベルを選（えら）んでください：',
+    ja: '日本語の勉強を始めましょう！\n\nレベルを選んでください：',
     en: "Let's start learning Japanese!\n\nChoose your level:",
     ko: '일본어 공부를 시작합시다!\n\n레벨을 선택하세요:',
     zh: '开始学习日语吧！\n\n请选择级别：',
     vi: 'Hãy bắt đầu học tiếng Nhật!\n\nChọn cấp độ:',
   },
   chooseCategory: {
-    ja: 'どの分野（ぶんや）を勉強（べんきょう）しますか？',
+    ja: 'どの分野を勉強しますか？',
     en: 'Which category would you like to study?',
     ko: '어떤 분야를 공부하시겠어요?',
     zh: '您想学习哪个类别？',
@@ -53,14 +53,14 @@ const MSG = {
     vi: 'Chưa có câu hỏi cho lựa chọn này. Hãy thử loại khác.',
   },
   correct: {
-    ja: '⭕ 正解（せいかい）！',
+    ja: '⭕ 正解！',
     en: '⭕ Correct!',
     ko: '⭕ 정답!',
     zh: '⭕ 正确！',
     vi: '⭕ Đúng rồi!',
   },
   incorrect: {
-    ja: '❌ 残念（ざんねん）！',
+    ja: '❌ 残念！',
     en: '❌ Incorrect!',
     ko: '❌ 오답!',
     zh: '❌ 不对！',
@@ -81,7 +81,7 @@ const MSG = {
     vi: 'Câu tiếp →',
   },
   complete: {
-    ja: '🎉 {size}問完了！\n\n結果（けっか）: {correct}/{size} 正解（{percent}%）',
+    ja: '🎉 {size}問完了！\n\n結果: {correct}/{size} 正解（{percent}%）',
     en: '🎉 {size} questions done!\n\nResult: {correct}/{size} correct ({percent}%)',
     ko: '🎉 {size}문제 완료!\n\n결과: {correct}/{size} 정답 ({percent}%)',
     zh: '🎉 {size}题完成！\n\n结果：{correct}/{size} 正确（{percent}%）',
@@ -497,7 +497,7 @@ async function showResults(
   // 励ましメッセージ
   if (percent >= 80) {
     const great: Record<string, string> = {
-      ja: '\n\n⭐ すばらしい！この調子（ちょうし）で頑張（がんば）りましょう！',
+      ja: '\n\n⭐ すばらしい！この調子で頑張りましょう！',
       en: '\n\n⭐ Excellent! Keep up the great work!',
       ko: '\n\n⭐ 훌륭합니다! 이 조자로 힘내세요!',
       zh: '\n\n⭐ 太棒了！继续加油！',
@@ -506,7 +506,7 @@ async function showResults(
     resultText += great[lang] || great.en;
   } else if (percent >= 50) {
     const good: Record<string, string> = {
-      ja: '\n\n📚 いい感じです！もう少し練習（れんしゅう）しましょう！',
+      ja: '\n\n📚 いい感じです！もう少し練習しましょう！',
       en: '\n\n📚 Good job! Let\'s practice a bit more!',
       ko: '\n\n📚 잘하고 있어요! 조금 더 연습합시다!',
       zh: '\n\n📚 不错！再多练习一下吧！',
@@ -515,7 +515,7 @@ async function showResults(
     resultText += good[lang] || good.en;
   } else {
     const encourage: Record<string, string> = {
-      ja: '\n\n💪 あきらめないで！繰（く）り返（かえ）し練習（れんしゅう）すれば必（かなら）ずできるようになります！',
+      ja: '\n\n💪 あきらめないで！繰り返し練習すれば必ずできるようになります！',
       en: '\n\n💪 Don\'t give up! With practice, you\'ll definitely improve!',
       ko: '\n\n💪 포기하지 마세요! 반복 연습하면 반드시 잘할 수 있어요!',
       zh: '\n\n💪 不要放弃！反复练习一定能进步！',
