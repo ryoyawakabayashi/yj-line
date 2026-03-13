@@ -16,11 +16,11 @@ const QUIZ_SIZE = 10;
 // ============ 多言語ラベル ============
 
 const LEVEL_LABELS: Record<string, Record<string, string>> = {
-  N5: { ja: 'N5（初級）', en: 'N5 (Beginner)', ko: 'N5 (초급)', zh: 'N5（初级）', vi: 'N5 (Sơ cấp)' },
+  N5: { ja: 'N5', en: 'N5', ko: 'N5', zh: 'N5', vi: 'N5' },
   N4: { ja: 'N4', en: 'N4', ko: 'N4', zh: 'N4', vi: 'N4' },
-  N3: { ja: 'N3（中級）', en: 'N3 (Intermediate)', ko: 'N3 (중급)', zh: 'N3（中级）', vi: 'N3 (Trung cấp)' },
+  N3: { ja: 'N3', en: 'N3', ko: 'N3', zh: 'N3', vi: 'N3' },
   N2: { ja: 'N2', en: 'N2', ko: 'N2', zh: 'N2', vi: 'N2' },
-  N1: { ja: 'N1（上級）', en: 'N1 (Advanced)', ko: 'N1 (고급)', zh: 'N1（高级）', vi: 'N1 (Cao cấp)' },
+  N1: { ja: 'N1', en: 'N1', ko: 'N1', zh: 'N1', vi: 'N1' },
 };
 
 const CATEGORY_LABELS: Record<string, Record<string, string>> = {
